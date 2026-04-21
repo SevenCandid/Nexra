@@ -50,29 +50,30 @@ async function fetchWaitlist() {
                 minute: '2-digit'
             });
 
+            const isDonation = entry.name === 'DONATION';
             const row = document.createElement('tr');
-            row.className = 'hover:bg-slate-100/50 transition-colors group';
+            row.className = `hover:bg-slate-100/50 transition-colors group ${isDonation ? 'bg-purple-50/30' : ''}`;
 
             row.innerHTML = `
                 <td class="px-6 py-4 text-sm font-mono text-slate-500">#${entry.position}</td>
                 <td class="px-6 py-4">
                     <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-100 to-cyan-100 border border-purple-200 flex items-center justify-center text-xs font-bold text-purple-700">
-                            ${entry.email.charAt(0).toUpperCase()}
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-br ${isDonation ? 'from-pink-500/20 to-purple-500/20 border-pink-500/30 text-pink-600' : 'from-purple-100 to-cyan-100 border-purple-200 text-purple-700'} border flex items-center justify-center text-xs font-bold">
+                            ${isDonation ? '💖' : entry.email.charAt(0).toUpperCase()}
                         </div>
                         <span class="text-slate-900 font-medium">${entry.email}</span>
                     </div>
                 </td>
                 <td class="px-6 py-4 text-sm text-slate-500">
                     <div class="flex flex-col">
-                        <span class="text-slate-700 font-medium">${entry.name || '-'}</span>
-                        <span class="text-xs text-slate-500">${entry.company || ''}</span>
+                        <span class="${isDonation ? 'text-pink-600 font-black' : 'text-slate-700 font-medium'}">${entry.name || '-'}</span>
+                        <span class="text-xs ${isDonation ? 'text-purple-600 font-bold' : 'text-slate-500'}">${entry.company || ''}</span>
                     </div>
                 </td>
                 <td class="px-6 py-4 text-sm text-slate-500 whitespace-nowrap">${date}</td>
                 <td class="px-6 py-4 text-right">
-                    <span class="px-2 py-1 bg-green-100 border border-green-200 rounded-full text-xs font-medium text-green-700">
-                        Joined
+                    <span class="px-2 py-1 ${isDonation ? 'bg-pink-100 border-pink-200 text-pink-700' : 'bg-green-100 border-green-200 text-green-700'} border rounded-full text-xs font-medium">
+                        ${isDonation ? 'Donated' : 'Joined'}
                     </span>
                 </td>
             `;

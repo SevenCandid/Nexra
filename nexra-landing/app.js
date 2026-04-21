@@ -217,8 +217,11 @@ function handleDonate(amount) {
 }
 
 async function submitDonation() {
-    const amount = document.getElementById('donate-amount').value;
-    const email = document.getElementById('donate-email').value;
+    const amountInput = document.getElementById('donate-amount');
+    const emailInput = document.getElementById('donate-email');
+    const amount = parseFloat(amountInput.value);
+    const email = emailInput.value;
+    const submitBtn = event.target; // Get the button from the event
 
     if (!amount || amount <= 0) {
         showToast('Please enter a valid amount', 'error');
@@ -230,11 +233,17 @@ async function submitDonation() {
         return;
     }
 
+    // Check if Paystack is loaded
+    if (typeof PaystackPop === 'undefined') {
+        showToast('Payment system is temporarily unavailable. Please refresh.', 'error');
+        return;
+    }
+
     // Initialize Paystack Payment
     let handler = PaystackPop.setup({
         key: PAYSTACK_PUBLIC_KEY,
         email: email,
-        amount: amount * 100, // Convert to pesewas
+        amount: Math.round(amount * 100), // Ensure it's an integer in pesewas
         currency: 'GHS',
         ref: 'NEXRA_DONATE_' + Math.floor((Math.random() * 1000000000) + 1),
         callback: function (response) {
