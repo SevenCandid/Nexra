@@ -85,12 +85,32 @@
                     <h1 class="text-3xl font-black mb-2 tracking-tight text-slate-900">Waitlist Entries</h1>
                     <p class="text-slate-600">Manage and view early access signups</p>
                 </div>
-                <div
-                    class="bg-white/50 border border-slate-200 px-4 py-2 rounded-lg flex items-center gap-2 backdrop-blur-md shadow-sm">
-                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span class="text-sm font-bold text-slate-600">Total: <span id="total-count"
-                            class="text-slate-900">...</span></span>
+                <div class="flex items-center gap-3">
+                    <div
+                        class="bg-white/50 border border-slate-200 px-4 py-2 rounded-lg flex items-center gap-2 backdrop-blur-md shadow-sm">
+                        <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span class="text-sm font-bold text-slate-600">Waitlist: <span id="waitlist-count"
+                                class="text-slate-900">...</span></span>
+                    </div>
+                    <div
+                        class="bg-pink-50/50 border border-pink-200 px-4 py-2 rounded-lg flex items-center gap-2 backdrop-blur-md shadow-sm">
+                        <div class="w-2 h-2 bg-pink-500 rounded-full animate-pulse"></div>
+                        <span class="text-sm font-bold text-slate-600 text-pink-700">Donations: <span id="donation-count"
+                                class="text-pink-900">...</span></span>
+                    </div>
                 </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="flex gap-2 mb-6 p-1 bg-slate-200/50 rounded-2xl w-fit">
+                <button onclick="switchTab('waitlist')" id="tab-waitlist"
+                    class="px-6 py-3 rounded-xl text-sm font-bold transition-all bg-white text-slate-900 shadow-sm">
+                    Waitlist
+                </button>
+                <button onclick="switchTab('donations')" id="tab-donations"
+                    class="px-6 py-3 rounded-xl text-sm font-bold transition-all text-slate-500 hover:text-slate-900">
+                    Donations
+                </button>
             </div>
 
             <!-- Table Card -->
