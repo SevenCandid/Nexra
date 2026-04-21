@@ -95,10 +95,16 @@
                     </div>
                     <span class="text-xl font-bold tracking-tight">NEXRA</span>
                 </div>
-                <a href="#cta-section"
-                    class="px-4 py-2 bg-slate-900/5 hover:bg-slate-900/10 border border-slate-200 rounded-full text-sm font-medium transition-all backdrop-blur-sm text-slate-900">
-                    Join Waitlist
-                </a>
+                <div class="flex items-center gap-4">
+                    <button onclick="openDonateModal()"
+                        class="text-slate-600 hover:text-slate-900 font-medium transition-colors hidden sm:block">
+                        Support Us
+                    </button>
+                    <a href="#cta-section"
+                        class="px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-900 rounded-full text-sm font-medium transition-all text-white shadow-lg shadow-slate-900/10">
+                        Join Waitlist
+                    </a>
+                </div>
             </div>
         </div>
     </nav>
@@ -1462,6 +1468,67 @@
             </div>
         </div>
     </section>
+    
+    <!-- Support Section -->
+    <section class="py-24 px-4 overflow-hidden bg-slate-50 relative">
+        <div class="max-w-4xl mx-auto text-center relative z-10">
+            <div class="inline-flex items-center gap-2 px-3 py-1 bg-purple-100 rounded-full text-purple-600 text-xs font-bold mb-8">
+                💖 Support Our Mission
+            </div>
+            <h2 class="text-4xl font-black mb-6 tracking-tight">Support Nexra's Growth</h2>
+            <p class="text-lg text-slate-600 mb-10 max-w-2xl mx-auto font-light leading-relaxed">
+                We're building the future of SMS marketing for African businesses. Your contributions help us scale our infrastructure and bring NEXRA to more creators and startups faster.
+            </p>
+            
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-2xl mx-auto">
+                <button onclick="handleDonate(10)" class="px-6 py-4 bg-white border border-slate-200 rounded-2xl hover:border-purple-500 hover:shadow-lg transition-all font-bold text-slate-900">
+                    10 GHS
+                </button>
+                <button onclick="handleDonate(20)" class="px-6 py-4 bg-white border border-slate-200 rounded-2xl hover:border-purple-500 hover:shadow-lg transition-all font-bold text-slate-900">
+                    20 GHS
+                </button>
+                <button onclick="handleDonate(50)" class="px-6 py-4 bg-white border border-slate-200 rounded-2xl hover:border-purple-500 hover:shadow-lg transition-all font-bold text-slate-900">
+                    50 GHS
+                </button>
+                <button onclick="openDonateModal()" class="px-6 py-4 bg-white border border-slate-200 rounded-2xl hover:border-purple-500 hover:shadow-lg transition-all font-bold text-slate-900">
+                    Custom
+                </button>
+            </div>
+        </div>
+        
+        <!-- Decoration -->
+        <div class="absolute top-1/2 left-0 w-64 h-64 bg-purple-500/5 rounded-full blur-3xl -translate-y-1/2"></div>
+        <div class="absolute top-1/2 right-0 w-64 h-64 bg-cyan-500/5 rounded-full blur-3xl -translate-y-1/2"></div>
+    </section>
+
+    <!-- Donation Modal -->
+    <div id="donate-modal" class="fixed inset-0 z-[100] hidden">
+        <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onclick="closeDonateModal()"></div>
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md px-4">
+            <div class="bg-white rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-500 to-cyan-500"></div>
+                <h3 class="text-2xl font-bold mb-2">Support NEXRA</h3>
+                <p class="text-slate-500 text-sm mb-6">Enter an amount and your email to donate.</p>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Amount (GHS)</label>
+                        <input type="number" id="donate-amount" placeholder="e.g. 100" class="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all font-bold">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Email Address</label>
+                        <input type="email" id="donate-email" placeholder="you@example.com" class="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all font-medium">
+                    </div>
+                    <button onclick="submitDonation()" class="w-full py-5 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all transform hover:scale-[1.02] shadow-xl shadow-slate-900/20 mt-4">
+                        Proceed to Pay
+                    </button>
+                    <button onclick="closeDonateModal()" class="w-full py-4 text-slate-400 text-sm font-medium hover:text-slate-600 transition-colors">
+                        Maybe Later
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Footer -->
     <footer class="py-8 border-t border-slate-200 bg-white/50 backdrop-blur-md">

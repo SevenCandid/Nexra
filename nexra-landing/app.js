@@ -195,6 +195,86 @@ async function handleSubmit(e) {
 }
 
 // ============================================================================
+// Donation Logic
+// ============================================================================
+
+function openDonateModal() {
+    document.getElementById('donate-modal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeDonateModal() {
+    document.getElementById('donate-modal').classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+function handleDonate(amount) {
+    // If it's a fixed amount button, we still need their email
+    openDonateModal();
+    if (amount) {
+        document.getElementById('donate-amount').value = amount;
+    }
+}
+
+async function submitDonation() {
+    const amount = document.getElementById('donate-amount').value;
+    const email = document.getElementById('donate-email').value;
+
+    if (!amount || amount <= 0) {
+        showToast('Please enter a valid amount', 'error');
+        return;
+    }
+
+    if (!email || !email.includes('@')) {
+        showToast('Please enter a valid email address', 'error');
+        return;
+    }
+
+    // Initialize Paystack Payment
+    let handler = PaystackPop.setup({
+        key: PAYSTACK_PUBLIC_KEY,
+        email: email,
+        amount: amount * 100, // Convert to pesewas
+        currency: 'GHS',
+        ref: 'NEXRA_DONATE_' + Math.floor((Math.random() * 1000000000) + 1),
+        callback: function (response) {
+            (async () => {
+                try {
+                    // Record donation in Google Sheets
+                    await fetch(SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: {
+                            'Content-Type': 'text/plain;charset=utf-8',
+                        },
+                        body: JSON.stringify({
+                            action: 'add',
+                            email: email,
+                            name: 'DONATION',
+                            company: amount + ' GHS',
+                            paystack_ref: response.reference
+                        })
+                    });
+
+                    showToast('🎉 Thank you so much for your support!', 'success');
+                    createConfetti();
+                    closeDonateModal();
+                } catch (error) {
+                    console.error('Error recording donation:', error);
+                    showToast('Payment successful! Thank you for your support.', 'success');
+                    closeDonateModal();
+                }
+            })();
+        },
+        onClose: function () {
+            showToast('Donation cancelled.', 'error');
+        }
+    });
+
+    handler.openIframe();
+}
+
+// ============================================================================
 // Scroll Reveal Animation
 // ============================================================================
 
