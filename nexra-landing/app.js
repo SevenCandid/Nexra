@@ -365,11 +365,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             volumeDisplay.textContent = new Intl.NumberFormat('en-GH').format(volume);
 
-            // Logic Adjusted for GHS:
-            // Industry Avg Cost: GH₵ 0.12 per msg
-            // NEXRA Avg Cost: GH₵ 0.06 per msg
-            // Savings = volume * (0.12 - 0.06) * 12 months * 1.5 (waitlist bonus)
-            const annualSavings = volume * 0.06 * 12 * 1.5;
+            // Logic Adjusted for Realistic Ghana Rates (2024/2025):
+            // Industry Avg Cost: GH₵ 0.08 per msg (Typical Aggregator)
+            // NEXRA Avg Cost: GH₵ 0.04 per msg
+            // Savings = volume * (0.08 - 0.04) * 12 months
+            const annualSavings = volume * 0.04 * 12;
             savingsDisplay.textContent = formatter.format(Math.round(annualSavings));
         };
 
