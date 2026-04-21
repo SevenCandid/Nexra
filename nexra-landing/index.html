@@ -19,7 +19,7 @@
     <meta property="og:image" content="/assets/og-image.png">
 
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+    <link rel="icon" type="image/png" href="assets/NEXRA_IconOnly.png">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -85,24 +85,29 @@
         <div class="bg-noise"></div>
     </div>
 
-    <!-- Navigation -->
     <nav class="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
-                <div class="flex items-center gap-2">
-                    <div
-                        class="w-8 h-8 bg-gradient-to-br from-purple-500 to-cyan-500 rounded-lg shadow-lg shadow-purple-500/20">
-                    </div>
-                    <span class="text-xl font-bold tracking-tight">NEXRA</span>
-                </div>
-                <div class="flex items-center gap-3 sm:gap-6">
+                <!-- Left: Support -->
+                <div class="flex-1 flex justify-start">
                     <button onclick="openDonateModal()"
-                        class="text-slate-600 hover:text-slate-900 font-bold text-sm transition-colors flex items-center gap-1">
-                        <span class="sm:hidden text-lg">💖</span>
-                        <span class="hidden sm:inline">Support Us</span>
+                        class="text-slate-600 hover:text-slate-900 font-bold transition-colors flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1 leading-none">
+                        <span class="text-base sm:text-lg">💖</span>
+                        <span class="text-[8px] sm:text-[10px] uppercase tracking-tighter">Support Us</span>
                     </button>
+                </div>
+
+                <!-- Middle: Logo -->
+                <div class="flex-shrink-0 flex items-center justify-center">
+                    <a href="#" class="flex items-center">
+                        <img src="assets/NEXRA_IconBeside.png" alt="NEXRA" class="h-7 sm:h-9 w-auto">
+                    </a>
+                </div>
+
+                <!-- Right: CTA -->
+                <div class="flex-1 flex justify-end">
                     <a href="#cta-section"
-                        class="px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-900 rounded-full text-xs sm:text-sm font-bold transition-all text-white shadow-lg shadow-slate-900/10">
+                        class="px-3 py-1.5 sm:px-5 sm:py-2 bg-slate-900 hover:bg-slate-800 border border-slate-900 rounded-full text-[10px] sm:text-xs font-black transition-all text-white shadow-lg shadow-slate-900/10 whitespace-nowrap uppercase tracking-widest">
                         Join Waitlist
                     </a>
                 </div>
