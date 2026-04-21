@@ -355,8 +355,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const savingsDisplay = document.getElementById('savings-display');
 
     if (volumeSlider && volumeDisplay && savingsDisplay) {
+        const volumeValues = [
+            100, 200, 300, 400, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000, 250000, 500000, 1000000
+        ];
+
         const updateROI = () => {
-            const volume = parseInt(volumeSlider.value);
+            const index = parseInt(volumeSlider.value);
+            const volume = volumeValues[index];
+            
             const formatter = new Intl.NumberFormat('en-GH', {
                 style: 'currency',
                 currency: 'GHS',
@@ -366,12 +372,15 @@ document.addEventListener('DOMContentLoaded', () => {
             volumeDisplay.textContent = new Intl.NumberFormat('en-GH').format(volume);
 
             // Logic Adjusted for Realistic Ghana Rates (2024/2025):
-            // Industry Avg Cost: GH₵ 0.08 per msg (Typical Aggregator)
-            // NEXRA Avg Cost: GH₵ 0.04 per msg
-            // Savings = volume * (0.08 - 0.04) * 12 months
             const annualSavings = volume * 0.04 * 12;
             savingsDisplay.textContent = formatter.format(Math.round(annualSavings));
         };
+
+        // Set slider max to match array length
+        volumeSlider.max = volumeValues.length - 1;
+        volumeSlider.min = 0;
+        volumeSlider.step = 1;
+        volumeSlider.value = 5; // Default to 1,000 for a good initial view
 
         volumeSlider.addEventListener('input', updateROI);
         updateROI(); // Initial calc
