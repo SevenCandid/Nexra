@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     # JWT
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 10080  # 7 days
     
+    # Paystack
+    PAYSTACK_SECRET_KEY: Optional[str] = None
+    PAYSTACK_PUBLIC_KEY: Optional[str] = None
+    
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         if not self.SQLALCHEMY_DATABASE_URI:

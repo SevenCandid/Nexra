@@ -1,5 +1,6 @@
 import { html, useState, useEffect } from '../utils/htm.js';
 import apiClient from '../api/client.js';
+import { useAuth } from '../contexts/AuthContext.js';
 import { useToast } from '../contexts/ToastContext.js';
 import { Button } from '../components/ui/Button.js';
 import { Card } from '../components/ui/Card.js';
@@ -7,7 +8,10 @@ import { Icon } from '../components/ui/Icon.js';
 import { Input } from '../components/ui/Input.js';
 import { Modal } from '../components/ui/Modal.js';
 
+const PAYSTACK_PUBLIC_KEY = 'pk_live_f2bc33d7eb129d525b3786314c8054415a262ad7';
+
 export const PricingPage = () => {
+    const { user } = useAuth();
     const { showToast } = useToast();
     const [pricing, setPricing] = useState([]);
     const [ledger, setLedger] = useState([]);
@@ -44,68 +48,87 @@ export const PricingPage = () => {
 
     const handleTopup = async (e) => {
         e.preventDefault();
-        if (!momoPhone || momoPhone.length < 10) {
-            showToast('Please enter a valid phone number', 'error');
+        
+        if (!user?.email) {
+            showToast('User email not found. Please log in again.', 'error');
+            return;
+        }
+
+        const amount = parseFloat(topupAmount);
+        if (isNaN(amount) || amount <= 0) {
+            showToast('Please enter a valid amount', 'error');
+            return;
+        }
+
+        // Check if Paystack is loaded
+        if (typeof PaystackPop === 'undefined') {
+            showToast('Payment system is temporarily unavailable. Please refresh.', 'error');
             return;
         }
 
         setIsProcessing(true);
-        setTxnStatus('preparing');
+        const reference = `NEX-PAY-${Math.floor((Math.random() * 1000000000) + 1)}`;
+
         try {
-            const response = await apiClient.post('/payments/momo-push', {
-                amount: parseFloat(topupAmount),
-                phone_number: momoPhone,
-                network: momoNetwork
+            // 1. Register Intent with Backend
+            await apiClient.post('/payments/register-intent', {
+                amount: amount,
+                reference: reference
             });
-            
-            setPaymentRef(response.data.reference);
-            setTxnStatus('pending');
-            startPolling(response.data.reference);
-            showToast('Payment request sent!', 'info');
+
+            // 2. Open Paystack
+            const handler = PaystackPop.setup({
+                key: PAYSTACK_PUBLIC_KEY,
+                email: user.email,
+                amount: Math.round(amount * 100), // convert to pesewas
+                currency: 'GHS',
+                ref: reference,
+                metadata: {
+                    organization_id: user.organization_id,
+                    user_id: user.id,
+                    custom_fields: [
+                        { display_name: "Service", variable_name: "service", value: "Wallet Top-up" }
+                    ]
+                },
+                callback: async (response) => {
+                    setTxnStatus('verifying');
+                    try {
+                        // 3. Verify on backend
+                        const verifyRes = await apiClient.get(`/payments/verify/${response.reference}`);
+                        if (verifyRes.data.status === 'SUCCESS' || verifyRes.data.status === 'ALREADY_COMPLETED') {
+                            setTxnStatus('success');
+                            showToast('Wallet topped up successfully!', 'success');
+                            setTimeout(() => {
+                                setShowTopupModal(false);
+                                resetTopupState();
+                                fetchData();
+                            }, 2000);
+                        } else {
+                            setTxnStatus('failed');
+                            showToast(verifyRes.data.message || 'Verification failed', 'error');
+                        }
+                    } catch (error) {
+                        console.error('Verification error:', error);
+                        setTxnStatus('failed');
+                        showToast('Verification failed. Please contact support.', 'error');
+                    }
+                },
+                onClose: () => {
+                    setIsProcessing(false);
+                    showToast('Payment cancelled', 'info');
+                }
+            });
+
+            handler.openIframe();
         } catch (error) {
+            console.error('Topup initiation failed:', error);
             showToast('Failed to initiate payment', 'error');
-            setTxnStatus(null);
             setIsProcessing(false);
         }
     };
 
-    const startPolling = (ref) => {
-        const interval = setInterval(async () => {
-            try {
-                const res = await apiClient.get(`/payments/status/${ref}`);
-                if (res.data.status === 'SUCCESS') {
-                    clearInterval(interval);
-                    setTxnStatus('success');
-                    showToast('Payment Successful!', 'success');
-                    setTimeout(() => {
-                        setShowTopupModal(false);
-                        resetTopupState();
-                        fetchData();
-                    }, 2000);
-                } else if (res.data.status === 'FAILED') {
-                    clearInterval(interval);
-                    setTxnStatus('failed');
-                    showToast('Payment Failed', 'error');
-                    setIsProcessing(false);
-                }
-            } catch (error) {
-                console.error('Polling error:', error);
-            }
-        }, 3000);
-
-        // Cleanup after 2 minutes
-        setTimeout(() => {
-            clearInterval(interval);
-            if (txnStatus === 'pending') {
-                setTxnStatus('timeout');
-                setIsProcessing(false);
-            }
-        }, 120000);
-    };
-
     const resetTopupState = () => {
         setTxnStatus(null);
-        setPaymentRef(null);
         setIsProcessing(false);
     };
 
@@ -205,24 +228,13 @@ export const PricingPage = () => {
             </div>
 
             <${Modal} isOpen=${showTopupModal} onClose=${() => !isProcessing && setShowTopupModal(false)} title="Top Up Wallet">
-                ${txnStatus === 'pending' || txnStatus === 'success' || txnStatus === 'failed' ? html`
+                ${txnStatus === 'verifying' || txnStatus === 'success' || txnStatus === 'failed' ? html`
                     <div className="py-8 text-center space-y-4">
-                        ${txnStatus === 'pending' ? html`
+                        ${txnStatus === 'verifying' ? html`
                             <div className="w-16 h-16 border-4 border-primary-100 border-t-primary-600 rounded-full animate-spin mx-auto"></div>
                             <div>
-                                <h4 className="text-lg font-bold text-gray-900 dark:text-white">Waiting for Approval</h4>
-                                <p className="text-sm text-gray-500 dark:text-midnight-400 mt-1">Check your phone for the prompt (Simulation Mode).</p>
-                            </div>
-                            <div className="space-y-3">
-                                <div className="bg-gray-50 dark:bg-midnight-900/50 p-3 rounded-xl inline-block mx-auto border border-gray-100 dark:border-midnight-800">
-                                    <p className="text-xs font-mono text-gray-500 uppercase tracking-widest">Ref: ${paymentRef}</p>
-                                </div>
-                                <div className="pt-2">
-                                    <a href="simulate_momo.html" target="_blank" className="text-xs text-primary-600 hover:underline font-bold flex items-center justify-center gap-1">
-                                        <${Icon} name="external-link" size=${12} />
-                                        Open Simulation Tool to Approve
-                                    </a>
-                                </div>
+                                <h4 className="text-lg font-bold text-gray-900 dark:text-white">Verifying Payment</h4>
+                                <p className="text-sm text-gray-500 dark:text-midnight-400 mt-1">Please wait while we confirm your transaction...</p>
                             </div>
                         ` : txnStatus === 'success' ? html`
                             <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto text-emerald-600">
@@ -239,7 +251,7 @@ export const PricingPage = () => {
                     </div>
                 ` : html`
                     <form onSubmit=${handleTopup} className="space-y-4">
-                        <p className="text-sm text-gray-600 dark:text-midnight-400">Choose an amount and enter your mobile money details.</p>
+                        <p className="text-sm text-gray-600 dark:text-midnight-400">Choose an amount to add to your wallet. You can pay via Mobile Money or Card.</p>
                         
                         <div className="grid grid-cols-3 gap-2">
                             ${['10', '20', '50', '100', '200', '500'].map(amt => html`
@@ -253,28 +265,7 @@ export const PricingPage = () => {
                                 </button>
                             `)}
                         </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-1.5">
-                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 ml-1">Network</label>
-                                <select 
-                                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-midnight-900/50 text-gray-900 dark:text-white border border-gray-200 dark:border-midnight-800 rounded-xl outline-none text-sm"
-                                    value=${momoNetwork}
-                                    onChange=${(e) => setMomoNetwork(e.target.value)}
-                                >
-                                    <option value="MTN">MTN Ghana</option>
-                                    <option value="TELECEL">Telecel (Vodafone)</option>
-                                    <option value="AIRTELTIGO">AirtelTigo</option>
-                                </select>
-                            </div>
-                            <${Input} 
-                                label="Mobile Number" 
-                                placeholder="024XXXXXXX"
-                                value=${momoPhone}
-                                onChange=${(e) => setMomoPhone(e.target.value)}
-                            />
-                        </div>
-
+ 
                         <${Input} 
                             label="Custom Amount (GHS)" 
                             type="number" 
@@ -282,12 +273,15 @@ export const PricingPage = () => {
                             value=${topupAmount} 
                             onChange=${(e) => setTopupAmount(e.target.value)} 
                         />
-
+ 
                         <div className="pt-4 flex gap-2">
                             <${Button} type="button" variant="outline" className="flex-1" onClick=${() => setShowTopupModal(false)}>Cancel</${Button}>
                             <${Button} type="submit" className="flex-1" disabled=${isProcessing}>
-                                ${isProcessing ? 'Initiating...' : 'Send Payment Request'}
+                                ${isProcessing ? html`<span className="flex items-center justify-center gap-2"><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Processing...</span>` : 'Pay Now'}
                             </${Button}>
+                        </div>
+                        <div className="flex items-center justify-center gap-2 pt-2 grayscale opacity-50">
+                            <img src="https://checkout.paystack.com/static/media/paystack-badge.e8f73111.png" alt="Paystack" className="h-4" />
                         </div>
                     </form>
                 `}

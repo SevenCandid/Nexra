@@ -60,3 +60,39 @@ async def simulate_payment_complete(
         raise HTTPException(status_code=400, detail="Transaction not found or already completed")
     
     return {"message": "Transaction status updated successfully"}
+    
+@router.post("/register-intent")
+async def register_payment_intent(
+    amount: float = Body(..., embed=True),
+    reference: str = Body(..., embed=True),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """
+    Register a payment intent from Paystack Inline.
+    """
+    await payment_service.register_payment_intent(
+        organization_id=current_user.organization_id,
+        user_id=current_user.id,
+        amount=amount,
+        reference=reference
+    )
+    return {"status": "registered"}
+
+@router.get("/verify/{reference}")
+async def verify_payment(
+    reference: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Verify a Paystack payment.
+    """
+    result = await payment_service.verify_paystack_payment(db, reference)
+    if result["status"] == "SUCCESS":
+        return result
+    elif result["status"] == "ALREADY_COMPLETED":
+        return result
+    
+    raise HTTPException(
+        status_code=400, 
+        detail=result.get("message", "Payment verification failed")
+    )
