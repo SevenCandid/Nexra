@@ -221,7 +221,6 @@ async function submitDonation() {
     const emailInput = document.getElementById('donate-email');
     const amount = parseFloat(amountInput.value);
     const email = emailInput.value;
-    const submitBtn = event.target; // Get the button from the event
 
     if (!amount || amount <= 0) {
         showToast('Please enter a valid amount', 'error');
@@ -248,6 +247,7 @@ async function submitDonation() {
         ref: 'NEXRA_DONATE_' + Math.floor((Math.random() * 1000000000) + 1),
         callback: function (response) {
             (async () => {
+                console.log('Payment successful. Recording to Google Sheets...', response);
                 try {
                     // Record donation in Google Sheets
                     await fetch(SCRIPT_URL, {
@@ -265,6 +265,7 @@ async function submitDonation() {
                         })
                     });
 
+                    console.log('Donation record sent to Google Sheets successfully.');
                     showToast('🎉 Thank you so much for your support!', 'success');
                     createConfetti();
                     closeDonateModal();
