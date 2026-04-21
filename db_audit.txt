@@ -1,0 +1,13 @@
+--- USERS ---
+User: Frank Bediako, Email: frankbediako38@gmail.com, OrgID: 1, Role: user
+User: Success, Email: frankbediako07@gmail.com, OrgID: 4, Role: user
+User: Frank Bediako, Email: candidtech07@gmail.com, OrgID: 5, Role: superadmin
+
+--- ORGANIZATIONS ---
+Org: Frank Bediako's Org, ID: 1
+Org: Candid Inc, ID: 4
+Org: NEXRA INTERNAL, ID: 5
+
+--- SENDER IDS ---
+ID: 1, SenderID: CANDIDEST, Status: approved, OrgID: 4
+ID: 2, SenderID: FRANKO, Status: approved, OrgID: 1

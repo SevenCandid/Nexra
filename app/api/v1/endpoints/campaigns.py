@@ -1,0 +1,354 @@
+from datetime import datetime, timedelta
+import logging
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, delete, func
+from app.db.models import User, Contact, Campaign, SMSMessage, MessageStatus, CampaignStatus, ContactGroup, contact_group_association
+from app.db.database import get_db
+from app.api import deps
+from app.schemas.schemas import CampaignCreate, CampaignResponse, CampaignListResponse, MessageStats
+from app.core.queue import enqueue_sms, enqueue_batch
+from app.services.gateway_manager import gateway_manager
+
+router = APIRouter()
+logger = logging.getLogger(__name__)
+
+@router.get("", response_model=CampaignListResponse)
+async def get_campaigns(
+    status: Optional[str] = None,
+    limit: int = 10,
+    skip: int = 0,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """
+    List campaigns for the organization.
+    """
+    # Get total count
+    count_query = select(func.count(Campaign.id)).where(Campaign.organization_id == current_user.organization_id)
+    if status:
+        if status == 'pending':
+            count_query = count_query.where(Campaign.status.in_(['draft', 'scheduled', 'sending']))
+        elif status == 'delivered':
+            count_query = count_query.where(Campaign.status == 'completed')
+        elif status == 'failed':
+            count_query = count_query.where(Campaign.status.in_(['failed', 'cancelled']))
+        else:
+            count_query = count_query.where(Campaign.status == status)
+    count_result = await db.execute(count_query)
+    total = count_result.scalar()
+
+    # Get items
+    query = select(Campaign).where(Campaign.organization_id == current_user.organization_id)
+    if status:
+        if status == 'pending':
+            query = query.where(Campaign.status.in_(['draft', 'scheduled', 'sending']))
+        elif status == 'delivered':
+            query = query.where(Campaign.status == 'completed')
+        elif status == 'failed':
+            query = query.where(Campaign.status.in_(['failed', 'cancelled']))
+        else:
+            query = query.where(Campaign.status == status)
+    query = query.order_by(Campaign.id.desc()).offset(skip).limit(limit)
+    result = await db.execute(query)
+    campaigns = result.scalars().all()
+    
+    return CampaignListResponse(items=campaigns, total=total)
+
+@router.post("", response_model=CampaignResponse)
+async def create_campaign(
+    campaign_in: CampaignCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """
+    Create a new campaign and store contact associations for later broadcast.
+    """
+    # 0. Validate Sender ID (Must be approved for this org)
+    from app.db.models import SenderID, SenderIDStatus
+    s_query = select(SenderID).where(
+        SenderID.sender_id == campaign_in.sender,
+        SenderID.organization_id == current_user.organization_id,
+        SenderID.status == SenderIDStatus.APPROVED
+    )
+    s_result = await db.execute(s_query)
+    if not s_result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Sender ID '{campaign_in.sender}' is not approved. Please request approval in settings."
+        )
+
+    # 0.5 Resolve groups to contacts if any
+    all_contact_ids = set(campaign_in.contact_ids)
+    if campaign_in.group_ids:
+        # Resolve contacts from valid groups
+        group_stmt = select(contact_group_association.c.contact_id).join(
+            ContactGroup, ContactGroup.id == contact_group_association.c.group_id
+        ).where(
+            ContactGroup.id.in_(campaign_in.group_ids),
+            ContactGroup.organization_id == current_user.organization_id
+        )
+        group_res = await db.execute(group_stmt)
+        for row in group_res:
+            all_contact_ids.add(row[0])
+            
+    unique_contact_ids = list(all_contact_ids)
+
+    # Create Campaign record (SCHEDULED if time provided, else DRAFT)
+    status = CampaignStatus.SCHEDULED if campaign_in.scheduled_at else CampaignStatus.DRAFT
+    db_obj = Campaign(
+        name=campaign_in.name,
+        sender=campaign_in.sender,
+        template=campaign_in.template,
+        scheduled_at=campaign_in.scheduled_at,
+        organization_id=current_user.organization_id,
+        user_id=current_user.id,
+        contact_ids=unique_contact_ids, # Save the resolved unique IDs
+        group_ids=campaign_in.group_ids,   # Save the original group selection
+        status=status,
+        total_recipients=len(unique_contact_ids)
+    )
+    db.add(db_obj)
+    await db.flush() # Get the ID before creating messages
+    
+    # 1. Fetch Contacts to create associated messages
+    stmt = select(Contact).where(
+        Contact.id.in_(unique_contact_ids),
+        Contact.organization_id == current_user.organization_id
+    )
+    result = await db.execute(stmt)
+    contacts = result.scalars().all()
+    
+    # 2. Create individual PENDING SMSMessage records upfront
+    for contact in contacts:
+        # Personalize message 
+        f_name = (contact.first_name or "").strip()
+        l_name = (contact.last_name or "").strip()
+        full_name = f"{f_name} {l_name}".strip()
+        
+        # Fallback for {name}
+        display_name = full_name if full_name else (f_name if f_name else contact.phone_number)
+
+        content = db_obj.template
+        content = content.replace("{first_name}", f_name)
+        content = content.replace("{last_name}", l_name)
+        content = content.replace("{name}", display_name)
+        content = content.replace("{phone_number}", contact.phone_number)
+        
+        msg = SMSMessage(
+            sender=db_obj.sender,
+            recipient=contact.phone_number,
+            content=content,
+            status=MessageStatus.PENDING,
+            user_id=current_user.id,
+            organization_id=current_user.organization_id,
+            campaign_id=db_obj.id,
+            provider_name="MTN Ghana" # Resolved by worker later
+        )
+        db.add(msg)
+    
+    await db.commit()
+    await db.refresh(db_obj)
+    return db_obj
+
+@router.put("/{campaign_id}", response_model=CampaignResponse)
+async def update_campaign(
+    campaign_id: int,
+    campaign_in: CampaignCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """
+    Update an existing campaign. Only possible if not yet completed.
+    """
+    stmt = select(Campaign).where(Campaign.id == campaign_id, Campaign.organization_id == current_user.organization_id)
+    result = await db.execute(stmt)
+    campaign = result.scalar_one_or_none()
+    
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    if campaign.status == "completed":
+        raise HTTPException(status_code=400, detail="Cannot edit a completed campaign")
+
+    campaign.name = campaign_in.name
+    campaign.template = campaign_in.template
+    campaign.scheduled_at = campaign_in.scheduled_at
+    
+    # Auto-set status if scheduled
+    if campaign.scheduled_at and campaign.status in [CampaignStatus.DRAFT.value, CampaignStatus.SCHEDULED.value]:
+        campaign.status = CampaignStatus.SCHEDULED.value
+    elif not campaign.scheduled_at and campaign.status == CampaignStatus.SCHEDULED.value:
+        campaign.status = CampaignStatus.DRAFT.value
+
+    await db.commit()
+    await db.refresh(campaign)
+    return campaign
+
+@router.post("/{campaign_id}/broadcast")
+async def broadcast_campaign(
+    campaign_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """
+    Manually trigger the broadcast for a draft/scheduled campaign.
+    Checks for gateway availability before starting.
+    """
+    # 1. Fetch Campaign
+    stmt = select(Campaign).where(Campaign.id == campaign_id, Campaign.organization_id == current_user.organization_id)
+    result = await db.execute(stmt)
+    campaign = result.scalar_one_or_none()
+    
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    if campaign.status in [CampaignStatus.SENDING, CampaignStatus.COMPLETED]:
+        raise HTTPException(status_code=400, detail=f"Campaign is already {campaign.status}")
+
+    # 2. Check Gateway Availability (Pre-flight)
+    # For now, we check the default route for a sample or just general readiness
+    ready = gateway_manager.is_provider_ready("MTN Ghana") # Default provider for testing
+    if not ready:
+        # 1. Mark Campaign as FAILED
+        campaign.status = CampaignStatus.FAILED
+        
+        # 2. Mark all PENDING messages for this campaign as FAILED
+        msg_stmt = (
+            select(SMSMessage)
+            .where(SMSMessage.campaign_id == campaign_id, SMSMessage.status == MessageStatus.PENDING)
+        )
+        msg_result = await db.execute(msg_stmt)
+        pending_messages = msg_result.scalars().all()
+        for msg in pending_messages:
+            msg.status = MessageStatus.FAILED
+            
+        await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Primary SMS Gateway is offline. All messages marked as failed. Please check connections before retrying."
+        )
+
+    # 3. Determine if immediate or scheduled
+    now = datetime.utcnow()
+    is_immediate = True
+    if campaign.scheduled_at and campaign.scheduled_at > now + timedelta(minutes=1):
+        is_immediate = False
+        campaign.status = CampaignStatus.SCHEDULED
+        logger.info(f"Campaign {campaign.id} scheduled for {campaign.scheduled_at}")
+    else:
+        campaign.status = CampaignStatus.SENDING
+        logger.info(f"Campaign {campaign.id} starting immediate broadcast")
+
+    await db.commit()
+    
+    # 4. Trigger Worker if immediate
+    if is_immediate:
+        # Enqueue the batch process
+        from app.core.queue import enqueue_batch
+        await enqueue_batch(campaign.id)
+    
+    return {
+        "message": "Broadcast scheduled successfully" if not is_immediate else "Broadcast started successfully",
+        "status": campaign.status
+    }
+
+@router.post("/{campaign_id}/retry")
+async def retry_campaign(
+    campaign_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """
+    Retry all failed messages in a campaign.
+    """
+    # 1. Verify campaign ownership
+    stmt = select(Campaign).where(Campaign.id == campaign_id, Campaign.organization_id == current_user.organization_id)
+    result = await db.execute(stmt)
+    campaign = result.scalar_one_or_none()
+    
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    # 2. Find all failed messages for this campaign
+    msg_stmt = select(SMSMessage).where(
+        SMSMessage.campaign_id == campaign_id,
+        SMSMessage.status == MessageStatus.FAILED
+    )
+    msg_result = await db.execute(msg_stmt)
+    failed_messages = msg_result.scalars().all()
+    
+    if not failed_messages:
+        return {"message": "No failed messages found for this campaign."}
+
+    # 3. Reset and re-enqueue
+    for msg in failed_messages:
+        msg.status = MessageStatus.PENDING
+        msg.retry_count = 0
+        await db.commit() # Commit each to be safe for background task
+        await enqueue_sms(msg.id)
+
+    return {"message": f"Successfully re-enqueued {len(failed_messages)} messages for retry."}
+
+@router.delete("/{campaign_id}")
+async def delete_campaign(
+    campaign_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """
+    Delete a campaign and all its associated messages.
+    """
+    stmt = select(Campaign).where(
+        Campaign.id == campaign_id,
+        Campaign.organization_id == current_user.organization_id
+    )
+    result = await db.execute(stmt)
+    campaign = result.scalar_one_or_none()
+    
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    # Delete associated messages explicitly
+    msg_delete_stmt = delete(SMSMessage).where(SMSMessage.campaign_id == campaign_id)
+    await db.execute(msg_delete_stmt)
+    
+    await db.delete(campaign)
+    await db.commit()
+    return {"message": "Campaign and associated messages deleted successfully"}
+@router.get("/{campaign_id}/stats", response_model=MessageStats)
+async def get_campaign_stats(
+    campaign_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """
+    Get message statistics for a specific campaign.
+    """
+    # Verify campaign belongs to org
+    c_stmt = select(Campaign).where(
+        Campaign.id == campaign_id,
+        Campaign.organization_id == current_user.organization_id
+    )
+    c_res = await db.execute(c_stmt)
+    if not c_res.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    async def get_count(status: Optional[str] = None):
+        query = select(func.count(SMSMessage.id)).where(
+            SMSMessage.campaign_id == campaign_id,
+            SMSMessage.organization_id == current_user.organization_id
+        )
+        if status:
+            query = query.where(SMSMessage.status == status)
+        result = await db.execute(query)
+        return result.scalar() or 0
+
+    return MessageStats(
+        total=await get_count(),
+        sent=await get_count(MessageStatus.SENT),
+        delivered=await get_count(MessageStatus.DELIVERED),
+        pending=await get_count(MessageStatus.PENDING),
+        failed=await get_count(MessageStatus.FAILED)
+    )

@@ -1,0 +1,365 @@
+import logging
+from decimal import Decimal
+from datetime import datetime
+from typing import Optional, Tuple
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
+from app.db.models import (
+    Organization, Wallet, BillingLedger, SMSMessage, NetworkPricing,
+    LedgerType, MessageStatus
+)
+from app.core.phone_utils import detect_network
+
+logger = logging.getLogger(__name__)
+
+class BillingService:
+    """Core billing service for credit-based SMS charging."""
+    
+    @staticmethod
+    async def get_network_pricing(db: AsyncSession, network_name: str) -> Optional[NetworkPricing]:
+        """Get active pricing for a network."""
+        stmt = (
+            select(NetworkPricing)
+            .where(
+                NetworkPricing.network_name == network_name,
+                NetworkPricing.is_active == True
+            )
+        )
+        result = await db.execute(stmt)
+        return result.scalar_one_or_none()
+    
+    @staticmethod
+    async def calculate_sms_cost(
+        db: AsyncSession,
+        recipient: str,
+        organization: Organization
+    ) -> Decimal:
+        """
+        Calculate SMS cost based on network and organization plan.
+        
+        Steps:
+        1. Detect network from recipient number
+        2. Get network pricing
+        3. Apply plan multiplier (PAYG customers may pay more)
+        4. Return final cost
+        """
+        # Detect network
+        network, _ = detect_network(recipient)
+        network_name = network.value
+        
+        # Get network pricing
+        pricing = await BillingService.get_network_pricing(db, network_name)
+        if not pricing:
+            # Fallback to plan's default rate
+            logger.warning(f"No pricing found for network {network_name}, using plan default")
+            return Decimal(str(organization.plan.sms_rate))
+        
+        # Apply plan multiplier
+        multiplier = Decimal(str(organization.plan.payg_rate_multiplier))
+        final_cost = Decimal(str(pricing.cost_per_sms)) * multiplier
+        
+        return final_cost
+    
+    @staticmethod
+    async def deduct_credits_for_sms(
+        db: AsyncSession,
+        organization_id: int,
+        sms_message_id: int,
+        cost: Decimal,
+        user_id: Optional[int] = None
+    ) -> Tuple[bool, str]:
+        """
+        Deduct credits before sending SMS.
+        
+        Returns: (success: bool, error_message: str)
+        
+        Uses row-level locking to prevent race conditions.
+        """
+        try:
+            # Lock wallet for update
+            stmt = (
+                select(Wallet)
+                .where(Wallet.organization_id == organization_id)
+                .with_for_update()
+            )
+            result = await db.execute(stmt)
+            wallet = result.scalar_one_or_none()
+            
+            if not wallet:
+                return False, "Wallet not found"
+            
+            # Check total balance
+            total_balance = wallet.subscription_credits + wallet.payg_credits
+            if total_balance < cost:
+                return False, f"Insufficient balance. Required: {cost}, Available: {total_balance}"
+            
+            # Deduct from subscription credits first
+            credit_source = "subscription"
+            if wallet.subscription_credits >= cost:
+                wallet.subscription_credits -= cost
+            else:
+                # Use remaining subscription + PAYG
+                remaining = cost - wallet.subscription_credits
+                wallet.subscription_credits = Decimal('0')
+                wallet.payg_credits -= remaining
+                credit_source = "payg" if wallet.subscription_credits == 0 else "hybrid"
+            
+            # Update wallet balance
+            wallet.balance = wallet.subscription_credits + wallet.payg_credits
+            
+            # Create ledger entry
+            ledger = BillingLedger(
+                organization_id=organization_id,
+                amount=cost,
+                type=LedgerType.DEBIT,
+                category="sms_charge",
+                reference_type="sms_message",
+                reference_id=str(sms_message_id),
+                credit_source=credit_source,
+                description=f"SMS charge for message {sms_message_id}",
+                balance_after=wallet.balance,
+                extra_data={
+                    "sms_id": sms_message_id,
+                    "cost": str(cost),
+                    "credit_source": credit_source
+                },
+                created_by=user_id
+            )
+            db.add(ledger)
+            await db.flush()
+            
+            # Update SMS message
+            sms = await db.get(SMSMessage, sms_message_id)
+            if sms:
+                sms.cost = cost
+                sms.credit_source = credit_source
+                sms.ledger_entry_id = ledger.id
+            
+            await db.commit()
+            logger.info(f"Deducted {cost} credits from org {organization_id} for SMS {sms_message_id}")
+            return True, ""
+            
+        except Exception as e:
+            await db.rollback()
+            logger.error(f"Error deducting credits: {str(e)}")
+            return False, f"Error processing payment: {str(e)}"
+    
+    @staticmethod
+    async def refund_failed_sms(
+        db: AsyncSession,
+        sms_message_id: int
+    ) -> bool:
+        """
+        Refund credits for permanently failed messages.
+        
+        Refund policy:
+        - FAILED: Full refund
+        - EXPIRED: Full refund
+        - UNDELIVERABLE: Full refund
+        - DELIVERED: No refund
+        """
+        try:
+            sms = await db.get(SMSMessage, sms_message_id)
+            if not sms:
+                logger.warning(f"SMS {sms_message_id} not found for refund")
+                return False
+            
+            # Check if already refunded
+            if sms.is_refunded:
+                logger.info(f"SMS {sms_message_id} already refunded")
+                return False
+            
+            # Check if cost was charged
+            if not sms.cost or sms.cost <= 0:
+                logger.info(f"SMS {sms_message_id} has no cost to refund")
+                return False
+            
+            # Check if refundable
+            refundable_statuses = [
+                MessageStatus.FAILED,
+                MessageStatus.EXPIRED,
+                MessageStatus.UNDELIVERABLE
+            ]
+            if sms.status not in refundable_statuses:
+                logger.info(f"SMS {sms_message_id} status {sms.status} not refundable")
+                return False
+            
+            # Lock wallet
+            stmt = (
+                select(Wallet)
+                .where(Wallet.organization_id == sms.organization_id)
+                .with_for_update()
+            )
+            result = await db.execute(stmt)
+            wallet = result.scalar_one_or_none()
+            
+            if not wallet:
+                logger.error(f"Wallet not found for org {sms.organization_id}")
+                return False
+            
+            refund_amount = Decimal(str(sms.cost))
+            
+            # Refund to original credit source
+            if sms.credit_source == "subscription":
+                wallet.subscription_credits += refund_amount
+            elif sms.credit_source == "payg":
+                wallet.payg_credits += refund_amount
+            else:  # hybrid - refund to PAYG
+                wallet.payg_credits += refund_amount
+            
+            wallet.balance += refund_amount
+            
+            # Create refund ledger entry
+            ledger = BillingLedger(
+                organization_id=sms.organization_id,
+                amount=refund_amount,
+                type=LedgerType.CREDIT,
+                category="refund",
+                reference_type="sms_message",
+                reference_id=str(sms_message_id),
+                credit_source=sms.credit_source,
+                description=f"Refund for failed SMS {sms_message_id}",
+                balance_after=wallet.balance,
+                extra_data={
+                    "sms_id": sms_message_id,
+                    "original_cost": str(sms.cost),
+                    "failure_reason": sms.status.value
+                }
+            )
+            db.add(ledger)
+            await db.flush()
+            
+            # Update SMS message
+            sms.is_refunded = True
+            sms.refund_amount = refund_amount
+            sms.refunded_at = datetime.utcnow()
+            sms.refund_ledger_entry_id = ledger.id
+            
+            await db.commit()
+            logger.info(f"Refunded {refund_amount} credits for SMS {sms_message_id}")
+            return True
+            
+        except Exception as e:
+            await db.rollback()
+            logger.error(f"Error refunding SMS {sms_message_id}: {str(e)}")
+            return False
+    
+    @staticmethod
+    async def renew_subscription_credits(
+        db: AsyncSession,
+        organization_id: int
+    ) -> None:
+        """
+        Reset subscription credits on monthly renewal.
+        Called by scheduled job.
+        """
+        try:
+            # Get organization with plan
+            stmt = (
+                select(Organization)
+                .options(selectinload(Organization.plan))
+                .where(Organization.id == organization_id)
+            )
+            result = await db.execute(stmt)
+            org = result.scalar_one_or_none()
+            
+            if not org:
+                logger.error(f"Organization {organization_id} not found")
+                return
+            
+            # Lock wallet
+            stmt = (
+                select(Wallet)
+                .where(Wallet.organization_id == organization_id)
+                .with_for_update()
+            )
+            result = await db.execute(stmt)
+            wallet = result.scalar_one_or_none()
+            
+            if not wallet:
+                logger.error(f"Wallet not found for org {organization_id}")
+                return
+            
+            # Reset subscription credits
+            new_credits = Decimal(str(org.plan.monthly_credits))
+            wallet.subscription_credits = new_credits
+            wallet.balance = wallet.subscription_credits + wallet.payg_credits
+            wallet.last_subscription_renewal = datetime.utcnow()
+            
+            # Create ledger entry
+            ledger = BillingLedger(
+                organization_id=organization_id,
+                amount=new_credits,
+                type=LedgerType.CREDIT,
+                category="subscription_renewal",
+                credit_source="subscription",
+                description=f"Monthly subscription renewal - {org.plan.name}",
+                balance_after=wallet.balance,
+                extra_data={
+                    "plan_name": org.plan.name,
+                    "plan_id": org.plan_id
+                }
+            )
+            db.add(ledger)
+            
+            await db.commit()
+            logger.info(f"Renewed subscription credits for org {organization_id}: {new_credits}")
+            
+        except Exception as e:
+            await db.rollback()
+            logger.error(f"Error renewing subscription for org {organization_id}: {str(e)}")
+    
+    @staticmethod
+    async def add_payg_credits(
+        db: AsyncSession,
+        organization_id: int,
+        amount: Decimal,
+        payment_reference: str,
+        user_id: Optional[int] = None
+    ) -> None:
+        """Add purchased credits to organization wallet."""
+        try:
+            # Lock wallet
+            stmt = (
+                select(Wallet)
+                .where(Wallet.organization_id == organization_id)
+                .with_for_update()
+            )
+            result = await db.execute(stmt)
+            wallet = result.scalar_one_or_none()
+            
+            if not wallet:
+                logger.error(f"Wallet not found for org {organization_id}")
+                return
+            
+            wallet.payg_credits += amount
+            wallet.balance += amount
+            
+            ledger = BillingLedger(
+                organization_id=organization_id,
+                amount=amount,
+                type=LedgerType.CREDIT,
+                category="topup",
+                reference_type="payment",
+                reference_id=payment_reference,
+                credit_source="payg",
+                description=f"Credit purchase - {payment_reference}",
+                balance_after=wallet.balance,
+                extra_data={
+                    "payment_reference": payment_reference,
+                    "amount": str(amount)
+                },
+                created_by=user_id
+            )
+            db.add(ledger)
+            
+            await db.commit()
+            logger.info(f"Added {amount} PAYG credits to org {organization_id}")
+            
+        except Exception as e:
+            await db.rollback()
+            logger.error(f"Error adding PAYG credits to org {organization_id}: {str(e)}")
+
+# Global instance
+billing_service = BillingService()

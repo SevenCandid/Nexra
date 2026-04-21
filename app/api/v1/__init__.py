@@ -1,0 +1,20 @@
+from fastapi import APIRouter
+from app.api.v1.endpoints import sms, auth, billing, campaigns, messages, contacts, waitlist, sender_ids, staff, platform, payments, analytics, templates, groups, notifications, developer
+
+api_router = APIRouter()
+api_router.include_router(sms.router, prefix="/sms", tags=["sms"])
+api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
+api_router.include_router(billing.router, prefix="/billing", tags=["billing"])
+api_router.include_router(campaigns.router, prefix="/campaigns", tags=["campaigns"])
+api_router.include_router(messages.router, prefix="/messages", tags=["messages"])
+api_router.include_router(contacts.router, prefix="/contacts", tags=["contacts"])
+api_router.include_router(waitlist.router, tags=["waitlist"])
+api_router.include_router(sender_ids.router, prefix="/sender-ids", tags=["sender_ids"])
+api_router.include_router(staff.router, prefix="/staff", tags=["staff"])
+api_router.include_router(platform.router, prefix="/platform", tags=["platform"])
+api_router.include_router(payments.router, prefix="/payments", tags=["payments"])
+api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
+api_router.include_router(templates.router, prefix="/templates", tags=["templates"])
+api_router.include_router(groups.router, prefix="/groups", tags=["groups"])
+api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
+api_router.include_router(developer.router, prefix="/developer", tags=["developer"])

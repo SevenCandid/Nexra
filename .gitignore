@@ -1,0 +1,31 @@
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Logs and databases
+*.log
+*.sqlite
+*.db
+app.db
+
+# VS Code
+.vscode/
+
+# Ignore local audit text files
+*.txt
+!requirements.txt
+!audit_report.txt
+!db_audit.txt
+!entities.txt
+!entities_new.txt
+!enum_test_log.txt

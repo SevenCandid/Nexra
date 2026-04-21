@@ -1,0 +1,1255 @@
+const { useState, useEffect, createContext, useContext, useRef, useMemo } = React;
+const { createRoot } = ReactDOM;
+
+// Setup HTM (JSX alternative that runs in browser without Babel)
+const html = htm.bind(React.createElement);
+
+// Hide splash screen when app is ready
+const hideSplashScreen = () => {
+    document.body.classList.add('app-ready');
+};
+
+// ============================================================================
+// API CLIENT
+// ============================================================================
+
+const API_BASE_URL = window.__NEXRA_API_URL__ || 'http://localhost:8000/api/v1';
+
+const apiClient = axios.create({
+    baseURL: API_BASE_URL,
+    headers: {
+        'Content-Type': 'application/json',
+    },
+});
+
+// Request interceptor
+apiClient.interceptors.request.use((config) => {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
+
+// Response interceptor — silent token refresh on 401
+let _isRefreshing = false;
+apiClient.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        if (error.response?.status === 401 && !error.config._retry) {
+            const refreshToken = localStorage.getItem('refresh_token');
+            if (refreshToken && !_isRefreshing) {
+                _isRefreshing = true;
+                try {
+                    const res = await axios.post(
+                        `${API_BASE_URL}/auth/refresh`,
+                        {},
+                        { headers: { Authorization: `Bearer ${refreshToken}` } }
+                    );
+                    const { access_token, refresh_token } = res.data;
+                    localStorage.setItem('access_token', access_token);
+                    if (refresh_token) localStorage.setItem('refresh_token', refresh_token);
+                    error.config._retry = true;
+                    error.config.headers.Authorization = `Bearer ${access_token}`;
+                    _isRefreshing = false;
+                    return apiClient(error.config);
+                } catch (_) {
+                    _isRefreshing = false;
+                }
+            }
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            window.location.href = 'admin.html#/login';
+        }
+        return Promise.reject(error);
+    }
+);
+
+// ============================================================================
+// AUTH CONTEXT
+// ============================================================================
+
+const AuthContext = createContext(null);
+
+const AuthProvider = ({ children }) => {
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const token = localStorage.getItem('access_token');
+        if (token) {
+            fetchUser();
+        } else {
+            setLoading(false);
+        }
+    }, []);
+
+    const fetchUser = async () => {
+        try {
+            const response = await apiClient.get('/auth/me');
+            setUser(response.data);
+            // Verify if user is actually a platform-level account
+            if (response.data.role !== 'superadmin' && response.data.role !== 'staff') {
+                showToast('Access denied: You are not a platform administrator.', 'error');
+                logout();
+            }
+        } catch (error) {
+            localStorage.removeItem('access_token');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const login = async (email, password) => {
+        const formData = new FormData();
+        formData.append('username', email);
+        formData.append('password', password);
+
+        const response = await apiClient.post('/auth/login', formData, {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
+
+        localStorage.setItem('access_token', response.data.access_token);
+        await fetchUser();
+        return response.data;
+    };
+
+    const register = async (data) => {
+        const response = await apiClient.post('/auth/register', data);
+        localStorage.setItem('access_token', response.data.access_token);
+        await fetchUser();
+        return response.data;
+    };
+
+    const logout = () => {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        setUser(null);
+        window.location.href = 'admin.html#/login';
+    };
+
+    return html`
+        <${AuthContext.Provider} value=${{ user, loading, login, register, logout }}>
+            ${children}
+        </${AuthContext.Provider}>
+    `;
+};
+
+const useAuth = () => useContext(AuthContext);
+
+// ============================================================================
+// TOAST NOTIFICATION CONTEXT
+// ============================================================================
+
+const ToastContext = createContext(null);
+
+const ToastProvider = ({ children }) => {
+    const [toasts, setToasts] = useState([]);
+
+    const showToast = (message, variant = 'info') => {
+        const id = Date.now();
+        setToasts(prev => [...prev, { id, message, variant }]);
+
+        // Auto-dismiss after 4 seconds
+        setTimeout(() => {
+            setToasts(prev => prev.filter(t => t.id !== id));
+        }, 4000);
+    };
+
+    const removeToast = (id) => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+    };
+
+    return html`
+        <${ToastContext.Provider} value=${{ showToast }}>
+            ${children}
+            
+            <!-- Toast Container -->
+            <div className="fixed top-4 right-4 z-[200] space-y-3 pointer-events-none">
+                ${toasts.map(toast => html`
+                    <${Toast} 
+                        key=${toast.id} 
+                        message=${toast.message} 
+                        variant=${toast.variant}
+                        onClose=${() => removeToast(toast.id)}
+                    />
+                `)}
+            </div>
+        </${ToastContext.Provider}>
+    `;
+};
+
+const useToast = () => useContext(ToastContext);
+
+const Toast = ({ message, variant = 'info', onClose }) => {
+    const variants = {
+        success: {
+            bg: 'bg-emerald-50',
+            border: 'border-emerald-200',
+            icon: 'check-circle',
+            iconColor: 'text-emerald-600',
+            textColor: 'text-emerald-900'
+        },
+        error: {
+            bg: 'bg-rose-50',
+            border: 'border-rose-200',
+            icon: 'alert-circle',
+            iconColor: 'text-rose-600',
+            textColor: 'text-rose-900'
+        },
+        info: {
+            bg: 'bg-blue-50',
+            border: 'border-blue-200',
+            icon: 'info',
+            iconColor: 'text-blue-600',
+            textColor: 'text-blue-900'
+        }
+    };
+
+    const config = variants[variant] || variants.info;
+
+    return html`
+        <div className="pointer-events-auto animate-in slide-in-from-right-5 fade-in duration-300 max-w-sm">
+            <div className="${config.bg} ${config.border} border rounded-xl shadow-lg p-4 pr-2 flex items-start gap-3">
+                <div className="flex-shrink-0 mt-0.5">
+                    <${Icon} name=${config.icon} size=${20} className=${config.iconColor} />
+                </div>
+                <p className="${config.textColor} text-sm font-medium flex-1 pr-2">${message}</p>
+                <button 
+                    onClick=${onClose}
+                    className="flex-shrink-0 p-1.5 rounded-lg hover:bg-black/5 transition-colors"
+                >
+                    <${Icon} name="x" size=${16} className="text-gray-500" />
+                </button>
+            </div>
+        </div>
+    `;
+};
+
+// ============================================================================
+// UI COMPONENTS (CORE)
+// ============================================================================
+
+const Icon = ({ name, size = 24, className = '' }) => {
+    const iconRef = useRef(null);
+
+    useEffect(() => {
+        if (window.lucide && iconRef.current) {
+            iconRef.current.innerHTML = `<i data-lucide="${name}" style="width: ${size}px; height: ${size}px;"></i>`;
+            window.lucide.createIcons({ root: iconRef.current });
+        }
+    }, [name, size]);
+
+    return html`<span 
+        ref=${iconRef} 
+        className="inline-flex items-center justify-center ${className}" 
+        style=${{ width: `${size}px`, height: `${size}px` }}
+    ></span>`;
+};
+
+const Button = ({ children, variant = 'primary', size = 'md', className = '', ...props }) => {
+    const baseClasses = 'font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2';
+
+    const variants = {
+        primary: 'bg-primary-600 hover:bg-primary-700 text-white shadow-lg shadow-primary-600/20',
+        secondary: 'bg-gray-200 hover:bg-gray-300 text-gray-900 dark:bg-midnight-800 dark:hover:bg-midnight-700 dark:text-white',
+        outline: 'border-2 border-primary-600 text-primary-600 hover:bg-primary-50 dark:hover:bg-midnight-900/50 dark:border-primary-500 dark:text-primary-400',
+        danger: 'bg-rose-600 hover:bg-rose-700 text-white shadow-lg shadow-rose-600/20',
+        ghost: 'hover:bg-gray-100 dark:hover:bg-midnight-800 text-gray-700 dark:text-gray-300',
+    };
+
+    const sizes = {
+        sm: 'px-3 py-1.5 text-sm',
+        md: 'px-4 py-2 text-base',
+        lg: 'px-6 py-3 text-lg',
+    };
+
+    return html`
+        <button className="${baseClasses} ${variants[variant]} ${sizes[size]} ${className}" ...${props}>
+            ${children}
+        </button>
+    `;
+};
+
+const Card = ({ children, className = '', ...props }) => {
+    return html`<div className="premium-card rounded-2xl ${className}" ...${props}>${children}</div>`;
+};
+
+const Input = ({ label, type = 'text', className = '', ...props }) => {
+    const [showPassword, setShowPassword] = useState(false);
+    const isPassword = type === 'password';
+    const inputType = isPassword ? (showPassword ? 'text' : 'password') : type;
+
+    return html`
+        <div className="space-y-1.5 w-full">
+            ${label && html`<label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-midnight-400 ml-1">${label}</label>`}
+            <div className="relative">
+                <input
+                    type=${inputType}
+                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-midnight-900/50 text-gray-900 dark:text-white border border-gray-200 dark:border-midnight-800 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:focus:border-primary-500 transition-all outline-none text-sm ${className} ${isPassword ? 'pr-11' : ''}"
+                    ...${props}
+                />
+                ${isPassword && html`
+                    <button 
+                        type="button"
+                        onClick=${() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-primary-500 transition-colors"
+                    >
+                        <${Icon} name=${showPassword ? 'eye-off' : 'eye'} size=${18} />
+                    </button>
+                `}
+            </div>
+        </div>
+    `;
+};
+
+const Badge = ({ children, variant = 'default', className = '' }) => {
+    const variants = {
+        default: 'bg-gray-100 text-gray-700 border-gray-200/50 dark:bg-midnight-800 dark:text-midnight-300 dark:border-midnight-700/50',
+        success: 'bg-emerald-50 text-emerald-700 border-emerald-100/50 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800/50',
+        warning: 'bg-amber-50 text-amber-700 border-amber-100/50 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800/50',
+        error: 'bg-rose-50 text-rose-700 border-rose-100/50 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-800/50 font-semibold',
+        info: 'bg-sky-50 text-sky-700 border-sky-100/50 dark:bg-sky-900/20 dark:text-sky-400 dark:border-sky-800/50',
+        primary: 'bg-primary-50 text-primary-700 border-primary-100/50 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800/50',
+    };
+
+    return html`
+        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wider font-bold border ${variants[variant] || variants.default} ${className}">
+            ${children}
+        </span>
+    `;
+};
+
+const Dropdown = ({ trigger, children, align = 'right' }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) setIsOpen(false);
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    return html`
+        <div className="relative" ref=${dropdownRef}>
+            <div onClick=${() => setIsOpen(!isOpen)}>${trigger}</div>
+            ${isOpen && html`
+                <div className="absolute z-10 mt-2 w-48 rounded-2xl shadow-xl bg-white/90 dark:bg-midnight-900/80 border border-gray-100 dark:border-midnight-800 ring-1 ring-black/5 backdrop-blur-xl ${align === 'right' ? 'right-0' : 'left-0'} animate-in fade-in zoom-in-95 duration-200">
+                    <div className="py-1 overflow-hidden rounded-2xl" role="menu">
+                        ${children}
+                    </div>
+                </div>
+            `}
+        </div>
+    `;
+};
+
+// ============================================================================
+// ADMIN COMPONENTS
+// ============================================================================
+
+const AdminApprovalPage = () => {
+    const { showToast } = useToast();
+    const [requests, setRequests] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [tab, setTab] = useState('pending'); // 'pending' or 'history'
+
+    useEffect(() => {
+        fetchRequests();
+    }, [tab]);
+
+    const fetchRequests = async () => {
+        setLoading(true);
+        try {
+            const endpoint = tab === 'pending' ? '/sender-ids/admin/pending' : '/sender-ids/admin/history';
+            const response = await apiClient.get(endpoint);
+            setRequests(response.data);
+        } catch (error) {
+            console.error('Failed to fetch requests:', error);
+            showToast('Failed to load requests', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleAction = async (id, status) => {
+        let comment = null;
+        if (status === 'rejected') {
+            comment = prompt('Reason for rejection (required):');
+            if (comment === null || comment.trim() === '') return; // cancelled or empty
+        } else if (status === 'approved') {
+            comment = prompt('Optional approval note (press OK to skip):') || null;
+        }
+
+        try {
+            await apiClient.patch(`/sender-ids/${id}/status`, { status, admin_comment: comment });
+            showToast(`Sender ID ${status}!`, 'success');
+            fetchRequests();
+        } catch (error) {
+            showToast('Action failed', 'error');
+        }
+    };
+
+    return html`
+        <div className="space-y-4 lg:space-y-6 fade-in max-w-4xl mx-auto">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <h2 className="text-2xl font-bold dark:text-white">Sender ID Approvals</h2>
+                <div className="flex bg-gray-100 dark:bg-midnight-800 p-1 rounded-xl">
+                    <button
+                        onClick=${() => setTab('pending')}
+                        className="px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${tab === 'pending' ? 'bg-white dark:bg-primary-600 text-primary-600 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}"
+                    >
+                        Pending
+                    </button>
+                    <button
+                        onClick=${() => setTab('history')}
+                        className="px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${tab === 'history' ? 'bg-white dark:bg-primary-600 text-primary-600 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}"
+                    >
+                        History
+                    </button>
+                </div>
+            </div>
+
+            ${loading ? html`
+                <div className="p-12 text-center">
+                    <div className="animate-spin inline-block text-primary-600"><${Icon} name="loader-2" size=${32} /></div>
+                    <p className="text-sm text-gray-500 mt-4">Fetching requests...</p>
+                </div>
+            ` : requests.length === 0 ? html`
+                <${Card} className="p-12 text-center text-gray-500 border-none lg:border">
+                    <${Icon} name="check-circle" size=${64} className="mx-auto mb-4 text-green-500/20" />
+                    <p className="text-lg font-medium">No ${tab} requests</p>
+                    <p className="text-sm">Everything is up to date.</p>
+                </${Card}>
+            ` : html`
+                <div className="grid gap-3 lg:gap-4">
+                    ${requests.map((req) => html`
+                        <${Card} key=${req.id} className="p-5 lg:p-6 flex flex-col md:flex-row md:items-center justify-between bg-white dark:bg-midnight-900 border-gray-100 dark:border-midnight-800 shadow-sm animate-pop-in gap-4">
+                            <div className="flex-1">
+                                <div className="flex items-center gap-3">
+                                    <h3 className="text-xl lg:text-2xl font-black text-gray-900 dark:text-white tracking-widest uppercase">${req.sender_id}</h3>
+                                    ${tab === 'history' && html`
+                                        <${Badge} variant=${req.status === 'approved' ? 'success' : req.status === 'rejected' ? 'error' : 'warning'}>
+                                            ${req.status}
+                                        </${Badge}>
+                                    `}
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2 mt-2">
+                                    <span className="text-[10px] font-bold text-primary-700 dark:text-primary-400 uppercase px-2 py-0.5 bg-primary-50 dark:bg-primary-900/30 rounded">${req.organization_name || `Org #${req.organization_id}`}</span>
+                                    <span className="text-xs text-gray-400">•</span>
+                                    <span className="text-xs text-gray-500">${new Date(req.created_at).toLocaleString()}</span>
+                                </div>
+                                ${req.admin_comment && html`
+                                    <div className="mt-3 p-3 bg-gray-50 dark:bg-midnight-800 rounded-xl text-xs text-gray-600 dark:text-midnight-300 border border-gray-100 dark:border-midnight-800">
+                                        <span className="font-bold text-gray-400 mr-2 uppercase">Reason:</span>
+                                        ${req.admin_comment}
+                                    </div>
+                                `}
+                            </div>
+                            
+                            ${req.status === 'pending' && html`
+                                <div className="flex gap-2 w-full md:w-auto">
+                                    <${Button} variant="ghost" size="sm" className="flex-1 md:flex-none text-rose-600 hover:bg-rose-50" onClick=${() => handleAction(req.id, 'rejected')}>
+                                        Reject
+                                    </${Button}>
+                                    <${Button} size="sm" className="flex-1 md:flex-none" onClick=${() => handleAction(req.id, 'approved')}>
+                                        Approve
+                                    </${Button}>
+                                </div>
+                            `}
+                        </${Card}>
+                    `)}
+                </div>
+            `}
+        </div>
+    `;
+};
+
+// ============================================================================
+// ADMIN AUTH PAGES
+// ============================================================================
+
+const AuthLayout = ({ children, isLogin, loginType }) => {
+    const subtitle = isLogin
+        ? (loginType === 'master' ? 'Master Control — Restricted Access' : 'Staff Portal — Authenticated Access Only')
+        : 'Platform Staff Registration';
+
+    return html`
+        <div className="h-[100dvh] w-full bg-white dark:bg-midnight-950 overflow-hidden flex items-center justify-center p-4">
+            <div className="w-full max-w-md space-y-8 animate-pop-in">
+                <div className="text-center">
+                    <img src="assets/NEXRA_IconAbove.png" className="h-20 mx-auto mb-4 object-contain" />
+                    <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+                        NEXRA <span className="text-primary-600">Admin</span>
+                    </h1>
+                    <p className="text-gray-500 dark:text-midnight-400 mt-2">
+                        ${subtitle}
+                    </p>
+                </div>
+                <${Card} className="p-8 shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-primary-600"></div>
+                    ${children}
+                </${Card}>
+                <p className="text-center text-xs text-gray-400">
+                    Protected by NEXRA Security Stack v2.0
+                </p>
+            </div>
+        </div>
+    `;
+};
+
+const AdminLoginPage = () => {
+    const { login } = useAuth();
+    const [loginType, setLoginType] = useState('staff'); // 'staff' or 'master'
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+        try {
+            const userData = await login(email, password);
+            // After login, fetchUser runs and sets user — check role expectation
+            // fetchUser already logs out non-superadmins, so we just redirect
+            window.location.href = 'admin.html#/approvals';
+        } catch (err) {
+            setError(err.response?.data?.detail || 'Invalid credentials');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return html`
+        <${AuthLayout} isLogin=${true} loginType=${loginType}>
+            <div className="flex bg-gray-100 dark:bg-midnight-800 p-1 rounded-xl mb-6">
+                <button
+                    type="button"
+                    onClick=${() => { setLoginType('staff'); setError(''); }}
+                    className="flex-1 py-2 text-xs font-bold rounded-lg transition-all ${loginType === 'staff' ? 'bg-white dark:bg-primary-600 text-primary-600 dark:text-white shadow-sm' : 'text-gray-500'}"
+                >
+                    Employee / Staff
+                </button>
+                <button
+                    type="button"
+                    onClick=${() => { setLoginType('master'); setError(''); }}
+                    className="flex-1 py-2 text-xs font-bold rounded-lg transition-all ${loginType === 'master' ? 'bg-white dark:bg-primary-600 text-primary-600 dark:text-white shadow-sm' : 'text-gray-500'}"
+                >
+                    Master Admin
+                </button>
+            </div>
+
+            <form onSubmit=${handleSubmit} className="space-y-4">
+                ${error && html`<div className="p-3 bg-red-50 text-red-700 text-xs rounded-xl border border-red-200 animate-pop-in">${error}</div>`}
+
+                <${Input}
+                    label=${loginType === 'master' ? 'Master Admin Email' : 'Staff Email'}
+                    type="email"
+                    value=${email}
+                    onChange=${(e) => setEmail(e.target.value)}
+                    placeholder=${loginType === 'master' ? 'superadmin@nexra.com' : 'staff@nexra.com'}
+                    required
+                />
+                <${Input}
+                    label=${loginType === 'master' ? 'Master Password' : 'Staff Password'}
+                    type="password"
+                    value=${password}
+                    onChange=${(e) => setPassword(e.target.value)}
+                    required
+                />
+
+                <${Button} type="submit" disabled=${loading} className="w-full py-3 mt-4">
+                    ${loading ? 'Verifying...' : loginType === 'master' ? 'Access Master Console' : 'Sign In to Staff Portal'}
+                </${Button}>
+
+                <p className="text-center text-sm text-gray-500 mt-4">
+                    ${loginType === 'master'
+                        ? html`New master admin? <a href="admin.html#/register" className="text-primary-600 font-bold">Register</a>`
+                        : html`New staff member? <a href="admin.html#/register" className="text-primary-600 font-bold">Register with Staff ID</a>`
+                    }
+                </p>
+                <div className="pt-4 border-t border-gray-100 dark:border-midnight-800 text-center">
+                    <a href="index.html" className="text-xs text-gray-400 hover:text-primary-600 transition-colors">Return to Public App</a>
+                </div>
+            </form>
+        </${AuthLayout}>
+    `;
+};
+
+const AdminRegisterPage = () => {
+    const { register } = useAuth();
+    const [formData, setFormData] = useState({ full_name: '', organization_name: 'NEXRA INTERNAL', email: '', password: '', admin_secret: '', staff_id: '' });
+    const [regType, setRegType] = useState('staff'); // 'staff' or 'master'
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+        try {
+            const dataToSubmit = { ...formData };
+            if (regType === 'staff') delete dataToSubmit.admin_secret;
+            else delete dataToSubmit.staff_id;
+
+            await register(dataToSubmit);
+            window.location.href = 'admin.html#/approvals';
+        } catch (err) {
+            setError(err.response?.data?.detail || 'Registration failed');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+
+    return html`
+        <${AuthLayout} isLogin=${false}>
+            <div className="flex bg-gray-100 dark:bg-midnight-800 p-1 rounded-xl mb-6">
+                <button 
+                    onClick=${() => setRegType('staff')}
+                    className="flex-1 py-2 text-xs font-bold rounded-lg transition-all ${regType === 'staff' ? 'bg-white dark:bg-primary-600 text-primary-600 dark:text-white shadow-sm' : 'text-gray-500'}"
+                >
+                    Employee / Staff
+                </button>
+                <button 
+                    onClick=${() => setRegType('master')}
+                    className="flex-1 py-2 text-xs font-bold rounded-lg transition-all ${regType === 'master' ? 'bg-white dark:bg-primary-600 text-primary-600 dark:text-white shadow-sm' : 'text-gray-500'}"
+                >
+                    Master Admin
+                </button>
+            </div>
+
+            <form onSubmit=${handleSubmit} className="space-y-4">
+                ${error && html`<div className="p-3 bg-red-50 text-red-700 text-xs rounded-xl border border-red-200">${error}</div>`}
+                <${Input} label="Full Name" name="full_name" value=${formData.full_name} onChange=${handleChange} required />
+                <${Input} label="Official Email" name="email" type="email" value=${formData.email} onChange=${handleChange} required />
+                <${Input} label="Access Password" name="password" type="password" value=${formData.password} onChange=${handleChange} required />
+                
+                ${regType === 'master' ? html`
+                    <${Input} 
+                        label="MASTER SECRET KEY" 
+                        name="admin_secret" 
+                        type="password" 
+                        value=${formData.admin_secret} 
+                        onChange=${handleChange} 
+                        placeholder="Required for platform master" 
+                        required 
+                    />
+                ` : html`
+                    <${Input} 
+                        label="OFFICIAL STAFF ID" 
+                        name="staff_id" 
+                        value=${formData.staff_id} 
+                        onChange=${handleChange} 
+                        placeholder="e.g. NEX-742" 
+                        required 
+                    />
+                `}
+
+                <${Button} type="submit" disabled=${loading} className="w-full py-3 mt-4">
+                    ${regType === 'master' ? 'Initialize Master Console' : 'Complete Staff Signup'}
+                </${Button}>
+                <p className="text-center text-sm text-gray-500 mt-4">
+                    Already staff? <a href="admin.html#/login" className="text-primary-600 font-bold">Sign In</a>
+                </p>
+                <div className="pt-4 border-t border-gray-100 dark:border-midnight-800 text-center">
+                    <a href="index.html" className="text-xs text-gray-400 hover:text-primary-600 transition-colors font-semibold">Back to Public Workspace</a>
+                </div>
+            </form>
+        </${AuthLayout}>
+    `;
+};
+
+// ============================================================================
+// ADMIN LAYOUT
+// ============================================================================
+
+const StaffManagementPage = () => {
+    const { showToast } = useToast();
+    const [invites, setInvites] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [generating, setGenerating] = useState(false);
+
+    useEffect(() => {
+        fetchInvites();
+    }, []);
+
+    const fetchInvites = async () => {
+        try {
+            const response = await apiClient.get('/staff/invites');
+            setInvites(response.data);
+        } catch (error) {
+            console.error('Failed to fetch invites:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleGenerate = async () => {
+        setGenerating(true);
+        try {
+            await apiClient.post('/staff/invites');
+            showToast('Unique Staff ID generated successfully!', 'success');
+            fetchInvites();
+        } catch (error) {
+            showToast('Generation failed: Only Master Admin can generate codes.', 'error');
+        } finally {
+            setGenerating(false);
+        }
+    };
+
+    if (loading) return html`<div className="p-8 text-center animate-pulse">Loading Staff IDs...</div>`;
+
+    return html`
+        <div className="space-y-6 fade-in max-w-5xl mx-auto">
+            <div className="flex items-center justify-between">
+                <div>
+                    <h2 className="text-2xl font-bold dark:text-white">Staff Management</h2>
+                    <p className="text-sm text-gray-500 dark:text-midnight-400 mt-1">Generate and track secure signup IDs for your employees.</p>
+                </div>
+                <${Button} onClick=${handleGenerate} disabled=${generating}>
+                    <${Icon} name="plus-circle" size=${18} />
+                    ${generating ? 'Generating...' : 'Generate New Staff ID'}
+                </${Button}>
+            </div>
+
+            <${Card} className="overflow-hidden border-none lg:border lg:border-gray-200 lg:dark:border-midnight-800 bg-transparent lg:bg-white lg:dark:bg-midnight-900/40 shadow-none lg:shadow-sm">
+                <!-- Desktop Table -->
+                <table className="hidden lg:table w-full">
+                    <thead className="bg-gray-50 dark:bg-midnight-900/80 border-b border-gray-200 dark:border-midnight-800">
+                        <tr>
+                            <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Official Staff ID</th>
+                            <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Status</th>
+                            <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Created At</th>
+                            <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Used By</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-midnight-800">
+                        ${invites.length === 0 ? html`
+                            <tr>
+                                <td colSpan="4" className="px-6 py-12 text-center text-gray-400">
+                                    No staff IDs generated yet. Click the button above to start.
+                                </td>
+                            </tr>
+                        ` : invites.map((item) => html`
+                            <tr key=${item.id} className="hover:bg-gray-50 dark:hover:bg-midnight-900/30 transition-colors">
+                                <td className="px-6 py-4">
+                                    <span className="font-mono text-lg font-black text-primary-600 dark:text-primary-400 tracking-wider">
+                                        ${item.staff_id}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <${Badge} variant=${item.is_used ? 'default' : 'success'}>
+                                        ${item.is_used ? 'Redeemed' : 'Ready / Active'}
+                                    </${Badge}>
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-500">
+                                    ${new Date(item.created_at).toLocaleDateString()}
+                                </td>
+                                <td className="px-6 py-4 text-sm font-medium dark:text-gray-300">
+                                    ${item.is_used ? html`
+                                        <div className="flex items-center gap-2">
+                                            <${Icon} name="user-check" size=${16} className="text-primary-500" />
+                                            Active User #${item.used_by_id}
+                                        </div>
+                                    ` : html`<span className="text-gray-300 italic">Unassigned</span>`}
+                                </td>
+                            </tr>
+                        `)}
+                    </tbody>
+                </table>
+
+                <!-- Mobile Card List -->
+                <div className="lg:hidden space-y-4">
+                    ${invites.length === 0 ? html`
+                        <div className="p-12 text-center text-gray-400">No staff IDs found.</div>
+                    ` : invites.map((item) => html`
+                        <div key=${item.id} className="bg-white dark:bg-midnight-900/60 p-5 rounded-2xl border border-gray-100 dark:border-midnight-800 shadow-sm">
+                            <div className="flex justify-between items-start mb-4">
+                                <div>
+                                    <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Staff ID</span>
+                                    <span className="font-mono text-xl font-black text-primary-600 dark:text-primary-400 tracking-wider">${item.staff_id}</span>
+                                </div>
+                                <${Badge} variant=${item.is_used ? 'default' : 'success'}>${item.is_used ? 'Redeemed' : 'Active'}</${Badge}>
+                            </div>
+                            <div className="flex items-center justify-between pt-4 border-t border-gray-50 dark:border-midnight-800">
+                                <div className="text-[10px] text-gray-400 font-medium">
+                                    Created: ${new Date(item.created_at).toLocaleDateString()}
+                                </div>
+                                <div className="text-xs font-bold dark:text-gray-300">
+                                    ${item.is_used ? `User #${item.used_by_id}` : 'Unassigned'}
+                                </div>
+                            </div>
+                        </div>
+                    `)}
+                </div>
+            </${Card}>
+            
+            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 p-4 rounded-xl flex gap-4">
+                <${Icon} name="shield-alert" size=${24} className="text-amber-600 flex-shrink-0" />
+                <div className="text-xs text-amber-800 dark:text-amber-400">
+                    <p className="font-bold mb-1 uppercase tracking-wider">Security Notice</p>
+                    <p>Generated Staff IDs are strictly single-use. Do not share these publicly. Only provide them to trusted employees for their initial registration.</p>
+                </div>
+            </div>
+        </div>
+    `;
+};
+
+const PlatformManagementPage = () => {
+    const { user } = useAuth();
+    const { showToast } = useToast();
+    const [activeTab, setActiveTab] = useState('users'); // 'users' or 'orgs'
+    const [data, setData] = useState([]);
+    const [total, setTotal] = useState(0);
+    const [page, setPage] = useState(0);
+    const PAGE_SIZE = 20;
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        setPage(0);
+        fetchData(0);
+    }, [activeTab]);
+
+    const fetchData = async (pageNum = page) => {
+        setLoading(true);
+        try {
+            const endpoint = activeTab === 'users' ? '/platform/users' : '/platform/organizations';
+            const response = await apiClient.get(endpoint, {
+                params: { skip: pageNum * PAGE_SIZE, limit: PAGE_SIZE }
+            });
+            // Handle both paginated {items,total} and legacy flat array responses
+            const raw = response.data;
+            if (raw && raw.items !== undefined) {
+                setData(raw.items);
+                setTotal(raw.total);
+            } else {
+                setData(Array.isArray(raw) ? raw : []);
+                setTotal(Array.isArray(raw) ? raw.length : 0);
+            }
+        } catch (error) {
+            showToast('Failed to fetch data', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleToggleStatus = async (id, currentStatus) => {
+        try {
+            const endpoint = activeTab === 'users' ? `/platform/users/${id}` : `/platform/organizations/${id}`;
+            await apiClient.patch(endpoint, { is_active: !currentStatus });
+            showToast('Status updated successfully', 'success');
+            fetchData();
+        } catch (error) {
+            showToast('Failed to update status', 'error');
+        }
+    };
+
+    const handleTogglePermission = async (u, permission) => {
+        try {
+            const currentPerms = u.permissions || {};
+            const newPerms = { ...currentPerms, [permission]: !currentPerms[permission] };
+            await apiClient.patch(`/platform/users/${u.id}/permissions`, { permissions: newPerms });
+            showToast('Permission delegated successfully', 'success');
+            fetchData();
+        } catch (error) {
+            showToast('Delegation failed', 'error');
+        }
+    };
+
+    const handlePromote = async (u) => {
+        if (!confirm(`Promote ${u.email} to Superadmin? They will gain full platform access.`)) return;
+        try {
+            await apiClient.post(`/platform/users/${u.id}/promote`);
+            showToast(`${u.email} promoted to Superadmin!`, 'success');
+            fetchData();
+        } catch (error) {
+            showToast(error.response?.data?.detail || 'Promotion failed', 'error');
+        }
+    };
+
+    const handleDelete = async (id, name) => {
+        if (!confirm(`Are you absolutely sure you want to delete ${name}? This action cannot be undone.`)) return;
+        
+        try {
+            const endpoint = activeTab === 'users' ? `/platform/users/${id}` : `/platform/organizations/${id}`;
+            await apiClient.delete(endpoint);
+            showToast('Deleted successfully', 'success');
+            fetchData();
+        } catch (error) {
+            showToast(error.response?.data?.detail || 'Delete failed', 'error');
+        }
+    };
+
+    const totalPages = Math.ceil(total / PAGE_SIZE);
+    const handlePageChange = (newPage) => {
+        setPage(newPage);
+        fetchData(newPage);
+    };
+
+    return html`
+        <div className="space-y-6 fade-in max-w-6xl mx-auto">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h2 className="text-2xl font-bold dark:text-white">Platform Management</h2>
+                    <p className="text-sm text-gray-500 dark:text-midnight-400 mt-1">Manage all users and organizations on the NEXRA platform.</p>
+                </div>
+            </div>
+
+            <div className="flex bg-gray-100 dark:bg-midnight-900/50 p-1 rounded-2xl w-full sm:w-fit">
+                <button 
+                    onClick=${() => setActiveTab('users')}
+                    className="flex-1 sm:px-8 py-2.5 text-xs font-bold rounded-xl transition-all ${activeTab === 'users' ? 'bg-white dark:bg-primary-600 text-primary-600 dark:text-white shadow-sm' : 'text-gray-500'}"
+                >
+                    Users
+                </button>
+                <button 
+                    onClick=${() => setActiveTab('orgs')}
+                    className="flex-1 sm:px-8 py-2.5 text-xs font-bold rounded-xl transition-all ${activeTab === 'orgs' ? 'bg-white dark:bg-primary-600 text-primary-600 dark:text-white shadow-sm' : 'text-gray-500'}"
+                >
+                    Organizations
+                </button>
+            </div>
+
+            <${Card} className="overflow-hidden border-none lg:border lg:border-gray-200 lg:dark:border-midnight-800 bg-transparent lg:bg-white lg:dark:bg-midnight-900/40 shadow-none lg:shadow-sm">
+                ${loading ? html`
+                    <div className="p-20 text-center animate-pulse flex flex-col items-center gap-4">
+                        <div className="animate-spin text-primary-500"><${Icon} name="loader-2" size=${32} /></div>
+                        <p className="text-gray-400 font-medium">Fetching platform data...</p>
+                    </div>
+                ` : html`
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                            <thead className="bg-gray-50 dark:bg-midnight-900/80 border-b border-gray-100 dark:border-midnight-800">
+                                <tr>
+                                    <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">${activeTab === 'users' ? 'User' : 'Organization'}</th>
+                                    <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Status</th>
+                                    <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">${activeTab === 'users' ? 'Role' : 'Created'}</th>
+                                    ${activeTab === 'users' && user?.role === 'superadmin' && html`<th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Delegation</th>`}
+                                    <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50 dark:divide-midnight-800">
+                                ${data.length === 0 ? html`
+                                    <tr><td colSpan="4" className="px-6 py-12 text-center text-gray-400">No records found.</td></tr>
+                                ` : data.map((item) => html`
+                                    <tr key=${item.id} className="hover:bg-gray-50/50 dark:hover:bg-midnight-900/20 transition-colors">
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-midnight-800 flex items-center justify-center font-bold text-primary-600">
+                                                    ${(item.full_name || item.name).charAt(0)}
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-gray-900 dark:text-white">${item.full_name || item.name}</p>
+                                                    <p className="text-xs text-gray-500">${item.email || item.slug}</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <${Badge} variant=${item.is_active ? 'success' : 'error'}>
+                                                ${item.is_active ? 'Active' : 'Restricted'}
+                                            </${Badge}>
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-500">
+                                            ${activeTab === 'users' ? html`<span className="uppercase font-bold text-[10px] tracking-tight">${item.role}</span>` : new Date(item.created_at).toLocaleDateString()}
+                                        </td>
+                                        ${activeTab === 'users' && user?.role === 'superadmin' && html`
+                                            <td className="px-6 py-4">
+                                                ${item.role === 'staff' ? html`
+                                                    <div className="flex gap-2">
+                                                        <button 
+                                                            onClick=${() => handleTogglePermission(item, 'manage_sender_ids')}
+                                                            title="Toggle Sender ID Approval rights"
+                                                            className="p-1.5 rounded-lg border ${item.permissions?.manage_sender_ids ? 'bg-primary-50 border-primary-200 text-primary-600' : 'bg-gray-50 border-gray-200 text-gray-400'} hover:scale-110 transition-all"
+                                                        >
+                                                            <${Icon} name="check-square" size=${14} />
+                                                        </button>
+                                                        <button 
+                                                            onClick=${() => handleTogglePermission(item, 'manage_platform')}
+                                                            title="Toggle Platform Mgmt rights"
+                                                            className="p-1.5 rounded-lg border ${item.permissions?.manage_platform ? 'bg-primary-50 border-primary-200 text-primary-600' : 'bg-gray-50 border-gray-200 text-gray-400'} hover:scale-110 transition-all"
+                                                        >
+                                                            <${Icon} name="grid" size=${14} />
+                                                        </button>
+                                                    </div>
+                                                ` : html`<span className="text-[10px] text-gray-300 italic">None</span>`}
+                                            </td>
+                                        `}
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="flex items-center justify-end gap-2">
+                                                ${activeTab === 'users' && user?.role === 'superadmin' && item.role !== 'superadmin' && html`
+                                                    <${Button}
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        className="h-8 !px-3 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                                                        title="Promote to Superadmin"
+                                                        onClick=${() => handlePromote(item)}
+                                                    >
+                                                        <${Icon} name="chevrons-up" size=${14} />
+                                                        <span className="hidden sm:inline">Promote</span>
+                                                    </${Button}>
+                                                `}
+                                                <${Button} 
+                                                    size="sm" 
+                                                    variant=${item.is_active ? 'secondary' : 'primary'} 
+                                                    className="h-8 !px-3"
+                                                    onClick=${() => handleToggleStatus(item.id, item.is_active)}
+                                                >
+                                                    <${Icon} name=${item.is_active ? 'shield-off' : 'shield-check'} size=${14} />
+                                                    <span className="hidden sm:inline">${item.is_active ? 'Restrict' : 'Activate'}</span>
+                                                </${Button}>
+                                                <${Button} 
+                                                    size="sm" 
+                                                    variant="ghost" 
+                                                    className="h-8 w-8 !p-0 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20"
+                                                    onClick=${() => handleDelete(item.id, item.full_name || item.name)}
+                                                >
+                                                    <${Icon} name="trash-2" size=${16} />
+                                                </${Button}>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `)}
+                            </tbody>
+                        </table>
+                    </div>
+                    ${totalPages > 1 && html`
+                        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 dark:border-midnight-800">
+                            <span className="text-xs text-gray-500">Showing ${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, total)} of ${total}</span>
+                            <div className="flex gap-2">
+                                <${Button} size="sm" variant="secondary" onClick=${() => handlePageChange(page - 1)} disabled=${page === 0}>
+                                    <${Icon} name="chevron-left" size=${14} /> Previous
+                                </${Button}>
+                                <${Button} size="sm" variant="secondary" onClick=${() => handlePageChange(page + 1)} disabled=${page >= totalPages - 1}>
+                                    Next <${Icon} name="chevron-right" size=${14} />
+                                </${Button}>
+                            </div>
+                        </div>
+                    `}
+                `}
+            </${Card}>
+        </div>
+    `;
+};
+
+const MobileHeader = ({ title }) => {
+    const { user } = useAuth();
+    return html`
+        <header className="lg:hidden sticky top-0 z-50 bg-white/80 dark:bg-midnight-950/80 backdrop-blur-md border-b border-gray-100 dark:border-midnight-800 px-6 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+                <img src="assets/NEXRA_IconAbove.png" alt="NEXRA" className="h-8 w-auto" />
+                <h1 className="text-lg font-bold text-gray-900 dark:text-white truncate max-w-[150px] sm:max-w-none">${title}</h1>
+            </div>
+            <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-[10px] font-black text-primary-600">
+                ${user?.full_name?.charAt(0)}
+            </div>
+        </header>
+    `;
+};
+
+const BottomNav = ({ currentPage, onNavigate }) => {
+    const { user } = useAuth();
+    
+    return html`
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/90 dark:bg-midnight-950/90 backdrop-blur-xl border-t border-gray-100 dark:border-midnight-800 px-6 py-3 pb-safe">
+            <div className="flex items-center justify-around max-w-md mx-auto">
+                <button 
+                    onClick=${() => onNavigate('approvals')}
+                    className="flex flex-col items-center gap-1 transition-colors ${currentPage === 'approvals' ? 'text-primary-600 font-bold' : 'text-gray-400'}"
+                >
+                    <${Icon} name="check-square" size=${20} />
+                    <span className="text-[10px] uppercase tracking-wider">Approvals</span>
+                </button>
+                
+                ${(user?.role === 'superadmin' || user?.permissions?.manage_platform) && html`
+                    <button 
+                        onClick=${() => onNavigate('management')}
+                        className="flex flex-col items-center gap-1 transition-colors ${currentPage === 'management' ? 'text-primary-600 font-bold' : 'text-gray-400'}"
+                    >
+                        <${Icon} name="grid" size=${20} />
+                        <span className="text-[10px] uppercase tracking-wider">Manage</span>
+                    </button>
+                `}
+                ${user?.role === 'superadmin' && html`
+                    <button 
+                        onClick=${() => onNavigate('staff')}
+                        className="flex flex-col items-center gap-1 transition-colors ${currentPage === 'staff' ? 'text-primary-600 font-bold' : 'text-gray-400'}"
+                    >
+                        <${Icon} name="users" size=${20} />
+                        <span className="text-[10px] uppercase tracking-wider">Staff</span>
+                    </button>
+                `}
+                
+                <button 
+                    onClick=${() => onNavigate('settings')}
+                    className="flex flex-col items-center gap-1 transition-colors ${currentPage === 'settings' ? 'text-primary-600 font-bold' : 'text-gray-400'}"
+                >
+                    <${Icon} name="user" size=${20} />
+                    <span className="text-[10px] uppercase tracking-wider">Me</span>
+                </button>
+            </div>
+        </nav>
+    `;
+};
+
+const AdminSidebar = ({ currentPage, onNavigate }) => {
+    const { user, logout } = useAuth();
+    
+    return html`
+        <aside className="hidden lg:flex lg:flex-col lg:w-72 bg-white dark:bg-midnight-950 border-r border-gray-200 dark:border-midnight-800 h-screen sticky top-0 transition-colors">
+            <div className="p-6 border-b border-gray-200 dark:border-midnight-800 flex justify-center">
+                <img src="assets/NEXRA_IconBeside.png" alt="NEXRA Admin" className="h-14 lg:h-16 object-contain" />
+            </div>
+
+            <nav className="flex-1 p-4 space-y-4">
+                <div>
+                     <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Management</p>
+                     <button
+                        onClick=${() => onNavigate('approvals')}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentPage === 'approvals'
+                            ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 font-bold'
+                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}"
+                    >
+                        <${Icon} name="check-square" size=${20} />
+                        <span>Sender ID Approvals</span>
+                    </button>
+                    ${(user?.role === 'superadmin' || user?.permissions?.manage_platform) && html`
+                        <button
+                            onClick=${() => onNavigate('management')}
+                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentPage === 'management'
+                                ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 font-bold'
+                                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}"
+                        >
+                            <${Icon} name="grid" size=${20} />
+                            <span>Platform Management</span>
+                        </button>
+                    `}
+                    ${user?.role === 'superadmin' && html`
+                        <button
+                            onClick=${() => onNavigate('staff')}
+                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentPage === 'staff'
+                                ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 font-bold'
+                                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}"
+                        >
+                            <${Icon} name="users" size=${20} />
+                            <span>Staff Management</span>
+                        </button>
+                    `}
+                </div>
+            </nav>
+            
+            <div className="p-4 border-t border-gray-100 dark:border-midnight-800">
+                <div className="mb-4 px-4 py-3 bg-gray-50 dark:bg-midnight-900 rounded-xl">
+                    <p className="text-xs font-bold text-gray-900 dark:text-white truncate">${user?.full_name}</p>
+                    <p className="text-[10px] text-gray-500 uppercase font-black tracking-tighter mt-0.5">${user?.role === 'superadmin' ? 'PLATFORM SUPERADMIN' : 'OFFICIAL STAFF MEMBER'}</p>
+                </div>
+                <button
+                    onClick=${logout}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+                >
+                    <${Icon} name="log-out" size=${20} />
+                    <span>Sign Out</span>
+                </button>
+            </div>
+        </aside>
+    `;
+};
+
+const AdminApp = () => {
+    const { user, loading, logout } = useAuth();
+    const [currentPage, setCurrentPage] = useState('approvals');
+
+    useEffect(() => {
+        const handleHashChange = () => {
+            const hash = window.location.hash.slice(1) || '/approvals';
+            const page = hash.split('/')[1] || 'approvals';
+            setCurrentPage(page);
+        };
+        window.addEventListener('hashchange', handleHashChange);
+        handleHashChange();
+        return () => window.removeEventListener('hashchange', handleHashChange);
+    }, []);
+
+    if (loading) return null;
+
+    if (!user) {
+        if (currentPage === 'register') return html`<${AdminRegisterPage} />`;
+        return html`<${AdminLoginPage} />`;
+    }
+
+    const renderPage = () => {
+        switch (currentPage) {
+            case 'approvals': return html`<${AdminApprovalPage} />`;
+            case 'management': return html`<${PlatformManagementPage} />`;
+            case 'staff': return html`<${StaffManagementPage} />`;
+            case 'settings': return html`
+                <div className="p-4 space-y-4">
+                    <${Card} className="p-6">
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className="w-16 h-16 rounded-2xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-xl font-black text-primary-600">
+                                ${user?.full_name?.charAt(0)}
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold dark:text-white">${user.full_name}</h2>
+                                <p className="text-sm text-gray-500 uppercase tracking-widest font-bold">${user.role}</p>
+                            </div>
+                        </div>
+                        <${Button} variant="danger" className="w-full" onClick=${logout}>
+                            <${Icon} name="log-out" size=${18} />
+                            Sign Out
+                        </${Button}>
+                    </${Card}>
+                </div>
+            `;
+            default: return html`<${AdminApprovalPage} />`;
+        }
+    };
+
+    const getPageTitle = () => {
+        switch (currentPage) {
+            case 'approvals': return 'Approvals';
+            case 'management': return 'Management';
+            case 'staff': return 'Staff Management';
+            case 'settings': return 'Admin Settings';
+            default: return 'Admin Console';
+        }
+    }
+
+    return html`
+        <div className="flex h-screen bg-[#f8fafc] dark:bg-midnight-950 overflow-hidden">
+            <${AdminSidebar} currentPage=${currentPage} onNavigate=${(page) => window.location.href = `admin.html#/${page}`} />
+            
+            <div className="flex-1 flex flex-col h-full overflow-hidden">
+                <${MobileHeader} title=${getPageTitle()} />
+                
+                <main className="flex-1 p-4 lg:p-8 overflow-y-auto pb-24 lg:pb-8 no-scrollbar">
+                    <div className="max-w-6xl mx-auto">
+                        ${renderPage()}
+                    </div>
+                </main>
+                
+                <${BottomNav} currentPage=${currentPage} onNavigate=${(page) => window.location.href = `admin.html#/${page}`} />
+            </div>
+        </div>
+    `;
+};
+
+// ============================================================================
+// RENDER
+// ============================================================================
+
+const root = createRoot(document.getElementById('root'));
+root.render(html`
+    <${AuthProvider}>
+        <${ToastProvider}>
+            <${AdminApp} />
+        </${ToastProvider}>
+    </${AuthProvider}>
+`);
+
+setTimeout(() => hideSplashScreen(), 800);

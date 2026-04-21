@@ -1,0 +1,21 @@
+fastapi
+uvicorn[standard]
+sqlalchemy[asyncio]
+alembic
+asyncpg
+python-jose[cryptography]
+passlib[argon2]
+python-multipart
+# SMTP / Email
+aiosmtplib
+# Twilio / SMPP
+twilio
+smpplib
+aiosmpplib
+python-dotenv
+pydantic-settings
+argon2-cffi
+rq
+redis
+email-validator
+httpx

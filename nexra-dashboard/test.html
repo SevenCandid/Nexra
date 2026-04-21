@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head><title>Test</title></head>
+<body>
+<script type="module">
+  console.error("TEST.HTML: Starting dynamic import");
+  try {
+    const mod = await import("/src/main.js");
+    console.error("TEST.HTML: Dynamic import succeeded!");
+  } catch (e) {
+    console.error("TEST.HTML: Dynamic import FAILED:", e);
+    console.error(e.message, e.stack);
+  }
+</script>
+</body>
+</html>

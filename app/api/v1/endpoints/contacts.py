@@ -1,0 +1,236 @@
+from typing import List, Optional
+import csv
+import io
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
+from app.api import deps
+from app.db.models import User, Contact, Organization
+from app.db.database import get_db
+from app.schemas.schemas import ContactCreate, ContactResponse, ContactListResponse, ContactBase
+
+router = APIRouter()
+
+@router.get("", response_model=ContactListResponse)
+async def get_contacts(
+    skip: int = 0,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """
+    List contacts for the current user's organization.
+    """
+    query = select(Contact).where(Contact.organization_id == current_user.organization_id).offset(skip).limit(limit)
+    result = await db.execute(query)
+    contacts = result.scalars().all()
+    
+    # Simple total count (can be optimized)
+    total_query = select(Contact).where(Contact.organization_id == current_user.organization_id)
+    total_result = await db.execute(total_query)
+    total = len(total_result.scalars().all())
+    
+    return {"items": contacts, "total": total}
+
+@router.post("", response_model=ContactResponse)
+async def create_contact(
+    contact_in: ContactCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """
+    Create a new contact.
+    """
+    # Normalize phone number
+    phone = "".join(filter(str.isdigit, contact_in.phone_number))
+    if not phone:
+        raise HTTPException(status_code=400, detail="Invalid phone number")
+
+    # Check if contact already exists for this org
+    query = select(Contact).where(
+        Contact.organization_id == current_user.organization_id,
+        Contact.phone_number == phone
+    )
+    result = await db.execute(query)
+    if result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Contact with this phone number already exists in your organization."
+        )
+
+    db_obj = Contact(
+        first_name=contact_in.first_name,
+        last_name=contact_in.last_name,
+        phone_number=phone,
+        organization_id=current_user.organization_id
+    )
+    db.add(db_obj)
+    await db.commit()
+    await db.refresh(db_obj)
+    return db_obj
+
+@router.post("/upload")
+async def upload_contacts(
+    file: UploadFile = File(...),
+    group_id: Optional[int] = Form(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """
+    Upload contacts from a CSV file.
+    CSV header: first_name, last_name, phone_number
+    If group_id is provided, both new and existing contacts in the CSV will be added to the group.
+    """
+    # Verify group if provided
+    if group_id:
+        from app.db.models import ContactGroup
+        group_query = select(ContactGroup).where(
+            ContactGroup.id == group_id,
+            ContactGroup.organization_id == current_user.organization_id
+        )
+        group = (await db.execute(group_query)).scalar_one_or_none()
+        if not group:
+            raise HTTPException(status_code=404, detail="Group not found")
+
+    content = await file.read()
+    try:
+        decoded = content.decode('utf-8')
+    except UnicodeDecodeError:
+        try:
+            decoded = content.decode('latin-1')
+        except:
+            raise HTTPException(status_code=400, detail="Could not decode file. Please use UTF-8 or Latin-1 encoding.")
+            
+    reader = csv.DictReader(io.StringIO(decoded))
+    
+    created_count = 0
+    skipped_count = 0
+    group_added_count = 0
+    
+    from app.db.models import contact_group_association
+    
+    # We will accumulate contacts to add to the group
+    contacts_to_add_to_group = []
+
+    # Define header mappings
+    header_map = {
+        'first_name': ['first_name', 'firstname', 'first name', 'given name', 'given_name', 'fname'],
+        'last_name': ['last_name', 'lastname', 'last name', 'surname', 'lname'],
+        'phone_number': ['phone_number', 'phone', 'phonenumber', 'phone number', 'mobile', 'mobile number', 'msisdn']
+    }
+
+    def get_value(row, internal_key):
+        """Find value in row by trying all possible header variants."""
+        for header, value in row.items():
+            header_lower = header.lower().strip()
+            if header_lower in header_map[internal_key] or header_lower.replace(' ', '_') in header_map[internal_key]:
+                return value
+        return row.get(internal_key) # Fallback to literal key
+
+    for row in reader:
+        phone = get_value(row, 'phone_number')
+        if not phone:
+            skipped_count += 1
+            continue
+            
+        # Basic normalization: remove spaces, hyphens, parentheses
+        phone = "".join(filter(str.isdigit, phone))
+        if not phone:
+            skipped_count += 1
+            continue
+        
+        # Check if exists
+        query = select(Contact).where(
+            Contact.organization_id == current_user.organization_id,
+            Contact.phone_number == phone
+        )
+        existing_contact = (await db.execute(query)).scalar_one_or_none()
+        
+        if existing_contact:
+            skipped_count += 1
+            if group_id:
+                contacts_to_add_to_group.append(existing_contact.id)
+            continue
+            
+        db_obj = Contact(
+            phone_number=phone,
+            first_name=get_value(row, 'first_name'),
+            last_name=get_value(row, 'last_name'),
+            organization_id=current_user.organization_id
+        )
+        db.add(db_obj)
+        await db.flush() # flush to get the id
+        created_count += 1
+        
+        if group_id:
+            contacts_to_add_to_group.append(db_obj.id)
+            
+    if group_id and contacts_to_add_to_group:
+        # Check existing group members to avoid duplicates in association
+        assoc_query = select(contact_group_association.c.contact_id).where(
+            contact_group_association.c.group_id == group_id
+        )
+        existing_group_ids = {row[0] for row in (await db.execute(assoc_query)).all()}
+        
+        for cid in set(contacts_to_add_to_group):
+            if cid not in existing_group_ids:
+                await db.execute(
+                    contact_group_association.insert().values(contact_id=cid, group_id=group_id)
+                )
+                group_added_count += 1
+
+    await db.commit()
+    return {
+        "message": f"Successfully imported {created_count} contacts.",
+        "created": created_count,
+        "skipped": skipped_count,
+        "group_added": group_added_count
+    }
+
+@router.delete("/{contact_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_contact(
+    contact_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """
+    Delete a contact.
+    """
+    query = select(Contact).where(Contact.id == contact_id, Contact.organization_id == current_user.organization_id)
+    result = await db.execute(query)
+    db_obj = result.scalar_one_or_none()
+    if not db_obj:
+        raise HTTPException(status_code=404, detail="Contact not found")
+    
+    await db.delete(db_obj)
+    await db.commit()
+    return None
+
+@router.patch("/{contact_id}", response_model=ContactResponse)
+async def update_contact(
+    contact_id: int,
+    contact_in: ContactCreate, # Reusing ContactCreate for simplicity or create a ContactUpdate schema
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """
+    Update a contact.
+    """
+    query = select(Contact).where(Contact.id == contact_id, Contact.organization_id == current_user.organization_id)
+    result = await db.execute(query)
+    db_obj = result.scalar_one_or_none()
+    if not db_obj:
+        raise HTTPException(status_code=404, detail="Contact not found")
+    
+    update_data = contact_in.model_dump(exclude_unset=True)
+    if "phone_number" in update_data:
+        # Normalize phone
+        update_data["phone_number"] = "".join(filter(str.isdigit, update_data["phone_number"]))
+
+    for key, value in update_data.items():
+        setattr(db_obj, key, value)
+    
+    db.add(db_obj)
+    await db.commit()
+    await db.refresh(db_obj)
+    return db_obj
