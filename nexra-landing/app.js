@@ -5,6 +5,11 @@
 // Configuration
 // Google Apps Script Web App URL
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw7032ZcU09vxIPUmmq1tvXXATs9MP_TThiA0wHjbbF7DJQCP6HVSfZHI04hfnwrmkiLQ/exec';
+
+// Paystack Configuration
+// TODO: Replace with your Paystack Public Key
+const PAYSTACK_PUBLIC_KEY = 'pk_live_f2bc33d7eb129d525b3786314c8054415a262ad7';
+
 let waitlistCount = 500; // Initial count
 
 // ============================================================================
@@ -123,46 +128,70 @@ async function handleSubmit(e) {
     button.classList.add('loading');
     button.disabled = true;
 
-    try {
-        // Send to Google Apps Script
-        // We use mode: 'no-cors' to avoid browser CORS preflight blocks for POST
-        const response = await fetch(SCRIPT_URL, {
-            method: 'POST',
-            mode: 'no-cors',
-            headers: {
-                'Content-Type': 'text/plain;charset=utf-8',
-            },
-            body: JSON.stringify({
-                action: 'add',
-                email,
-                name,
-                company
-            })
-        });
-
-        // With no-cors, the response is opaque, so we assume success if no network error thrown
-        if (true) {
-            // Success
-            showToast('🎉 You\'re on the list! Check your email for confirmation.', 'success');
-            createConfetti();
-            form.reset();
-
-            // Update counter
-            waitlistCount++;
-            document.querySelectorAll('#waitlist-count').forEach(el => {
-                el.textContent = waitlistCount + '+';
-            });
-        } else {
-            const data = await response.json();
-            showToast(data.detail || 'Something went wrong. Please try again.', 'error');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        showToast('Network error. Please check your connection and try again.', 'error');
-    } finally {
+    // Check if Paystack is loaded
+    if (typeof PaystackPop === 'undefined') {
+        showToast('Payment system is currently unavailable. Please refresh and try again.', 'error');
         button.classList.remove('loading');
         button.disabled = false;
+        return;
     }
+
+    // Initialize Paystack Payment
+    let handler = PaystackPop.setup({
+        key: PAYSTACK_PUBLIC_KEY,
+        email: email,
+        amount: 5000, // 50 GHS in pesewas
+        currency: 'GHS',
+        ref: 'NEXRA_WAITLIST_' + Math.floor((Math.random() * 1000000000) + 1),
+        callback: function (response) {
+            // Payment successful, proceed to save waitlist entry
+            (async () => {
+                try {
+                    // Send to Google Apps Script
+                    // We use mode: 'no-cors' to avoid browser CORS preflight blocks for POST
+                    await fetch(SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: {
+                            'Content-Type': 'text/plain;charset=utf-8',
+                        },
+                        body: JSON.stringify({
+                            action: 'add',
+                            email,
+                            name,
+                            company,
+                            paystack_ref: response.reference
+                        })
+                    });
+
+                    // Success
+                    showToast('🎉 Payment successful! You\'re on the list.', 'success');
+                    createConfetti();
+                    form.reset();
+
+                    // Update counter
+                    waitlistCount++;
+                    document.querySelectorAll('#waitlist-count').forEach(el => {
+                        el.textContent = waitlistCount + '+';
+                    });
+                } catch (error) {
+                    console.error('Error saving to waitlist:', error);
+                    showToast('Payment succeeded, but we had trouble saving your details. Please contact support.', 'error');
+                } finally {
+                    button.classList.remove('loading');
+                    button.disabled = false;
+                }
+            })();
+        },
+        onClose: function () {
+            showToast('Payment cancelled.', 'error');
+            button.classList.remove('loading');
+            button.disabled = false;
+        }
+    });
+
+    // Open Paystack popup
+    handler.openIframe();
 }
 
 // ============================================================================
