@@ -1,3 +1,4 @@
+import { ConfirmModal } from './src/components/ui/ConfirmModal.js';
 const { useState, useEffect, createContext, useContext, useRef, useMemo } = React;
 const { createRoot } = ReactDOM;
 
