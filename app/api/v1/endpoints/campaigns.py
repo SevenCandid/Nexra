@@ -17,40 +17,38 @@ logger = logging.getLogger(__name__)
 @router.get("", response_model=CampaignListResponse)
 async def get_campaigns(
     status: Optional[str] = None,
-    limit: int = 10,
+    q: Optional[str] = None,
+    limit: int = 20,
     skip: int = 0,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(deps.get_current_active_user)
 ):
     """
-    List campaigns for the organization.
+    List campaigns for the organization with search and filtering.
     """
-    # Get total count
-    count_query = select(func.count(Campaign.id)).where(Campaign.organization_id == current_user.organization_id)
+    # Build query
+    base_query = select(Campaign).where(Campaign.organization_id == current_user.organization_id)
+    
+    if q:
+        base_query = base_query.where(Campaign.name.ilike(f"%{q}%"))
+        
     if status:
-        if status == 'pending':
-            count_query = count_query.where(Campaign.status.in_(['draft', 'scheduled', 'sending']))
-        elif status == 'delivered':
-            count_query = count_query.where(Campaign.status == 'completed')
+        if status == 'delivering' or status == 'pending':
+            base_query = base_query.where(Campaign.status.in_(['draft', 'scheduled', 'sending', 'delivering']))
+        elif status == 'delivered' or status == 'completed':
+            base_query = base_query.where(Campaign.status == 'completed')
         elif status == 'failed':
-            count_query = count_query.where(Campaign.status.in_(['failed', 'cancelled']))
+            base_query = base_query.where(Campaign.status.in_(['failed', 'cancelled']))
         else:
-            count_query = count_query.where(Campaign.status == status)
-    count_result = await db.execute(count_query)
-    total = count_result.scalar()
+            base_query = base_query.where(Campaign.status == status)
 
-    # Get items
-    query = select(Campaign).where(Campaign.organization_id == current_user.organization_id)
-    if status:
-        if status == 'pending':
-            query = query.where(Campaign.status.in_(['draft', 'scheduled', 'sending']))
-        elif status == 'delivered':
-            query = query.where(Campaign.status == 'completed')
-        elif status == 'failed':
-            query = query.where(Campaign.status.in_(['failed', 'cancelled']))
-        else:
-            query = query.where(Campaign.status == status)
-    query = query.order_by(Campaign.id.desc()).offset(skip).limit(limit)
+    # Get total count for pagination
+    count_query = select(func.count()).select_from(base_query.subquery())
+    count_result = await db.execute(count_query)
+    total = count_result.scalar() or 0
+
+    # Get items with ordering and pagination
+    query = base_query.order_by(Campaign.id.desc()).offset(skip).limit(limit)
     result = await db.execute(query)
     campaigns = result.scalars().all()
     

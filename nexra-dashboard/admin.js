@@ -1222,11 +1222,11 @@ const PlatformManagementPage = () => {
                                                         size="sm"
                                                         variant="ghost"
                                                         className="h-8 !px-3 text-emerald-600 hover:bg-emerald-50"
-                                                        title="Adjust Balance"
+                                                        title="Give Credit / Adjust Balance"
                                                         onClick=${() => setAdjustmentModal({ open: true, org: item })}
                                                     >
-                                                        <${Icon} name="dollar-sign" size=${14} />
-                                                        <span className="hidden sm:inline">Wallet</span>
+                                                        <${Icon} name="plus-circle" size=${14} />
+                                                        <span className="hidden sm:inline">Add Credit</span>
                                                     </${Button}>
                                                 `}
                                                 ${activeTab === 'users' && user?.role === 'superadmin' && item.role !== 'superadmin' && html`
@@ -1284,30 +1284,34 @@ const PlatformManagementPage = () => {
             <${Modal} 
                 isOpen=${adjustmentModal.open} 
                 onClose=${() => setAdjustmentModal({ open: false, org: null })}
-                title="Adjust Wallet Balance"
+                title="Manual Credit Grant"
             >
                 <form onSubmit=${handleAdjustBalance} className="space-y-4">
-                    <p className="text-xs text-gray-500 mb-2">Adjusting balance for: <span className="font-bold text-gray-900 dark:text-white">${adjustmentModal.org?.name}</span></p>
+                    <p className="text-sm text-gray-500 mb-2">Manually give credits to: <span className="font-bold text-gray-900 dark:text-white">${adjustmentModal.org?.name}</span></p>
+                    <div className="bg-emerald-50 dark:bg-emerald-900/10 p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/20 mb-4">
+                        <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold uppercase tracking-widest">Administrator Action</p>
+                        <p className="text-xs text-emerald-600/80 dark:text-emerald-400/60 mt-1">This will instantly update the client's wallet balance. Positive values add credit, negative values subtract.</p>
+                    </div>
                     <${Input} 
-                        label="Amount (GHS)" 
+                        label="Amount to Grant (GHS)" 
                         type="number" 
                         step="0.01" 
-                        placeholder="e.g. 100 or -50" 
+                        placeholder="e.g. 100" 
                         value=${adjAmount}
                         onChange=${(e) => setAdjAmount(e.target.value)}
                         required
                     />
                     <${Input} 
-                        label="Description / Reason" 
-                        placeholder="Manual top-up for bank transfer" 
+                        label="Internal Reference / Reason" 
+                        placeholder="Manual top-up for custom deal / support" 
                         value=${adjDesc}
                         onChange=${(e) => setAdjDesc(e.target.value)}
                         required
                     />
                     <div className="pt-4 flex gap-3">
                         <${Button} type="button" variant="ghost" className="flex-1" onClick=${() => setAdjustmentModal({ open: false, org: null })}>Cancel</${Button}>
-                        <${Button} type="submit" variant="primary" className="flex-1" disabled=${adjLoading}>
-                            ${adjLoading ? 'Processing...' : 'Confirm Adjustment'}
+                        <${Button} type="submit" variant="primary" className="flex-1 bg-emerald-600 hover:bg-emerald-700 border-none text-white" disabled=${adjLoading}>
+                            ${adjLoading ? 'Granting...' : 'Grant Credits'}
                         </${Button}>
                     </div>
                 </form>

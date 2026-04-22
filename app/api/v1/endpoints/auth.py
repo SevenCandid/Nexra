@@ -191,8 +191,8 @@ async def read_users_me(
     if user:
         user_data = UserSchema.from_orm(user)
         user_data.organization_name = user.organization.name
-        user_data.plan_name = user.organization.plan.name if user.organization.plan else "Pay As You Go"
-        user_data.plan_slug = user.organization.plan.slug if user.organization.plan else "payg"
+        user_data.plan_name = user.organization.plan.name if user.organization.plan else None
+        user_data.plan_slug = user.organization.plan.slug if user.organization.plan else None
         return user_data
         
     return current_user
