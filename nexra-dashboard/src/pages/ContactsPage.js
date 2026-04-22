@@ -6,6 +6,7 @@ import { Input } from '../components/ui/Input.js';
 import { Card } from '../components/ui/Card.js';
 import { Icon } from '../components/ui/Icon.js';
 import { Modal } from '../components/ui/Modal.js';
+import { ConfirmModal } from '../components/ui/ConfirmModal.js';
 
 const GroupsSidebar = ({ selectedGroupId, onOpenSegment, onRefresh }) => {
     const { showToast } = useToast();
@@ -13,6 +14,8 @@ const GroupsSidebar = ({ selectedGroupId, onOpenSegment, onRefresh }) => {
     const [loading, setLoading] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [newGroup, setNewGroup] = useState({ name: '', description: '' });
+    const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null });
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         fetchGroups();
@@ -44,17 +47,20 @@ const GroupsSidebar = ({ selectedGroupId, onOpenSegment, onRefresh }) => {
         }
     };
 
-    const handleDeleteGroup = async (e, id) => {
-        e.stopPropagation();
-        if (!confirm('Are you sure? Contacts will not be deleted.')) return;
+    const handleDeleteGroup = async () => {
+        const id = confirmDelete.id;
+        setIsDeleting(true);
         try {
             await apiClient.delete(`/groups/${id}`);
             showToast('Segment deleted', 'success');
+            setConfirmDelete({ open: false, id: null });
             if (selectedGroupId === id) onOpenSegment(null);
             fetchGroups();
             if (onRefresh) onRefresh();
         } catch (error) {
             showToast('Failed to delete segment', 'error');
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -94,7 +100,7 @@ const GroupsSidebar = ({ selectedGroupId, onOpenSegment, onRefresh }) => {
                         </div>
                         <div className="flex items-center gap-2">
                             <span className="text-[10px] font-black opacity-60">${group.contact_count}</span>
-                            <span onClick=${(e) => handleDeleteGroup(e, group.id)} className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-500 transition-all">
+                            <span onClick=${(e) => { e.stopPropagation(); setConfirmDelete({ open: true, id: group.id }); }} className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-500 transition-all">
                                 <${Icon} name="x" size=${12} />
                             </span>
                         </div>
@@ -123,6 +129,17 @@ const GroupsSidebar = ({ selectedGroupId, onOpenSegment, onRefresh }) => {
                     </div>
                 </form>
             </${Modal}>
+
+            <${ConfirmModal}
+                isOpen=${confirmDelete.open}
+                onClose=${() => setConfirmDelete({ open: false, id: null })}
+                onConfirm=${handleDeleteGroup}
+                loading=${isDeleting}
+                title="Delete Segment?"
+                message="Are you sure? Contacts inside will not be deleted, but this segment will be removed."
+                confirmText="Delete Segment"
+                variant="danger"
+            />
         </div>
     `;
 };
@@ -147,6 +164,7 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
     const [searchExisting, setSearchExisting] = useState('');
     const [selectedExisting, setSelectedExisting] = useState(new Set());
     const [isBulkAdding, setIsBulkAdding] = useState(false);
+    const [confirmAction, setConfirmAction] = useState({ open: false, type: '', data: null });
 
     useEffect(() => {
         if (segment) {
@@ -215,14 +233,17 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
     };
 
     const handleDeleteSegment = async () => {
-        if (!confirm('Are you sure you want to delete this segment? Contacts inside will not be deleted.')) return;
+        setIsDeleting(true);
         try {
             await apiClient.delete(`/groups/${segment.id}`);
             showToast('Segment deleted', 'success');
+            setConfirmAction({ open: false, type: '', data: null });
             onSegmentUpdated();
             onBack();
         } catch (err) {
             showToast('Failed to delete segment', 'error');
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -268,8 +289,19 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
         }
     };
 
-    const handleSelectSegmentContacts = async (sourceSegment) => {
-        if (!confirm(`Add all ${sourceSegment.contact_count} contacts from "${sourceSegment.name}"?`)) return;
+    const handleSelectSegmentContacts = (sourceSegment) => {
+        setConfirmAction({
+            open: true,
+            type: 'import',
+            data: sourceSegment,
+            title: 'Import Contacts?',
+            message: `Add all ${sourceSegment.contact_count} contacts from "${sourceSegment.name}" to this segment?`
+        });
+    };
+
+    const confirmImport = async () => {
+        const sourceSegment = confirmAction.data;
+        setIsBulkAdding(true);
         try {
             const res = await apiClient.get(`/groups/${sourceSegment.id}/contacts`);
             const ids = res.data.map(c => c.id);
@@ -279,11 +311,14 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
                 contact_ids: ids
             });
             showToast(`Added contacts from ${sourceSegment.name}`, 'success');
+            setConfirmAction({ open: false, type: '', data: null });
             fetchMembers();
             onSegmentUpdated();
             setActiveTab('members');
         } catch (err) {
             showToast('Failed to add from segment', 'error');
+        } finally {
+            setIsBulkAdding(false);
         }
     };
 
@@ -318,7 +353,12 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
                     </p>
                 </div>
                 <button 
-                    onClick=${handleDeleteSegment}
+                    onClick=${() => setConfirmAction({ 
+                        open: true, 
+                        type: 'delete', 
+                        title: 'Delete Segment?', 
+                        message: 'Permanently remove this segment? Contacts will not be deleted.' 
+                    })}
                     className="p-2.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors self-start lg:self-center"
                     title="Delete Segment"
                 >
@@ -529,6 +569,17 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
                     </div>
                 `}
             </div>
+
+            <${ConfirmModal}
+                isOpen=${confirmAction.open}
+                onClose=${() => setConfirmAction({ open: false, type: '', data: null })}
+                onConfirm=${confirmAction.type === 'delete' ? handleDeleteSegment : confirmImport}
+                loading=${isDeleting || isBulkAdding}
+                title=${confirmAction.title}
+                message=${confirmAction.message}
+                confirmText=${confirmAction.type === 'delete' ? 'Delete' : 'Import'}
+                variant=${confirmAction.type === 'delete' ? 'danger' : 'info'}
+            />
         </div>
     `;
 };
@@ -712,6 +763,17 @@ export const ContactsPage = () => {
                     </div>
                 </form>
             </${Modal}>
+
+            <${ConfirmModal}
+                isOpen=${confirmDelete.open}
+                onClose=${() => setConfirmDelete({ open: false, id: null })}
+                onConfirm=${handleDeleteGroup}
+                loading=${isDeleting}
+                title="Delete Segment?"
+                message="Are you sure? Contacts inside will not be deleted, but this segment will be removed."
+                confirmText="Delete Segment"
+                variant="danger"
+            />
         </div>
     `;
 };

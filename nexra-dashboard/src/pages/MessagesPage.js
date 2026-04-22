@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button.js';
 import { Card } from '../components/ui/Card.js';
 import { Icon } from '../components/ui/Icon.js';
 import { Badge } from '../components/ui/Badge.js';
+import { ConfirmModal } from '../components/ui/ConfirmModal.js';
 
 export const MessagesPage = () => {
     const { showToast } = useToast();
@@ -16,6 +17,8 @@ export const MessagesPage = () => {
     const [total, setTotal] = useState(0);
     const [expandedId, setExpandedId] = useState(null);
     const [campaignStats, setCampaignStats] = useState({});
+    const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null });
+    const [deleteLoading, setDeleteLoading] = useState(false);
     
     const PAGE_SIZE = 10;
 
@@ -77,13 +80,18 @@ export const MessagesPage = () => {
         }
     };
 
-    const handleDeleteCampaign = async (campaignId) => {
+    const handleDeleteCampaign = async () => {
+        const campaignId = confirmDelete.id;
+        setDeleteLoading(true);
         try {
             await apiClient.delete(`/campaigns/${campaignId}`);
             showToast('Campaign history deleted', 'success');
+            setConfirmDelete({ open: false, id: null });
             fetchCampaigns();
         } catch (error) {
             showToast('Delete failed: ' + (error.response?.data?.detail || 'Unknown error'), 'error');
+        } finally {
+            setDeleteLoading(false);
         }
     };
 
@@ -252,7 +260,7 @@ export const MessagesPage = () => {
                                                             <${Button} 
                                                                 variant="ghost"
                                                                 size="sm"
-                                                                onClick=${() => { if(confirm('Delete this campaign history?')) handleDeleteCampaign(campaign.id) }} 
+                                                                onClick=${() => setConfirmDelete({ open: true, id: campaign.id })} 
                                                                 className="h-8 w-8 !p-0 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
                                                                 title="Delete History"
                                                             >
@@ -359,6 +367,16 @@ export const MessagesPage = () => {
                     </div>
                 `}
             </div>
+            <${ConfirmModal} 
+                isOpen=${confirmDelete.open}
+                onClose=${() => setConfirmDelete({ open: false, id: null })}
+                onConfirm=${handleDeleteCampaign}
+                loading=${deleteLoading}
+                title="Delete Campaign?"
+                message="This will permanently remove this campaign from your history. This action cannot be undone."
+                confirmText="Delete History"
+                variant="danger"
+            />
         </div>
     `;
 };

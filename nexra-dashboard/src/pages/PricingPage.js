@@ -8,6 +8,7 @@ import { Icon } from '../components/ui/Icon.js';
 import { Input } from '../components/ui/Input.js';
 import { Modal } from '../components/ui/Modal.js';
 import { Badge } from '../components/ui/Badge.js';
+import { ConfirmModal } from '../components/ui/ConfirmModal.js';
 
 const PAYSTACK_PUBLIC_KEY = 'pk_live_f2bc33d7eb129d525b3786314c8054415a262ad7';
 
@@ -132,6 +133,7 @@ export const PricingPage = () => {
     const [topupAmount, setTopupAmount] = useState('100');
     const [isProcessing, setIsProcessing] = useState(false);
     const [txnStatus, setTxnStatus] = useState(null); // 'pending', 'success', 'failed'
+    const [confirmPurchase, setConfirmPurchase] = useState({ open: false, slug: null });
 
     useEffect(() => {
         fetchData();
@@ -154,14 +156,17 @@ export const PricingPage = () => {
         }
     };
 
-    const handleBuyPlan = async (planSlug) => {
-        const confirmBuy = confirm(`Are you sure you want to upgrade to the ${planSlug} plan? This will deduct GH₵ ${planSlug === 'starter' ? '25.00' : '50.00'} from your wallet.`);
-        if (!confirmBuy) return;
+    const handleBuyPlan = (planSlug) => {
+        setConfirmPurchase({ open: true, slug: planSlug });
+    };
 
+    const confirmUpgrade = async () => {
+        const planSlug = confirmPurchase.slug;
         setIsProcessing(true);
         try {
             const response = await apiClient.post(`/billing/buy-plan?plan_slug=${planSlug}`);
             showToast(response.data.message, 'success');
+            setConfirmPurchase({ open: false, slug: null });
             await Promise.all([fetchData(), fetchUser()]);
         } catch (error) {
             showToast(error.response?.data?.detail || 'Failed to purchase plan', 'error');
@@ -295,7 +300,9 @@ export const PricingPage = () => {
                     <div className="md:col-span-2 md:text-right flex flex-col md:items-end justify-center">
                          <div className="inline-flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full border border-white/10">
                             <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                            <span className="text-xs font-bold text-gray-300 uppercase tracking-wide">Plan: ${user?.plan_name || 'Pay As You Go'}</span>
+                             <span className="text-xs font-bold text-gray-300 uppercase tracking-wide">
+                                Plan: ${user?.plan_name || (user?.plan_slug ? 'Pay As You Go' : 'No Active Plan')}
+                             </span>
                          </div>
                     </div>
                 </div>
@@ -420,6 +427,17 @@ export const PricingPage = () => {
                     </form>
                 `}
             </${Modal}>
+
+            <${ConfirmModal}
+                isOpen=${confirmPurchase.open}
+                onClose=${() => setConfirmPurchase({ open: false, slug: null })}
+                onConfirm=${confirmUpgrade}
+                loading=${isProcessing}
+                title="Upgrade Plan?"
+                message=${`Are you sure you want to upgrade to the ${confirmPurchase.slug} plan? The monthly cost will be deducted from your wallet balance.`}
+                confirmText="Confirm Upgrade"
+                variant="info"
+            />
         </div>
     `;
 };
