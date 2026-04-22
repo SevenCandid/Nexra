@@ -64,7 +64,7 @@ export const Header = ({ user, balance, onLogout, title, subtitle, onQuickSend, 
 
                         <a href="#/pricing" className="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 dark:text-midnight-200 hover:bg-gray-50 dark:hover:bg-midnight-800 transition-colors">
                             <${Icon} name="credit-card" size=${16} className="text-gray-400 dark:text-midnight-500" />
-                            Pricing & Credits
+                            Wallet & Credits
                         </a>
                         <a href="#/sender-ids" className="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 dark:text-midnight-200 hover:bg-gray-50 dark:hover:bg-midnight-800 transition-colors">
                             <${Icon} name="pen-tool" size=${16} className="text-gray-400 dark:text-midnight-500" />
@@ -155,7 +155,7 @@ export const Header = ({ user, balance, onLogout, title, subtitle, onQuickSend, 
                             role="menuitem"
                         >
                             <${Icon} name="credit-card" size=${16} className="text-gray-400 dark:text-midnight-500" />
-                            Pricing & Credits
+                            Wallet & Credits
                         </a>
                         <a
                             href="#/help"

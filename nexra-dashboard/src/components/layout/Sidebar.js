@@ -9,7 +9,7 @@ export const Sidebar = ({ currentPage, onNavigate }) => {
         { id: 'campaigns', label: 'Campaigns', icon: 'send' },
         { id: 'contacts', label: 'Contacts', icon: 'users' },
         { id: 'messages', label: 'Messages', icon: 'message-square' },
-        { id: 'pricing', label: 'Wallet', icon: 'credit-card' },
+        { id: 'pricing', label: 'Wallet & Credits', icon: 'credit-card' },
         { id: 'settings', label: 'Settings', icon: 'settings' }
     ];
 

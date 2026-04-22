@@ -75,7 +75,7 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
         'campaigns/create': { title: 'Create Campaign', subtitle: 'Set up your new SMS broadcast' },
         contacts: { title: 'Contacts', subtitle: 'Manage your audience' },
         messages: { title: 'Message History', subtitle: 'Track your sent and received SMS' },
-        pricing: { title: 'Pricing & Wallet', subtitle: 'Manage credits and view rates' },
+        pricing: { title: 'Wallet & Credits', subtitle: 'Manage your balance and view transaction history' },
         settings: { title: 'Settings', subtitle: 'Manage your account and preferences' },
         'sender-ids': { title: 'Sender IDs', subtitle: 'Manage your verified sending names' },
         templates: { title: 'Templates', subtitle: 'Manage your reusable message templates' },

@@ -81,7 +81,7 @@ async def register(
             sms_rate=0.05,
             max_users=5,
             monthly_credits=1000.0,
-            bonus_credits_on_signup=100.0,
+            bonus_credits_on_signup=0.0,
             pricing_model="hybrid",
             payg_rate_multiplier=1.2,
             features={"tps_limit": 5, "api_access": True}
@@ -142,9 +142,9 @@ async def register(
     # Create wallet with bonus credits using INSERT ... ON CONFLICT DO NOTHING
     stmt = pg_insert(Wallet).values(
         organization_id=organization.id,
-        balance=plan.bonus_credits_on_signup,
+        balance=0.0,
         subscription_credits=0.0,
-        payg_credits=plan.bonus_credits_on_signup,
+        payg_credits=0.0,
         currency="GHS"
     ).on_conflict_do_nothing(index_elements=["organization_id"])
     await db.execute(stmt)
@@ -243,7 +243,7 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
             
             if token_response.status_code != 200:
                 logger.error(f"OAuth: Token exchange failed ({token_response.status_code}): {token_response.text}")
-                return RedirectResponse(url="http://localhost:8080/#/login?error=token_exchange_failed")
+                return RedirectResponse(url="http://localhost:3000/#/login?error=token_exchange_failed")
                 
             token_data = token_response.json()
             access_token = token_data.get("access_token")
@@ -259,7 +259,7 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
             
             if user_info_response.status_code != 200:
                 logger.error(f"OAuth: Profile fetch failed ({user_info_response.status_code}): {user_info_response.text}")
-                return RedirectResponse(url="http://localhost:8080/#/login?error=profile_fetch_failed")
+                return RedirectResponse(url="http://localhost:3000/#/login?error=profile_fetch_failed")
                 
             google_user = user_info_response.json()
             email = google_user.get("email").lower().strip()
@@ -281,7 +281,7 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
                 logger.info("OAuth: Initializing default subscription plan")
                 plan = SubscriptionPlan(
                     name="Starter", slug="starter", monthly_price=50.0, sms_rate=0.05,
-                    max_users=5, monthly_credits=1000.0, bonus_credits_on_signup=100.0,
+                    max_users=5, monthly_credits=0.0, bonus_credits_on_signup=0.0,
                     pricing_model="hybrid", payg_rate_multiplier=1.2, features={"tps_limit": 5}
                 )
                 db.add(plan)
@@ -311,9 +311,9 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
             # Create wallet
             wallet = Wallet(
                 organization_id=organization.id,
-                balance=plan.bonus_credits_on_signup,
+                balance=0.0,
                 subscription_credits=0.0,
-                payg_credits=plan.bonus_credits_on_signup,
+                payg_credits=0.0,
                 currency="GHS"
             )
             db.add(wallet)
@@ -324,11 +324,11 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
         
         # 4. Issue token and redirect to frontend
         token = security.create_access_token(user.id)
-        frontend_url = f"http://localhost:8080/#/login?token={token}"
+        frontend_url = f"http://localhost:3000/#/login?token={token}"
         
         logger.info(f"OAuth: Final redirect to frontend")
         return RedirectResponse(url=frontend_url, status_code=302)
 
     except Exception as e:
         logger.exception(f"OAuth: CRITICAL ERROR in callback: {str(e)}")
-        return RedirectResponse(url="http://localhost:8080/#/login?error=internal_server_error")
+        return RedirectResponse(url="http://localhost:3000/#/login?error=internal_server_error")

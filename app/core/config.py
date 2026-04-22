@@ -47,6 +47,23 @@ class Settings(BaseSettings):
     PAYSTACK_SECRET_KEY: Optional[str] = None
     PAYSTACK_PUBLIC_KEY: Optional[str] = None
     
+    # SMS Providers
+    SMS_PROVIDER: str = "arkesel"  # arkesel, hubtel, or mtn_smpp
+    
+    # Arkesel Settings
+    ARKESEL_API_KEY: Optional[str] = None
+    ARKESEL_SENDER_ID: str = "NEXRA"
+    
+    # Hubtel Settings
+    HUBTEL_CLIENT_ID: Optional[str] = None
+    HUBTEL_CLIENT_SECRET: Optional[str] = None
+    
+    # MTN SMPP Settings
+    MTN_SMPP_HOST: Optional[str] = None
+    MTN_SMPP_PORT: int = 2775
+    MTN_SMPP_SYSTEM_ID: Optional[str] = None
+    MTN_SMPP_PASSWORD: Optional[str] = None
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         if not self.SQLALCHEMY_DATABASE_URI:

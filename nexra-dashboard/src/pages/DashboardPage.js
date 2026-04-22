@@ -137,9 +137,9 @@ export const DashboardPage = () => {
                             <canvas ref=${successChartRef}></canvas>
                             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                                 <p className="text-2xl font-black text-gray-900 dark:text-white leading-none">
-                                    ${((analytics.success_rate.delivered / (analytics.success_rate.delivered + analytics.success_rate.failed + analytics.success_rate.pending || 1)) * 100).toFixed(0)}%
+                                    ${analytics.success_rate.delivered > 0 ? ((analytics.success_rate.delivered / (analytics.success_rate.delivered + analytics.success_rate.failed + analytics.success_rate.pending || 1)) * 100).toFixed(0) : 0}%
                                 </p>
-                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">delivered</p>
+                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Delivered</p>
                             </div>
                         </div>
                         <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-2 lg:mt-4 lg:pt-4 lg:border-t border-gray-50 dark:border-midnight-800">

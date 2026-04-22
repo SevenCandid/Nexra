@@ -18,7 +18,7 @@ export const PricingPage = () => {
     const [balance, setBalance] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showTopupModal, setShowTopupModal] = useState(false);
-    const [topupAmount, setTopupAmount] = useState('10.00');
+    const [topupAmount, setTopupAmount] = useState('100');
     const [momoPhone, setMomoPhone] = useState('');
     const [momoNetwork, setMomoNetwork] = useState('MTN');
     const [isProcessing, setIsProcessing] = useState(false);
@@ -43,6 +43,30 @@ export const PricingPage = () => {
             console.error('Failed to fetch pricing data:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const verifyPayment = async (reference) => {
+        setTxnStatus('verifying');
+        try {
+            // 3. Verify on backend
+            const verifyRes = await apiClient.get(`/payments/verify/${reference}`);
+            if (verifyRes.data.status === 'SUCCESS' || verifyRes.data.status === 'ALREADY_COMPLETED') {
+                setTxnStatus('success');
+                showToast('Wallet topped up successfully!', 'success');
+                setTimeout(() => {
+                    setShowTopupModal(false);
+                    resetTopupState();
+                    fetchData();
+                }, 2000);
+            } else {
+                setTxnStatus('failed');
+                showToast(verifyRes.data.message || 'Verification failed', 'error');
+            }
+        } catch (error) {
+            console.error('Verification error:', error);
+            setTxnStatus('failed');
+            showToast('Verification failed. Please contact support.', 'error');
         }
     };
 
@@ -90,28 +114,8 @@ export const PricingPage = () => {
                         { display_name: "Service", variable_name: "service", value: "Wallet Top-up" }
                     ]
                 },
-                callback: async (response) => {
-                    setTxnStatus('verifying');
-                    try {
-                        // 3. Verify on backend
-                        const verifyRes = await apiClient.get(`/payments/verify/${response.reference}`);
-                        if (verifyRes.data.status === 'SUCCESS' || verifyRes.data.status === 'ALREADY_COMPLETED') {
-                            setTxnStatus('success');
-                            showToast('Wallet topped up successfully!', 'success');
-                            setTimeout(() => {
-                                setShowTopupModal(false);
-                                resetTopupState();
-                                fetchData();
-                            }, 2000);
-                        } else {
-                            setTxnStatus('failed');
-                            showToast(verifyRes.data.message || 'Verification failed', 'error');
-                        }
-                    } catch (error) {
-                        console.error('Verification error:', error);
-                        setTxnStatus('failed');
-                        showToast('Verification failed. Please contact support.', 'error');
-                    }
+                callback: function(response) {
+                    verifyPayment(response.reference);
                 },
                 onClose: () => {
                     setIsProcessing(false);
@@ -254,7 +258,7 @@ export const PricingPage = () => {
                         <p className="text-sm text-gray-600 dark:text-midnight-400">Choose an amount to add to your wallet. You can pay via Mobile Money or Card.</p>
                         
                         <div className="grid grid-cols-3 gap-2">
-                            ${['10', '20', '50', '100', '200', '500'].map(amt => html`
+                            ${['100', '200', '300', '400', '500', '1000'].map(amt => html`
                                 <button 
                                     type="button" 
                                     key=${amt}

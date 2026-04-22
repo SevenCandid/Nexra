@@ -10,4 +10,5 @@ for /f "tokens=5" %%a in ('netstat -aon ^| findstr :8000 ^| findstr LISTENING') 
 timeout /t 1 /nobreak >nul
 
 echo Starting NEXRA Backend Server...
-uvicorn app.main:app --reload
+set PYTHONPATH=.
+.\venv\Scripts\uvicorn app.main:app --reload

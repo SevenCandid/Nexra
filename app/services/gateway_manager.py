@@ -1,11 +1,12 @@
 import asyncio
 import logging
-from typing import Dict, List, Optional, Type
+from typing import Dict, List, Optional, Type, Any
 from app.services.adapters.base import BaseMNOAdapter
 from app.services.adapters.mtn import MTNAdapter
 from app.services.adapters.vodafone import VodafoneAdapter
 from app.services.adapters.airteltigo import AirtelTigoAdapter
-from app.db.models import SMPPAccount
+from app.services.sms.factory import get_sms_provider
+from app.db.models import MessageStatus, SMPPAccount
 from app.core.phone_utils import detect_network, Network
 from sqlalchemy.future import select
 from app.db.database import SessionLocal
@@ -86,24 +87,22 @@ class GatewayManager:
             
         return network.value
 
-    async def send_sms(self, recipient: str, sender: str, message: str) -> Optional[str]:
-        """Route and send SMS via the appropriate adapter."""
-        provider_name = await self.route_message(recipient)
-        adapter = self.adapters.get(provider_name)
-        
-        if not adapter:
-            logger.error(f"No active adapter found for provider: {provider_name}")
-            return None
-        
-        if not adapter.is_connected():
-            logger.warning(f"Adapter {provider_name} is not connected, attempting immediate send...")
-        
-        return await adapter.send_sms(recipient, sender, message)
+    async def send_sms(self, recipient: str, sender: str, content: str, provider_name: str = None) -> Dict:
+        """
+        Send SMS using the active provider configured in settings.
+        """
+        provider = get_sms_provider()
+        return await provider.send(recipient, sender, content)
 
     def is_provider_ready(self, provider_name: str) -> bool:
-        """Check if a specific provider adapter is initialized and connected."""
-        adapter = self.adapters.get(provider_name)
-        return adapter is not None and adapter.is_connected()
+        """
+        Check if the provider is configured.
+        """
+        provider = get_sms_provider()
+        # For Arkesel, check API Key
+        if hasattr(provider, 'api_key'):
+            return bool(provider.api_key)
+        return True
 
 # Global Manager Instance
 gateway_manager = GatewayManager()
