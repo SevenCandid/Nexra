@@ -107,7 +107,7 @@ async def admin_adjust_balance(
     amount: float,
     description: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(deps.get_current_active_superadmin)
+    current_user: User = Depends(deps.get_current_active_platform_manager)
 ):
     """
     Superadmin only: Manually adjust any organization's wallet balance.

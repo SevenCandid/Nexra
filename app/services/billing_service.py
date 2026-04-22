@@ -361,5 +361,61 @@ class BillingService:
             await db.rollback()
             logger.error(f"Error adding PAYG credits to org {organization_id}: {str(e)}")
 
+    @staticmethod
+    async def use_credits(
+        db: AsyncSession,
+        organization_id: int,
+        amount: Decimal,
+        description: str,
+        user_id: Optional[int] = None
+    ) -> bool:
+        """
+        Manually deduct credits from organization wallet.
+        Used by admins for corrections or custom charges.
+        """
+        try:
+            # Lock wallet
+            stmt = (
+                select(Wallet)
+                .where(Wallet.organization_id == organization_id)
+                .with_for_update()
+            )
+            result = await db.execute(stmt)
+            wallet = result.scalar_one_or_none()
+            
+            if not wallet:
+                return False
+            
+            # Check balance
+            if wallet.balance < amount:
+                return False
+            
+            # Deduct from PAYG first, then subscription
+            if wallet.payg_credits >= amount:
+                wallet.payg_credits -= amount
+            else:
+                remaining = amount - wallet.payg_credits
+                wallet.payg_credits = Decimal('0')
+                wallet.subscription_credits -= remaining
+                
+            wallet.balance = wallet.payg_credits + wallet.subscription_credits
+            
+            ledger = BillingLedger(
+                organization_id=organization_id,
+                amount=amount,
+                type=LedgerType.DEBIT,
+                category="manual_deduction",
+                description=description,
+                balance_after=wallet.balance,
+                created_by=user_id
+            )
+            db.add(ledger)
+            await db.commit()
+            return True
+        except Exception as e:
+            await db.rollback()
+            logger.error(f"Error using credits: {str(e)}")
+            return False
+
 # Global instance
 billing_service = BillingService()
