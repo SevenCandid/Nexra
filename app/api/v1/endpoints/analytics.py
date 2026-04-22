@@ -260,12 +260,68 @@ async def get_admin_overview(
         for t in recent_topups_result.scalars().all()
     ]
 
+    # 8. Trends (Last 14 days)
+    fourteen_days_ago = datetime.utcnow() - timedelta(days=14)
+    
+    # SMS Volume Trend
+    sms_trend_q = (
+        select(
+            func.date(SMSMessage.created_at).label("day"),
+            func.count(SMSMessage.id).label("count")
+        )
+        .where(SMSMessage.created_at >= fourteen_days_ago)
+        .group_by(func.date(SMSMessage.created_at))
+        .order_by(func.date(SMSMessage.created_at))
+    )
+    sms_trend_result = await db.execute(sms_trend_q)
+    sms_trend = {row.day.isoformat(): row.count for row in sms_trend_result}
+
+    # Revenue Trend
+    rev_trend_q = (
+        select(
+            func.date(BillingLedger.created_at).label("day"),
+            func.sum(BillingLedger.amount).label("total")
+        )
+        .where(
+            BillingLedger.created_at >= fourteen_days_ago,
+            BillingLedger.category == "topup",
+            BillingLedger.type == LedgerType.CREDIT
+        )
+        .group_by(func.date(BillingLedger.created_at))
+        .order_by(func.date(BillingLedger.created_at))
+    )
+    rev_trend_result = await db.execute(rev_trend_q)
+    rev_trend = {row.day.isoformat(): float(row.total) for row in rev_trend_result}
+
+    # Merge trends into a single array for the chart
+    trends = []
+    for i in range(14, -1, -1):
+        day_date = (datetime.utcnow() - timedelta(days=i)).date()
+        day_str = day_date.isoformat()
+        trends.append({
+            "day": day_str,
+            "sms_count": sms_trend.get(day_str, 0),
+            "revenue": rev_trend.get(day_str, 0.0)
+        })
+
+    # 9. Wallet Distribution (Subscription vs PAYG)
+    dist_q = select(
+        func.sum(Wallet.subscription_credits).label("sub"),
+        func.sum(Wallet.payg_credits).label("payg")
+    )
+    dist_result = await db.execute(dist_q)
+    dist_row = dist_result.first()
+    
     return {
         "financials": {
             "total_revenue": round(total_revenue, 2),
             "total_liability": round(total_liability, 2),
             "total_network_cost": round(total_user_charges, 4),
             "estimated_profit": round(estimated_profit, 2),
+            "distribution": {
+                "subscription": float(dist_row.sub or 0),
+                "payg": float(dist_row.payg or 0)
+            }
         },
         "platform": {
             "total_organizations": total_orgs,
@@ -274,5 +330,6 @@ async def get_admin_overview(
             "failed": msg_stats.get(MessageStatus.FAILED, 0),
             "pending": msg_stats.get(MessageStatus.PENDING, 0) + msg_stats.get(MessageStatus.PROCESSING, 0),
         },
-        "recent_topups": recent_topups
+        "recent_topups": recent_topups,
+        "trends": trends
     }

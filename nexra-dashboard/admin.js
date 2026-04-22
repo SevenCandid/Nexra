@@ -377,14 +377,77 @@ const AdminStatCard = ({ label, value, sub, icon, colorBg, colorIcon, prefix }) 
             <${Icon} name=${icon} size=${22} className=${colorIcon} />
         </div>
         <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-black text-gray-400 dark:text-midnight-500 uppercase tracking-widest mb-1">${label}</p>
-            <p className="text-2xl font-black text-gray-900 dark:text-white truncate">
-                ${prefix || ''}${typeof value === 'number' ? value.toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : value}
-            </p>
-            ${sub && html`<p className="text-[11px] text-gray-400 dark:text-midnight-500 mt-0.5">${sub}</p>`}
+            <p className="text-[10px] font-bold text-gray-500 dark:text-midnight-400 uppercase tracking-widest truncate">${label}</p>
+            <h3 className="text-xl font-black text-gray-900 dark:text-white mt-1">
+                ${prefix}${typeof value === 'number' ? value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : value}
+            </h3>
+            ${sub && html`<p className="text-[10px] text-gray-400 dark:text-midnight-500 mt-1 font-medium truncate">${sub}</p>`}
         </div>
     </${Card}>
 `;
+
+const TrendChart = ({ data, dataKey, color, label, prefix = '' }) => {
+    if (!data || data.length === 0) return null;
+    
+    const height = 100;
+    const width = 400;
+    const padding = 10;
+    
+    const maxVal = Math.max(...data.map(d => d[dataKey])) * 1.2 || 10;
+    const points = data.map((d, i) => {
+        const x = (i / (data.length - 1)) * (width - padding * 2) + padding;
+        const y = height - ((d[dataKey] / maxVal) * (height - padding * 2) + padding);
+        return `${x},${y}`;
+    }).join(' ');
+
+    const lastVal = data[data.length - 1][dataKey];
+
+    return html`
+        <${Card} className="p-6 relative overflow-hidden group">
+            <div className="relative z-10 flex flex-col h-full">
+                <div className="flex items-center justify-between mb-4">
+                    <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">${label}</p>
+                        <h3 className="text-2xl font-black dark:text-white mt-1">
+                            ${prefix}${lastVal.toLocaleString()}
+                        </h3>
+                    </div>
+                    <div className=${`w-10 h-10 rounded-full flex items-center justify-center ${color === 'emerald' ? 'bg-emerald-50 text-emerald-600' : 'bg-primary-50 text-primary-600'}`}>
+                        <${Icon} name=${dataKey === 'revenue' ? 'trending-up' : 'activity'} size=${20} />
+                    </div>
+                </div>
+                
+                <div className="mt-auto pt-4">
+                    <svg viewBox="0 0 ${width} ${height}" className="w-full h-24 overflow-visible">
+                        <defs>
+                            <linearGradient id=${`grad-${dataKey}`} x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" style=${{ stopColor: color === 'emerald' ? '#10b981' : '#3b82f6', stopOpacity: 0.2 }} />
+                                <stop offset="100%" style=${{ stopColor: color === 'emerald' ? '#10b981' : '#3b82f6', stopOpacity: 0 }} />
+                            </linearGradient>
+                        </defs>
+                        <path
+                            d=${`M ${points} L ${width - padding},${height} L ${padding},${height} Z`}
+                            fill=${`url(#grad-${dataKey})`}
+                            className="transition-all duration-1000"
+                        />
+                        <polyline
+                            fill="none"
+                            stroke=${color === 'emerald' ? '#10b981' : '#3b82f6'}
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            points=${points}
+                            className="transition-all duration-1000"
+                        />
+                    </svg>
+                </div>
+            </div>
+            <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                 <span className="text-[10px] font-bold text-gray-400 uppercase">Last 14 Days</span>
+            </div>
+        </${Card}>
+    `;
+};
 
 const PlatformRow = ({ label, value, icon }) => html`
     <div className="flex items-center justify-between p-3 bg-gray-50/70 dark:bg-midnight-900/50 rounded-xl border border-gray-100 dark:border-midnight-800">
@@ -418,20 +481,25 @@ const BusinessOverviewPage = () => {
     `;
 
     if (!data) return html`<div className="p-12 text-center text-gray-500">No overview data available.</div>`;
-
-    const { financials, platform, recent_topups } = data;
-    const profitColor = financials.estimated_profit >= 0 ? 'text-emerald-500' : 'text-red-500';
+    
+    const { financials, platform, recent_topups, trends } = data;
     const deliveryRate = platform.total_messages > 0
         ? ((platform.delivered / platform.total_messages) * 100).toFixed(1)
         : '0.0';
 
     return html`
-        <div className="space-y-6 fade-in max-w-6xl mx-auto">
+        <div className="space-y-6 fade-in max-w-6xl mx-auto pb-20">
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-2xl font-bold dark:text-white">Business Overview</h2>
                     <p className="text-sm text-gray-500 dark:text-midnight-400 mt-1">Real-time platform financial health and message volume.</p>
                 </div>
+            </div>
+
+            <!-- Trend Charts -->
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <${TrendChart} data=${trends} dataKey="revenue" label="Daily Revenue" color="emerald" prefix="GH₵ " />
+                <${TrendChart} data=${trends} dataKey="sms_count" label="Daily SMS Traffic" color="blue" />
             </div>
 
             <!-- KPI Cards -->
@@ -448,33 +516,26 @@ const BusinessOverviewPage = () => {
                 />
                 <${AdminStatCard}
                     label="Network Cost" value=${financials.total_network_cost} prefix="GH₵ "
-                    sub="Paid to SMS providers" icon="zap"
+                    sub="Estimated provider costs" icon="activity"
+                    colorBg="bg-rose-50 dark:bg-rose-900/20" colorIcon="text-rose-600 dark:text-rose-400"
+                />
+                <${AdminStatCard}
+                    label="Est. Net Profit" value=${financials.estimated_profit} prefix="GH₵ "
+                    sub="Revenue minus costs" icon="briefcase"
                     colorBg="bg-blue-50 dark:bg-blue-900/20" colorIcon="text-blue-600 dark:text-blue-400"
                 />
-                <${Card} className="p-5 flex items-start gap-4 hover:shadow-lg transition-shadow duration-200">
-                    <div className="p-3 rounded-xl flex-shrink-0 bg-primary-50 dark:bg-primary-900/20">
-                        <${Icon} name="dollar-sign" size=${22} className="text-primary-600 dark:text-primary-400" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <p className="text-[10px] font-black text-gray-400 dark:text-midnight-500 uppercase tracking-widest mb-1">Est. Profit</p>
-                        <p className="text-2xl font-black ${profitColor} truncate">
-                            GH₵ ${Math.abs(financials.estimated_profit).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </p>
-                        <p className="text-[11px] text-gray-400 dark:text-midnight-500 mt-0.5">Revenue − Liability − Cost</p>
-                    </div>
-                </${Card}>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Platform Metrics -->
-                <${Card} className="p-6">
-                    <h3 className="text-xs font-black text-gray-400 dark:text-midnight-500 uppercase tracking-widest mb-4">Platform Performance</h3>
-                    <div className="space-y-2">
-                        <${PlatformRow} label="Total Organizations" value=${platform.total_organizations} icon="building" />
-                        <${PlatformRow} label="Total Messages Sent" value=${platform.total_messages} icon="send" />
-                        <${PlatformRow} label="Delivered Successfully" value=${platform.delivered} icon="check-circle" />
-                        <${PlatformRow} label="Failed / Undelivered" value=${platform.failed} icon="x-circle" />
-                        <${PlatformRow} label="Pending in Queue" value=${platform.pending} icon="loader" />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 space-y-6">
+                    <${Card} className="p-6">
+                        <h3 className="text-xs font-black text-gray-400 dark:text-midnight-500 uppercase tracking-widest mb-4">Platform Performance</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <${PlatformRow} label="Total Organizations" value=${platform.total_organizations} icon="building" />
+                            <${PlatformRow} label="Total Messages" value=${platform.total_messages} icon="send" />
+                            <${PlatformRow} label="Delivered" value=${platform.delivered} icon="check-circle" />
+                            <${PlatformRow} label="Failed" value=${platform.failed} icon="x-circle" />
+                        </div>
                         
                         <div className="mt-6 pt-6 border-t border-gray-100 dark:border-midnight-800">
                             <div className="flex justify-between text-xs font-bold text-gray-500 mb-2">
@@ -488,36 +549,78 @@ const BusinessOverviewPage = () => {
                                 ></div>
                             </div>
                         </div>
-                    </div>
-                </${Card}>
+                    </${Card}>
 
-                <!-- Recent Topups -->
-                <${Card} className="p-6">
-                    <h3 className="text-xs font-black text-gray-400 dark:text-midnight-500 uppercase tracking-widest mb-4">Recent Top-Ups</h3>
-                    ${recent_topups.length === 0 ? html`
-                        <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-                            <${Icon} name="inbox" size=${48} className="mb-3 opacity-20" />
-                            <p className="text-xs font-medium uppercase tracking-widest">No recent transactions</p>
+                    <${Card} className="p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-xs font-black text-gray-400 dark:text-midnight-500 uppercase tracking-widest">Recent Top-Ups</h3>
+                            <span className="text-[10px] font-bold text-gray-300">Live feed</span>
                         </div>
-                    ` : html`
-                        <div className="space-y-3">
-                            ${recent_topups.map(t => html`
-                                <div key=${t.id} className="flex items-center justify-between p-4 bg-gray-50/50 dark:bg-midnight-900/30 rounded-2xl border border-gray-100 dark:border-midnight-800/50">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/20 flex items-center justify-center">
-                                            <${Icon} name="arrow-down-left" size=${16} className="text-emerald-600 dark:text-emerald-400" />
+                        ${recent_topups.length === 0 ? html`
+                            <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                                <${Icon} name="inbox" size=${48} className="mb-3 opacity-20" />
+                                <p className="text-xs font-medium uppercase tracking-widest">No recent transactions</p>
+                            </div>
+                        ` : html`
+                            <div className="space-y-3">
+                                ${recent_topups.map(t => html`
+                                    <div key=${t.id} className="flex items-center justify-between p-4 bg-gray-50/50 dark:bg-midnight-900/30 rounded-2xl border border-gray-100 dark:border-midnight-800/50">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/20 flex items-center justify-center">
+                                                <${Icon} name="arrow-down-left" size=${16} className="text-emerald-600 dark:text-emerald-400" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-gray-900 dark:text-white leading-tight">${t.description}</p>
+                                                <p className="text-[10px] text-gray-400 dark:text-midnight-500 mt-0.5">${new Date(t.created_at).toLocaleDateString('en-GH', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="text-sm font-bold text-gray-900 dark:text-white leading-tight">${t.description}</p>
-                                            <p className="text-[10px] text-gray-400 dark:text-midnight-500 mt-0.5">${new Date(t.created_at).toLocaleDateString('en-GH', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-                                        </div>
+                                        <span className="text-sm font-black text-emerald-500">+GH₵${t.amount.toFixed(2)}</span>
                                     </div>
-                                    <span className="text-sm font-black text-emerald-500">+GH₵${t.amount.toFixed(2)}</span>
+                                `)}
+                            </div>
+                        `}
+                    </${Card}>
+                </div>
+
+                <div className="space-y-6">
+                    <${Card} className="p-6">
+                        <h3 className="text-xs font-black text-gray-400 dark:text-midnight-500 uppercase tracking-widest mb-6">Wallet Distribution</h3>
+                        <div className="space-y-6">
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full bg-primary-500"></div>
+                                        <span className="text-xs text-gray-500 font-bold uppercase tracking-tighter">PAYG Credits</span>
+                                    </div>
+                                    <span className="text-sm font-black dark:text-white">GH₵ ${financials.distribution?.payg.toLocaleString()}</span>
                                 </div>
-                            `)}
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+                                        <span className="text-xs text-gray-500 font-bold uppercase tracking-tighter">Subscription</span>
+                                    </div>
+                                    <span className="text-sm font-black dark:text-white">GH₵ ${financials.distribution?.subscription.toLocaleString()}</span>
+                                </div>
+                            </div>
+                            
+                            <div className="flex h-4 w-full bg-gray-100 dark:bg-midnight-800 rounded-full overflow-hidden shadow-inner">
+                                ${(() => {
+                                    const total = financials.distribution?.payg + financials.distribution?.subscription || 1;
+                                    const paygPerc = (financials.distribution?.payg / total) * 100;
+                                    return html`
+                                        <div className="h-full bg-primary-500 shadow-lg shadow-primary-500/20" style=${{ width: `${paygPerc}%` }}></div>
+                                        <div className="h-full bg-amber-500 shadow-lg shadow-amber-500/20" style=${{ width: `${100 - paygPerc}%` }}></div>
+                                    `;
+                                })()}
+                            </div>
+                            
+                            <div className="p-4 bg-primary-50 dark:bg-primary-900/10 rounded-2xl border border-primary-100 dark:border-primary-900/20 mt-4">
+                                <p className="text-[10px] text-primary-700 dark:text-primary-400 font-bold uppercase tracking-widest">Revenue Impact</p>
+                                <p className="text-xs text-primary-600/80 dark:text-primary-400/60 mt-1">PAYG accounts for <span className="font-bold text-primary-700 dark:text-primary-300">${((financials.distribution?.payg / (financials.distribution?.payg + financials.distribution?.subscription || 1)) * 100).toFixed(0)}%</span> of current platform liability.</p>
+                            </div>
                         </div>
-                    `}
-                </${Card}>
+                    </${Card}>
+                </div>
             </div>
         </div>
     `;
@@ -1518,49 +1621,155 @@ const GlobalSearchPage = () => {
 
 const AuditLogPage = () => {
     const [logs, setLogs] = useState([]);
+    const [filteredLogs, setFilteredLogs] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [actionFilter, setActionFilter] = useState('');
+    const [selectedLog, setSelectedLog] = useState(null);
 
     useEffect(() => {
         apiClient.get('/admin/audit-logs')
-            .then(res => { setLogs(res.data); setLoading(false); })
+            .then(res => { 
+                setLogs(res.data); 
+                setFilteredLogs(res.data);
+                setLoading(false); 
+            })
             .catch(() => setLoading(false));
     }, []);
 
-    if (loading) return html`<div className="p-20 text-center animate-pulse text-gray-400">Loading audit trail...</div>`;
+    useEffect(() => {
+        const filtered = logs.filter(log => {
+            const matchesSearch = log.admin_email.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesAction = actionFilter === '' || log.action === actionFilter;
+            return matchesSearch && matchesAction;
+        });
+        setFilteredLogs(filtered);
+    }, [searchTerm, actionFilter, logs]);
+
+    if (loading) return html`
+        <div className="flex flex-col items-center justify-center py-20 text-gray-400 text-sm gap-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary-500 border-t-transparent"></div>
+            Loading audit trail...
+        </div>
+    `;
+
+    const uniqueActions = [...new Set(logs.map(l => l.action))].sort();
 
     return html`
-        <div className="space-y-6 fade-in max-w-6xl mx-auto">
-            <h2 className="text-2xl font-bold dark:text-white">Audit Logs</h2>
+        <div className="space-y-6 fade-in max-w-6xl mx-auto pb-20">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h2 className="text-2xl font-bold dark:text-white">Audit Logs</h2>
+                    <p className="text-sm text-gray-500 dark:text-midnight-400">Security and management activity history.</p>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="relative">
+                        <${Icon} name="search" size=${16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Search Admin Email..."
+                            value=${searchTerm}
+                            onChange=${(e) => setSearchTerm(e.target.value)}
+                            className="pl-10 pr-4 py-2 rounded-xl border border-gray-100 dark:border-midnight-800 bg-white dark:bg-midnight-900 text-sm focus:ring-2 focus:ring-primary-500 outline-none transition-all w-full sm:w-64"
+                        />
+                    </div>
+                    <select
+                        value=${actionFilter}
+                        onChange=${(e) => setActionFilter(e.target.value)}
+                        className="px-4 py-2 rounded-xl border border-gray-100 dark:border-midnight-800 bg-white dark:bg-midnight-900 text-sm focus:ring-2 focus:ring-primary-500 outline-none transition-all"
+                    >
+                        <option value="">All Actions</option>
+                        ${uniqueActions.map(action => html`<option value=${action}>${action}</option>`)}
+                    </select>
+                </div>
+            </div>
+
             <${Card} className="overflow-hidden">
-                <table className="w-full text-left">
-                    <thead className="bg-gray-50 dark:bg-midnight-900 border-b border-gray-100 dark:border-midnight-800">
-                        <tr>
-                            <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Admin</th>
-                            <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Action</th>
-                            <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Target</th>
-                            <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Timestamp</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50 dark:divide-midnight-800">
-                        ${logs.map(log => html`
-                            <tr key=${log.id} className="hover:bg-gray-50/50 dark:hover:bg-midnight-900/20 transition-colors">
-                                <td className="px-6 py-4">
-                                    <p className="text-xs font-bold text-gray-900 dark:text-white">${log.admin_email}</p>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-primary-600 bg-primary-50 px-2 py-1 rounded">${log.action}</span>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <p className="text-xs text-gray-500">${log.target_type}: ${log.target_id || 'N/A'}</p>
-                                </td>
-                                <td className="px-6 py-4 text-right text-xs text-gray-400">
-                                    ${new Date(log.created_at).toLocaleString()}
-                                </td>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead className="bg-gray-50 dark:bg-midnight-900 border-b border-gray-100 dark:border-midnight-800">
+                            <tr>
+                                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Admin</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Action</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Target</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Timestamp</th>
                             </tr>
-                        `)}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50 dark:divide-midnight-800">
+                            ${filteredLogs.map(log => html`
+                                <tr 
+                                    key=${log.id} 
+                                    onClick=${() => setSelectedLog(log)}
+                                    className="hover:bg-gray-50/50 dark:hover:bg-midnight-900/20 transition-colors cursor-pointer group"
+                                >
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-midnight-800 flex items-center justify-center text-primary-600 font-bold text-xs">
+                                                ${log.admin_email.charAt(0).toUpperCase()}
+                                            </div>
+                                            <p className="text-xs font-bold text-gray-900 dark:text-white">${log.admin_email}</p>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-primary-600 bg-primary-50 dark:bg-primary-900/20 px-2 py-1 rounded">
+                                            ${log.action}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <p className="text-xs text-gray-500 dark:text-midnight-400">
+                                            <span className="font-bold text-gray-700 dark:text-midnight-200">${log.target_type}</span>: ${log.target_id || 'N/A'}
+                                        </p>
+                                    </td>
+                                    <td className="px-6 py-4 text-right text-xs text-gray-400 group-hover:text-primary-500 transition-colors">
+                                        ${new Date(log.created_at).toLocaleString()}
+                                    </td>
+                                </tr>
+                            `)}
+                            ${filteredLogs.length === 0 && html`
+                                <tr>
+                                    <td colSpan="4" className="px-6 py-12 text-center text-gray-400">
+                                        No logs found matching your criteria.
+                                    </td>
+                                </tr>
+                            `}
+                        </tbody>
+                    </table>
+                </div>
             </${Card}>
+
+            <${Modal} 
+                isOpen=${!!selectedLog} 
+                onClose=${() => setSelectedLog(null)}
+                title="Action Details"
+            >
+                <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Admin</p>
+                            <p className="text-sm font-bold dark:text-white mt-1">${selectedLog?.admin_email}</p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Timestamp</p>
+                            <p className="text-sm dark:text-white mt-1">${selectedLog ? new Date(selectedLog.created_at).toLocaleString() : ''}</p>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Action</p>
+                        <p className="text-sm font-black text-primary-600 uppercase mt-1">${selectedLog?.action}</p>
+                    </div>
+
+                    <div className="p-4 bg-gray-50 dark:bg-midnight-950 rounded-2xl border border-gray-100 dark:border-midnight-800">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Technical Data</p>
+                        <pre className="text-[11px] font-mono text-gray-600 dark:text-midnight-300 overflow-x-auto whitespace-pre-wrap">
+                            ${JSON.stringify(selectedLog?.details || {}, null, 2)}
+                        </pre>
+                    </div>
+                    
+                    <${Button} className="w-full" onClick=${() => setSelectedLog(null)}>Close</${Button}>
+                </div>
+            </${Modal}>
         </div>
     `;
 };
