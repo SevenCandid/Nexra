@@ -350,6 +350,158 @@ const Dropdown = ({ trigger, children, align = 'right' }) => {
 // ADMIN COMPONENTS
 // ============================================================================
 
+const AdminStatCard = ({ label, value, sub, icon, colorBg, colorIcon, prefix }) => html`
+    <${Card} className="p-5 flex items-start gap-4 hover:shadow-lg transition-shadow duration-200">
+        <div className="p-3 rounded-xl flex-shrink-0 ${colorBg}">
+            <${Icon} name=${icon} size=${22} className=${colorIcon} />
+        </div>
+        <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-black text-gray-400 dark:text-midnight-500 uppercase tracking-widest mb-1">${label}</p>
+            <p className="text-2xl font-black text-gray-900 dark:text-white truncate">
+                ${prefix || ''}${typeof value === 'number' ? value.toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : value}
+            </p>
+            ${sub && html`<p className="text-[11px] text-gray-400 dark:text-midnight-500 mt-0.5">${sub}</p>`}
+        </div>
+    </${Card}>
+`;
+
+const PlatformRow = ({ label, value, icon }) => html`
+    <div className="flex items-center justify-between p-3 bg-gray-50/70 dark:bg-midnight-900/50 rounded-xl border border-gray-100 dark:border-midnight-800">
+        <div className="flex items-center gap-2.5">
+            <${Icon} name=${icon} size=${15} className="text-gray-400 dark:text-midnight-500" />
+            <span className="text-xs font-semibold text-gray-600 dark:text-midnight-300">${label}</span>
+        </div>
+        <span className="text-sm font-black text-gray-900 dark:text-white">${typeof value === 'number' ? value.toLocaleString() : value}</span>
+    </div>
+`;
+
+const BusinessOverviewPage = () => {
+    const { showToast } = useToast();
+    const [data, setData] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        apiClient.get('/analytics/admin/overview')
+            .then(res => { setData(res.data); setLoading(false); })
+            .catch(() => {
+                showToast('Failed to load financial data', 'error');
+                setLoading(false);
+            });
+    }, []);
+
+    if (loading) return html`
+        <div className="flex flex-col items-center justify-center py-20 text-gray-400 text-sm gap-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary-500 border-t-transparent"></div>
+            Loading platform financials...
+        </div>
+    `;
+
+    if (!data) return html`<div className="p-12 text-center text-gray-500">No overview data available.</div>`;
+
+    const { financials, platform, recent_topups } = data;
+    const profitColor = financials.estimated_profit >= 0 ? 'text-emerald-500' : 'text-red-500';
+    const deliveryRate = platform.total_messages > 0
+        ? ((platform.delivered / platform.total_messages) * 100).toFixed(1)
+        : '0.0';
+
+    return html`
+        <div className="space-y-6 fade-in max-w-6xl mx-auto">
+            <div className="flex items-center justify-between">
+                <div>
+                    <h2 className="text-2xl font-bold dark:text-white">Business Overview</h2>
+                    <p className="text-sm text-gray-500 dark:text-midnight-400 mt-1">Real-time platform financial health and message volume.</p>
+                </div>
+            </div>
+
+            <!-- KPI Cards -->
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <${AdminStatCard}
+                    label="Total Revenue" value=${financials.total_revenue} prefix="GH₵ "
+                    sub="All-time user top-ups" icon="trending-up"
+                    colorBg="bg-emerald-50 dark:bg-emerald-900/20" colorIcon="text-emerald-600 dark:text-emerald-400"
+                />
+                <${AdminStatCard}
+                    label="User Liability" value=${financials.total_liability} prefix="GH₵ "
+                    sub="Current wallet balances" icon="shield-alert"
+                    colorBg="bg-amber-50 dark:bg-amber-900/20" colorIcon="text-amber-600 dark:text-amber-400"
+                />
+                <${AdminStatCard}
+                    label="Network Cost" value=${financials.total_network_cost} prefix="GH₵ "
+                    sub="Paid to SMS providers" icon="zap"
+                    colorBg="bg-blue-50 dark:bg-blue-900/20" colorIcon="text-blue-600 dark:text-blue-400"
+                />
+                <${Card} className="p-5 flex items-start gap-4 hover:shadow-lg transition-shadow duration-200">
+                    <div className="p-3 rounded-xl flex-shrink-0 bg-primary-50 dark:bg-primary-900/20">
+                        <${Icon} name="dollar-sign" size=${22} className="text-primary-600 dark:text-primary-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-[10px] font-black text-gray-400 dark:text-midnight-500 uppercase tracking-widest mb-1">Est. Profit</p>
+                        <p className="text-2xl font-black ${profitColor} truncate">
+                            GH₵ ${Math.abs(financials.estimated_profit).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                        <p className="text-[11px] text-gray-400 dark:text-midnight-500 mt-0.5">Revenue − Liability − Cost</p>
+                    </div>
+                </${Card}>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Platform Metrics -->
+                <${Card} className="p-6">
+                    <h3 className="text-xs font-black text-gray-400 dark:text-midnight-500 uppercase tracking-widest mb-4">Platform Performance</h3>
+                    <div className="space-y-2">
+                        <${PlatformRow} label="Total Organizations" value=${platform.total_organizations} icon="building" />
+                        <${PlatformRow} label="Total Messages Sent" value=${platform.total_messages} icon="send" />
+                        <${PlatformRow} label="Delivered Successfully" value=${platform.delivered} icon="check-circle" />
+                        <${PlatformRow} label="Failed / Undelivered" value=${platform.failed} icon="x-circle" />
+                        <${PlatformRow} label="Pending in Queue" value=${platform.pending} icon="loader" />
+                        
+                        <div className="mt-6 pt-6 border-t border-gray-100 dark:border-midnight-800">
+                            <div className="flex justify-between text-xs font-bold text-gray-500 mb-2">
+                                <span>Global Delivery Rate</span>
+                                <span className="text-emerald-500 font-black">${deliveryRate}%</span>
+                            </div>
+                            <div className="w-full h-2 bg-gray-100 dark:bg-midnight-800 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all duration-1000"
+                                    style=${{ width: `${deliveryRate}%` }}
+                                ></div>
+                            </div>
+                        </div>
+                    </div>
+                </${Card}>
+
+                <!-- Recent Topups -->
+                <${Card} className="p-6">
+                    <h3 className="text-xs font-black text-gray-400 dark:text-midnight-500 uppercase tracking-widest mb-4">Recent Top-Ups</h3>
+                    ${recent_topups.length === 0 ? html`
+                        <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                            <${Icon} name="inbox" size=${48} className="mb-3 opacity-20" />
+                            <p className="text-xs font-medium uppercase tracking-widest">No recent transactions</p>
+                        </div>
+                    ` : html`
+                        <div className="space-y-3">
+                            ${recent_topups.map(t => html`
+                                <div key=${t.id} className="flex items-center justify-between p-4 bg-gray-50/50 dark:bg-midnight-900/30 rounded-2xl border border-gray-100 dark:border-midnight-800/50">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/20 flex items-center justify-center">
+                                            <${Icon} name="arrow-down-left" size=${16} className="text-emerald-600 dark:text-emerald-400" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-gray-900 dark:text-white leading-tight">${t.description}</p>
+                                            <p className="text-[10px] text-gray-400 dark:text-midnight-500 mt-0.5">${new Date(t.created_at).toLocaleDateString('en-GH', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                                        </div>
+                                    </div>
+                                    <span className="text-sm font-black text-emerald-500">+GH₵${t.amount.toFixed(2)}</span>
+                                </div>
+                            `)}
+                        </div>
+                    `}
+                </${Card}>
+            </div>
+        </div>
+    `;
+};
+
 const AdminApprovalPage = () => {
     const { showToast } = useToast();
     const [requests, setRequests] = useState([]);
@@ -1059,6 +1211,14 @@ const BottomNav = ({ currentPage, onNavigate }) => {
         <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/90 dark:bg-midnight-950/90 backdrop-blur-xl border-t border-gray-100 dark:border-midnight-800 px-6 py-3 pb-safe">
             <div className="flex items-center justify-around max-w-md mx-auto">
                 <button 
+                    onClick=${() => onNavigate('overview')}
+                    className="flex flex-col items-center gap-1 transition-colors ${currentPage === 'overview' ? 'text-primary-600 font-bold' : 'text-gray-400'}"
+                >
+                    <${Icon} name="trending-up" size=${20} />
+                    <span className="text-[10px] uppercase tracking-wider">Overview</span>
+                </button>
+                
+                <button 
                     onClick=${() => onNavigate('approvals')}
                     className="flex flex-col items-center gap-1 transition-colors ${currentPage === 'approvals' ? 'text-primary-600 font-bold' : 'text-gray-400'}"
                 >
@@ -1108,7 +1268,17 @@ const AdminSidebar = ({ currentPage, onNavigate }) => {
 
             <nav className="flex-1 p-4 space-y-4">
                 <div>
-                     <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Management</p>
+                     <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Platform</p>
+                     <button
+                        onClick=${() => onNavigate('overview')}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentPage === 'overview'
+                            ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 font-bold'
+                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}"
+                    >
+                        <${Icon} name="trending-up" size=${20} />
+                        <span>Business Overview</span>
+                    </button>
+                     <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 mt-4">Management</p>
                      <button
                         onClick=${() => onNavigate('approvals')}
                         className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentPage === 'approvals'
@@ -1184,6 +1354,7 @@ const AdminApp = () => {
 
     const renderPage = () => {
         switch (currentPage) {
+            case 'overview': return html`<${BusinessOverviewPage} />`;
             case 'approvals': return html`<${AdminApprovalPage} />`;
             case 'management': return html`<${PlatformManagementPage} />`;
             case 'staff': return html`<${StaffManagementPage} />`;
@@ -1212,6 +1383,7 @@ const AdminApp = () => {
 
     const getPageTitle = () => {
         switch (currentPage) {
+            case 'overview': return 'Business Overview';
             case 'approvals': return 'Approvals';
             case 'management': return 'Management';
             case 'staff': return 'Staff Management';
