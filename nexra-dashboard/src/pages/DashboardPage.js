@@ -1,11 +1,14 @@
 import { html, useEffect, useRef, useState } from '../utils/htm.js';
+import { useAuth } from '../contexts/AuthContext.js';
 import { Card } from '../components/ui/Card.js';
 import { Button } from '../components/ui/Button.js';
 import { Icon } from '../components/ui/Icon.js';
 import { Badge } from '../components/ui/Badge.js';
 import apiClient from '../api/client.js';
+import { AdminOverviewSection } from './AdminReportsPage.js';
 
 export const DashboardPage = () => {
+    const { user } = useAuth();
     const [analytics, setAnalytics] = useState(null);
     const [campaigns, setCampaigns] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -278,6 +281,12 @@ export const DashboardPage = () => {
                     Contacts
                 </${Button}>
             </div>
+
+            ${user?.role === 'superadmin' && html`
+                <div className="pt-2 border-t border-dashed border-gray-200 dark:border-midnight-800">
+                    <${AdminOverviewSection} />
+                </div>
+            `}
         </div>
     `;
 };
