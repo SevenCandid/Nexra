@@ -37,7 +37,7 @@ async def send_sms(
         )
     
     # 1. Check Wallet Balance (Basic assumption: 1 credit per SMS)
-    result = await db.execute(select(Wallet).where(Wallet.user_id == current_user.id))
+    result = await db.execute(select(Wallet).where(Wallet.organization_id == current_user.organization_id))
     wallet = result.scalar_one_or_none()
     
     if not wallet or wallet.balance < 1:

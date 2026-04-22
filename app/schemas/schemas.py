@@ -17,6 +17,8 @@ class User(UserBase):
     role: str
     organization_id: int
     organization_name: Optional[str] = None
+    plan_name: Optional[str] = None
+    plan_slug: Optional[str] = None
 
     class Config:
         from_attributes = True

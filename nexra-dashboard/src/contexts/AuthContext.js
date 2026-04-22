@@ -8,6 +8,17 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        // Check for impersonation token in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const impToken = urlParams.get('impersonate_token');
+        
+        if (impToken) {
+            localStorage.setItem('access_token', impToken);
+            // Clean up URL without refreshing
+            const newUrl = window.location.pathname + window.location.hash;
+            window.history.replaceState({}, '', newUrl);
+        }
+
         const token = localStorage.getItem('access_token');
         if (token) {
             fetchUser();

@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, APIKeyHeader
 from jose import jwt, JWTError
@@ -97,3 +98,51 @@ async def get_user_by_api_key(
             detail="Invalid or inactive API Key",
         )
     return user
+
+async def get_current_active_superadmin(
+    current_user: User = Depends(get_current_active_user),
+) -> User:
+    if current_user.role != UserRole.SUPERADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="The user does not have enough privileges"
+        )
+    return current_user
+
+async def get_current_active_platform_manager(
+    current_user: User = Depends(get_current_active_user),
+) -> User:
+    """Allows Superadmins OR Staff with manage_platform permission."""
+    if current_user.role == UserRole.SUPERADMIN:
+        return current_user
+    
+    if current_user.role == UserRole.STAFF:
+        perms = current_user.permissions or {}
+        if perms.get("manage_platform") is True:
+            return current_user
+            
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="You do not have permission to manage the platform"
+    )
+
+async def log_admin_action(
+    db: AsyncSession, 
+    admin: User, 
+    action: str, 
+    target_type: str, 
+    target_id: Optional[str] = None, 
+    details: Optional[dict] = None
+):
+    """Utility to record administrative actions in the audit log."""
+    from app.db.models import AdminAuditLog
+    log = AdminAuditLog(
+        admin_id=admin.id,
+        admin_email=admin.email,
+        action=action,
+        target_type=target_type,
+        target_id=target_id,
+        details=details
+    )
+    db.add(log)
+    await db.flush()

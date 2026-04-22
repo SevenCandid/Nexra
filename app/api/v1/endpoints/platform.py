@@ -2,6 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
 from app.api import deps
 from app.db.models import User, Organization, UserRole
 from app.db.database import get_db
@@ -135,6 +136,7 @@ async def delete_user(
     await db.commit()
     return {"status": "success", "message": "User deleted"}
 
+
 @router.get("/organizations")
 async def list_all_organizations(
     db: AsyncSession = Depends(get_db),
@@ -147,9 +149,25 @@ async def list_all_organizations(
     total = count_result.scalar()
 
     result = await db.execute(
-        select(Organization).order_by(Organization.created_at.desc()).offset(skip).limit(limit)
+        select(Organization)
+        .options(selectinload(Organization.plan))
+        .order_by(Organization.created_at.desc())
+        .offset(skip).limit(limit)
     )
-    return {"items": result.scalars().all(), "total": total}
+    
+    orgs = result.scalars().all()
+    items = []
+    for org in orgs:
+        items.append({
+            "id": org.id,
+            "name": org.name,
+            "slug": org.slug,
+            "is_active": org.is_active,
+            "created_at": org.created_at,
+            "plan_name": org.plan.name if org.plan else "N/A"
+        })
+        
+    return {"items": items, "total": total}
 
 @router.patch("/organizations/{org_id}")
 async def update_organization_status(

@@ -457,3 +457,17 @@ class WebhookSubscription(Base):
     user = relationship("User")
 
     __table_args__ = (Index('ix_webhooks_org_url', 'organization_id', 'url', unique=True),)
+
+class SystemAnnouncement(Base):
+    """Platform-wide announcements visible to all users."""
+    __tablename__ = "system_announcements"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    title: Mapped[str] = mapped_column(String(255))
+    content: Mapped[str] = mapped_column(Text)
+    type: Mapped[str] = mapped_column(String(50), default="info") # info, warning, success, emergency
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_by: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+

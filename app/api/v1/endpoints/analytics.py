@@ -201,14 +201,15 @@ async def get_admin_overview(
     total_liability = float(liability_result.scalar() or 0)
 
     # 3. Total SMS Network Cost (what we paid to send messages)
+    # Note: Currently we're using User Charge as a fallback if provider_cost isn't set
     cost_q = select(func.coalesce(func.sum(SMSMessage.cost), 0)).where(  # type: ignore
-        SMSMessage.cost.is_not(None)
+        SMSMessage.cost.is_not(None),
+        SMSMessage.is_refunded == False
     )
     cost_result = await db.execute(cost_q)
-    total_network_cost = float(cost_result.scalar() or 0)
+    total_user_charges = float(cost_result.scalar() or 0)
 
-    # 4. Estimated Profit
-    estimated_profit = total_revenue - total_liability - total_network_cost
+
 
     # 5. Platform-wide message counts
     msg_stats_q = (
@@ -219,6 +220,18 @@ async def get_admin_overview(
     msg_stats = {row.status: row.count for row in msg_stats_result}
 
     total_messages = sum(msg_stats.values())
+    
+    # 4. Estimated Profit
+    # Base cost is 0.031 GHS per SMS
+    # Profit = (What we charged the user) - (What we paid the network)
+    # Note: We subtract refunded messages already from total_user_charges
+    # We only calculate profit on messages that were NOT refunded
+    refunded_q = select(func.count(SMSMessage.id)).where(SMSMessage.is_refunded == True)
+    refunded_result = await db.execute(refunded_q)
+    refunded_count = int(refunded_result.scalar() or 0)
+    
+    billable_messages = total_messages - refunded_count
+    estimated_profit = total_user_charges - (billable_messages * 0.031)
 
     # 6. Total active organizations
     from app.db.models import Organization
@@ -251,7 +264,7 @@ async def get_admin_overview(
         "financials": {
             "total_revenue": round(total_revenue, 2),
             "total_liability": round(total_liability, 2),
-            "total_network_cost": round(total_network_cost, 4),
+            "total_network_cost": round(total_user_charges, 4),
             "estimated_profit": round(estimated_profit, 2),
         },
         "platform": {

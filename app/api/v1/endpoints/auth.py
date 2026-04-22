@@ -178,14 +178,23 @@ async def read_users_me(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(deps.get_current_active_user)
 ):
-    # Fetch organization name
-    query = select(User, Organization.name.label("organization_name")).join(Organization).where(User.id == current_user.id)
+    # Fetch organization name and plan info
+    from sqlalchemy.orm import selectinload
+    query = (
+        select(User)
+        .options(selectinload(User.organization).selectinload(Organization.plan))
+        .where(User.id == current_user.id)
+    )
     result = await db.execute(query)
-    row = result.first()
-    if row:
-        user_obj = row[0]
-        user_obj.organization_name = row[1]
-        return user_obj
+    user = result.scalar_one_or_none()
+    
+    if user:
+        user_data = UserSchema.from_orm(user)
+        user_data.organization_name = user.organization.name
+        user_data.plan_name = user.organization.plan.name if user.organization.plan else "Pay As You Go"
+        user_data.plan_slug = user.organization.plan.slug if user.organization.plan else "payg"
+        return user_data
+        
     return current_user
 
 @router.get("/google/login")
@@ -332,3 +341,30 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
     except Exception as e:
         logger.exception(f"OAuth: CRITICAL ERROR in callback: {str(e)}")
         return RedirectResponse(url="http://localhost:3000/#/login?error=internal_server_error")
+
+@router.post("/admin/impersonate/{user_id}", response_model=Token)
+async def admin_impersonate(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_platform_manager)
+):
+    """
+    Superadmin only: Impersonate any user by generating a new access token for their ID.
+    """
+    result = await db.execute(select(User).where(User.id == user_id))
+    target_user = result.scalar_one_or_none()
+    
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    await deps.log_admin_action(
+        db, current_user, "impersonate_user", "user", 
+        str(target_user.id), {"email": target_user.email}
+    )
+    
+    return {
+        "access_token": security.create_access_token(target_user.id),
+        "refresh_token": security.create_refresh_token(target_user.id),
+        "token_type": "bearer",
+    }
+

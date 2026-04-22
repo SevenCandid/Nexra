@@ -5,7 +5,42 @@ import { Button } from '../components/ui/Button.js';
 import { Icon } from '../components/ui/Icon.js';
 import { Badge } from '../components/ui/Badge.js';
 import apiClient from '../api/client.js';
-import { AdminOverviewSection } from './AdminReportsPage.js';
+
+const AnnouncementsBanner = () => {
+    const [announcements, setAnnouncements] = useState([]);
+
+    useEffect(() => {
+        apiClient.get('/admin/announcements/active')
+            .then(res => setAnnouncements(res.data))
+            .catch(() => {});
+    }, []);
+
+    if (announcements.length === 0) return null;
+
+    return html`
+        <div className="space-y-3 mb-6">
+            ${announcements.map(ann => html`
+                <div key=${ann.id} className="relative overflow-hidden p-4 rounded-2xl border flex gap-4 animate-slide-up shadow-sm transition-all hover:shadow-md
+                    ${ann.type === 'warning' ? 'bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-950/20 dark:border-amber-900/30 dark:text-amber-400' : 
+                      ann.type === 'emergency' ? 'bg-rose-50 border-rose-200 text-rose-800 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-400' : 
+                      'bg-primary-50 border-primary-100 text-primary-800 dark:bg-primary-900/10 dark:border-primary-900/30 dark:text-primary-400'}">
+                    <div className="flex-shrink-0">
+                        <${Icon} 
+                            name=${ann.type === 'warning' ? 'alert-triangle' : ann.type === 'emergency' ? 'flame' : 'megaphone'} 
+                            size=${24} 
+                            className="opacity-80" 
+                        />
+                    </div>
+                    <div>
+                        <p className="text-sm font-black uppercase tracking-widest leading-none mb-1 opacity-70">Platform Broadcast</p>
+                        <h4 className="font-bold text-lg leading-tight mb-1">${ann.title}</h4>
+                        <p className="text-sm opacity-90">${ann.content}</p>
+                    </div>
+                </div>
+            `)}
+        </div>
+    `;
+};
 
 export const DashboardPage = () => {
     const { user } = useAuth();
@@ -156,6 +191,8 @@ export const DashboardPage = () => {
 
     return html`
         <div className="space-y-6 fade-in">
+            <${AnnouncementsBanner} />
+            
             <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white">Pulse Overview</h2>
                 <div className="flex items-center gap-1 bg-gray-100 dark:bg-midnight-900 p-1 rounded-lg">
@@ -282,11 +319,6 @@ export const DashboardPage = () => {
                 </${Button}>
             </div>
 
-            ${user?.role === 'superadmin' && html`
-                <div className="pt-2 border-t border-dashed border-gray-200 dark:border-midnight-800">
-                    <${AdminOverviewSection} />
-                </div>
-            `}
         </div>
     `;
 };

@@ -29,3 +29,7 @@ app.db
 !entities.txt
 !entities_new.txt
 !enum_test_log.txt
+
+# Gemini / Brain
+brain/
+artifacts/

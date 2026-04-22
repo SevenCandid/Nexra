@@ -7,11 +7,122 @@ import { Card } from '../components/ui/Card.js';
 import { Icon } from '../components/ui/Icon.js';
 import { Input } from '../components/ui/Input.js';
 import { Modal } from '../components/ui/Modal.js';
+import { Badge } from '../components/ui/Badge.js';
 
 const PAYSTACK_PUBLIC_KEY = 'pk_live_f2bc33d7eb129d525b3786314c8054415a262ad7';
 
+const PricingComparison = ({ userPlan, onBuyPlan, onTopup }) => {
+    const [expandedPlan, setExpandedPlan] = useState(null);
+
+    const plans = [
+        {
+            slug: 'payg',
+            name: 'Pay As You Go',
+            subtitle: 'No commitment',
+            price: 'Custom',
+            unit: '',
+            rate: '0.0600',
+            features: [
+                'Instant Activation',
+                'Standard Delivery Speed',
+                'Basic Analytics Dashboard',
+                'Community Support'
+            ]
+        },
+        {
+            slug: 'starter',
+            name: 'Starter',
+            subtitle: 'For growing businesses',
+            price: '25.00',
+            unit: '500 Messages',
+            rate: '0.0500',
+            features: [
+                'Priority Delivery Speed',
+                'Advanced Campaign Reports',
+                'Contact Groups & Segments',
+                'Email Support'
+            ]
+        },
+        {
+            slug: 'enterprise',
+            name: 'Enterprise',
+            subtitle: 'Maximum performance',
+            price: '50.00',
+            unit: '1,250 Messages',
+            rate: '0.0400',
+            features: [
+                'Ultra-Fast Delivery (High TPS)',
+                'Dedicated Account Manager',
+                'Custom API Integrations',
+                '24/7 Phone & Priority Support'
+            ]
+        }
+    ];
+
+    return html`
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            ${plans.map(plan => html`
+                <${Card} key=${plan.slug} className="p-6 flex flex-col transition-all duration-300 ${userPlan === plan.slug ? 'ring-2 ring-primary-500 bg-primary-50/5' : 'hover:shadow-md'}">
+                    <div className="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 className="font-bold text-gray-900 dark:text-white uppercase tracking-tighter">${plan.name}</h3>
+                            <p className="text-[10px] text-gray-500 uppercase tracking-widest">${plan.subtitle}</p>
+                        </div>
+                        ${userPlan === plan.slug && html`<${Badge} variant="success" className="text-[10px] px-2 py-0.5">Active</${Badge}>`}
+                    </div>
+
+                    <div className="mb-6">
+                        <div className="flex items-baseline gap-1">
+                            <span className="text-3xl font-black text-gray-900 dark:text-white">${plan.price === 'Custom' ? plan.price : `GH₵ ${plan.price}`}</span>
+                            <span className="text-gray-500 text-sm font-medium">${plan.unit}</span>
+                        </div>
+                        <p className="text-[10px] text-primary-600 font-bold mt-1 uppercase tracking-tighter">Rate: ${plan.rate} GHS / SMS</p>
+                    </div>
+
+                    <button 
+                        onClick=${() => setExpandedPlan(expandedPlan === plan.slug ? null : plan.slug)}
+                        className="flex items-center justify-between w-full py-2 px-4 rounded-lg bg-gray-50 dark:bg-white/5 text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 transition-colors"
+                    >
+                        <span>${expandedPlan === plan.slug ? 'Hide Features' : 'View More Features'}</span>
+                        <${Icon} name=${expandedPlan === plan.slug ? 'chevron-up' : 'chevron-down'} size=${14} />
+                    </button>
+
+                    <div className="overflow-hidden transition-all duration-300" style=${{ maxHeight: expandedPlan === plan.slug ? '400px' : '0', opacity: expandedPlan === plan.slug ? '1' : '0' }}>
+                        <ul className="pt-6 space-y-3">
+                            ${plan.features.map(feature => html`
+                                <li key=${feature} className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                                    <${Icon} name="check-circle" size=${14} className="text-emerald-500 flex-shrink-0" />
+                                    <span>${feature}</span>
+                                </li>
+                            `)}
+                        </ul>
+                    </div>
+
+                    <div className="mt-auto pt-8">
+                        ${plan.slug === 'payg' ? html`
+                            <${Button} variant="outline" className="w-full font-bold uppercase tracking-tight text-xs py-3" onClick=${onTopup}>
+                                <${Icon} name="plus" size=${14} />
+                                Top Up Balance
+                            </${Button}>
+                        ` : html`
+                            <${Button} 
+                                variant=${userPlan === plan.slug ? 'outline' : 'primary'} 
+                                className="w-full font-bold uppercase tracking-tight text-xs py-3" 
+                                disabled=${userPlan === plan.slug}
+                                onClick=${() => onBuyPlan(plan.slug)}
+                            >
+                                ${userPlan === plan.slug ? 'Active Plan' : 'Choose Plan'}
+                            </${Button}>
+                        `}
+                    </div>
+                </${Card}>
+            `)}
+        </div>
+    `;
+};
+
 export const PricingPage = () => {
-    const { user } = useAuth();
+    const { user, fetchUser } = useAuth();
     const { showToast } = useToast();
     const [pricing, setPricing] = useState([]);
     const [ledger, setLedger] = useState([]);
@@ -19,10 +130,7 @@ export const PricingPage = () => {
     const [loading, setLoading] = useState(true);
     const [showTopupModal, setShowTopupModal] = useState(false);
     const [topupAmount, setTopupAmount] = useState('100');
-    const [momoPhone, setMomoPhone] = useState('');
-    const [momoNetwork, setMomoNetwork] = useState('MTN');
     const [isProcessing, setIsProcessing] = useState(false);
-    const [paymentRef, setPaymentRef] = useState(null);
     const [txnStatus, setTxnStatus] = useState(null); // 'pending', 'success', 'failed'
 
     useEffect(() => {
@@ -46,10 +154,25 @@ export const PricingPage = () => {
         }
     };
 
+    const handleBuyPlan = async (planSlug) => {
+        const confirmBuy = confirm(`Are you sure you want to upgrade to the ${planSlug} plan? This will deduct GH₵ ${planSlug === 'starter' ? '25.00' : '50.00'} from your wallet.`);
+        if (!confirmBuy) return;
+
+        setIsProcessing(true);
+        try {
+            const response = await apiClient.post(`/billing/buy-plan?plan_slug=${planSlug}`);
+            showToast(response.data.message, 'success');
+            await Promise.all([fetchData(), fetchUser()]);
+        } catch (error) {
+            showToast(error.response?.data?.detail || 'Failed to purchase plan', 'error');
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
     const verifyPayment = async (reference) => {
         setTxnStatus('verifying');
         try {
-            // 3. Verify on backend
             const verifyRes = await apiClient.get(`/payments/verify/${reference}`);
             if (verifyRes.data.status === 'SUCCESS' || verifyRes.data.status === 'ALREADY_COMPLETED') {
                 setTxnStatus('success');
@@ -84,7 +207,6 @@ export const PricingPage = () => {
             return;
         }
 
-        // Check if Paystack is loaded
         if (typeof PaystackPop === 'undefined') {
             showToast('Payment system is temporarily unavailable. Please refresh.', 'error');
             return;
@@ -94,17 +216,15 @@ export const PricingPage = () => {
         const reference = `NEX-PAY-${Math.floor((Math.random() * 1000000000) + 1)}`;
 
         try {
-            // 1. Register Intent with Backend
             await apiClient.post('/payments/register-intent', {
                 amount: amount,
                 reference: reference
             });
 
-            // 2. Open Paystack
             const handler = PaystackPop.setup({
                 key: PAYSTACK_PUBLIC_KEY,
                 email: user.email,
-                amount: Math.round(amount * 100), // convert to pesewas
+                amount: Math.round(amount * 100),
                 currency: 'GHS',
                 ref: reference,
                 metadata: {
@@ -146,29 +266,46 @@ export const PricingPage = () => {
 
     return html`
         <div className="space-y-6 fade-in">
-            <${Card} className="p-6 bg-gradient-to-r from-primary-600 to-primary-800 text-white border-none">
-                <div className="flex items-center justify-between">
+            <${Card} className="p-6 bg-gradient-to-br from-midnight-900 to-midnight-950 text-white border-none shadow-2xl relative overflow-hidden">
+                <div className="absolute -right-20 -top-20 w-64 h-64 bg-primary-500/10 rounded-full blur-3xl"></div>
+                
+                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>
-                        <p className="text-primary-100 mb-1">Current Balance</p>
-                        <h2 className="text-4xl font-bold">${balance?.balance?.toFixed(2) || '0.00'} <span className="text-2xl font-normal">${balance?.currency || 'GHS'}</span></h2>
+                        <p className="text-midnight-400 text-xs font-bold uppercase tracking-widest mb-1">Total Available Balance</p>
+                        <h2 className="text-5xl font-black tracking-tight">${balance?.balance?.toFixed(2) || '0.00'} <span className="text-2xl font-medium text-midnight-500">${balance?.currency || 'GHS'}</span></h2>
                     </div>
-                    <div className="text-right">
-                        <${Button} variant="secondary" size="sm" onClick=${() => setShowTopupModal(true)}>
+                    <div className="flex flex-col gap-2">
+                        <${Button} variant="primary" size="lg" className="shadow-lg shadow-primary-600/20 px-8" onClick=${() => setShowTopupModal(true)}>
+                            <${Icon} name="plus-circle" size=${20} />
                             Top Up Wallet
                         </${Button}>
+                        <p className="text-[10px] text-midnight-400 text-center uppercase tracking-tighter font-bold">Instant Momo & Card Processing</p>
                     </div>
                 </div>
-                <div className="mt-6 flex gap-8">
+                
+                <div className="mt-8 pt-6 border-t border-white/5 grid grid-cols-2 md:grid-cols-4 gap-6 relative z-10">
                     <div>
-                        <p className="text-primary-200 text-sm">Subscription Credits</p>
-                        <p className="font-semibold text-lg">${balance?.subscription_credits?.toFixed(2) || '0.00'}</p>
+                        <p className="text-midnight-400 text-[10px] font-bold uppercase mb-1">Subscription Credits</p>
+                        <p className="font-bold text-xl text-emerald-400">${balance?.subscription_credits?.toFixed(2) || '0.00'}</p>
                     </div>
                     <div>
-                        <p className="text-primary-200 text-sm">Pay-As-You-Go Credits</p>
-                        <p className="font-semibold text-lg">${balance?.payg_credits?.toFixed(2) || '0.00'}</p>
+                        <p className="text-midnight-400 text-[10px] font-bold uppercase mb-1">PAYG Credits</p>
+                        <p className="font-bold text-xl text-amber-400">${balance?.payg_credits?.toFixed(2) || '0.00'}</p>
+                    </div>
+                    <div className="md:col-span-2 md:text-right flex flex-col md:items-end justify-center">
+                         <div className="inline-flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+                            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                            <span className="text-xs font-bold text-gray-300 uppercase tracking-wide">Plan: ${user?.plan_name || 'Pay As You Go'}</span>
+                         </div>
                     </div>
                 </div>
             </${Card}>
+
+            <${PricingComparison} 
+                userPlan=${user?.plan_slug} 
+                onBuyPlan=${handleBuyPlan}
+                onTopup=${() => setShowTopupModal(true)}
+            />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <${Card} className="p-0 overflow-hidden">
@@ -191,13 +328,6 @@ export const PricingPage = () => {
                                     </td>
                                 </tr>
                             `)}
-                            ${pricing.length === 0 && html`
-                                <tr>
-                                    <td colSpan="2" className="px-4 py-6 text-center text-gray-500">
-                                        No pricing data available
-                                    </td>
-                                </tr>
-                            `}
                         </tbody>
                     </table>
                 </${Card}>

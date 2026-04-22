@@ -275,6 +275,26 @@ const Card = ({ children, className = '', ...props }) => {
     return html`<div className="premium-card rounded-2xl ${className}" ...${props}>${children}</div>`;
 };
 
+const Modal = ({ isOpen, onClose, title, children }) => {
+    if (!isOpen) return null;
+    return html`
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-midnight-950/60 backdrop-blur-sm" onClick=${onClose}></div>
+            <div className="relative bg-white dark:bg-midnight-900 w-full max-w-md rounded-2xl shadow-2xl animate-pop-in overflow-hidden">
+                <div className="p-6 border-b border-gray-100 dark:border-midnight-800 flex items-center justify-between">
+                    <h3 className="text-lg font-bold dark:text-white">${title}</h3>
+                    <button onClick=${onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-midnight-800 rounded-xl transition-colors">
+                        <${Icon} name="x" size=${20} className="text-gray-400" />
+                    </button>
+                </div>
+                <div className="p-6">
+                    ${children}
+                </div>
+            </div>
+        </div>
+    `;
+};
+
 const Input = ({ label, type = 'text', className = '', ...props }) => {
     const [showPassword, setShowPassword] = useState(false);
     const isPassword = type === 'password';
@@ -1025,6 +1045,49 @@ const PlatformManagementPage = () => {
         }
     };
 
+    const handleImpersonate = async (u) => {
+        if (!confirm(`Login as ${u.full_name}? This will open their dashboard in a new tab.`)) return;
+        try {
+            const response = await apiClient.post(`/auth/admin/impersonate/${u.id}`);
+            const { access_token } = response.data;
+            // Pulse dashboard is at index.html
+            const url = `index.html?impersonate_token=${access_token}#/dashboard`;
+            window.open(url, '_blank');
+            showToast(`Logged in as ${u.full_name}`, 'success');
+        } catch (error) {
+            showToast('Impersonation failed', 'error');
+        }
+    };
+
+    const [adjustmentModal, setAdjustmentModal] = useState({ open: false, org: null });
+    const [adjAmount, setAdjAmount] = useState('');
+    const [adjDesc, setAdjDesc] = useState('');
+    const [adjLoading, setAdjLoading] = useState(false);
+
+    const handleAdjustBalance = async (e) => {
+        e.preventDefault();
+        if (!adjustmentModal.org) return;
+        setAdjLoading(true);
+        try {
+            await apiClient.post('/billing/admin/adjust-balance', null, {
+                params: {
+                    organization_id: adjustmentModal.org.id,
+                    amount: parseFloat(adjAmount),
+                    description: adjDesc
+                }
+            });
+            showToast('Balance adjusted successfully', 'success');
+            setAdjustmentModal({ open: false, org: null });
+            setAdjAmount('');
+            setAdjDesc('');
+            fetchData();
+        } catch (error) {
+            showToast(error.response?.data?.detail || 'Adjustment failed', 'error');
+        } finally {
+            setAdjLoading(false);
+        }
+    };
+
     const handleDelete = async (id, name) => {
         if (!confirm(`Are you absolutely sure you want to delete ${name}? This action cannot be undone.`)) return;
         
@@ -1081,7 +1144,7 @@ const PlatformManagementPage = () => {
                                 <tr>
                                     <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">${activeTab === 'users' ? 'User' : 'Organization'}</th>
                                     <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Status</th>
-                                    <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">${activeTab === 'users' ? 'Role' : 'Created'}</th>
+                                    <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">${activeTab === 'users' ? 'Role' : 'Plan / Created'}</th>
                                     ${activeTab === 'users' && user?.role === 'superadmin' && html`<th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Delegation</th>`}
                                     <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
                                 </tr>
@@ -1108,7 +1171,15 @@ const PlatformManagementPage = () => {
                                             </${Badge}>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500">
-                                            ${activeTab === 'users' ? html`<span className="uppercase font-bold text-[10px] tracking-tight">${item.role}</span>` : new Date(item.created_at).toLocaleDateString()}
+                                            ${activeTab === 'users' ? 
+                                                html`<span className="uppercase font-bold text-[10px] tracking-tight">${item.role}</span>` : 
+                                                html`
+                                                    <div className="flex flex-col">
+                                                        <span className="font-bold text-gray-900 dark:text-white">${item.plan_name}</span>
+                                                        <span className="text-[10px] text-gray-400 uppercase">${new Date(item.created_at).toLocaleDateString()}</span>
+                                                    </div>
+                                                `
+                                            }
                                         </td>
                                         ${activeTab === 'users' && user?.role === 'superadmin' && html`
                                             <td className="px-6 py-4">
@@ -1134,6 +1205,30 @@ const PlatformManagementPage = () => {
                                         `}
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
+                                                ${activeTab === 'users' && html`
+                                                    <${Button}
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        className="h-8 !px-3 text-primary-600 hover:bg-primary-50"
+                                                        title="Login as this user"
+                                                        onClick=${() => handleImpersonate(item)}
+                                                    >
+                                                        <${Icon} name="user-check" size=${14} />
+                                                        <span className="hidden sm:inline">Impersonate</span>
+                                                    </${Button}>
+                                                `}
+                                                ${activeTab === 'orgs' && user?.role === 'superadmin' && html`
+                                                    <${Button}
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        className="h-8 !px-3 text-emerald-600 hover:bg-emerald-50"
+                                                        title="Adjust Balance"
+                                                        onClick=${() => setAdjustmentModal({ open: true, org: item })}
+                                                    >
+                                                        <${Icon} name="dollar-sign" size=${14} />
+                                                        <span className="hidden sm:inline">Wallet</span>
+                                                    </${Button}>
+                                                `}
                                                 ${activeTab === 'users' && user?.role === 'superadmin' && item.role !== 'superadmin' && html`
                                                     <${Button}
                                                         size="sm"
@@ -1185,6 +1280,340 @@ const PlatformManagementPage = () => {
                     `}
                 `}
             </${Card}>
+
+            <${Modal} 
+                isOpen=${adjustmentModal.open} 
+                onClose=${() => setAdjustmentModal({ open: false, org: null })}
+                title="Adjust Wallet Balance"
+            >
+                <form onSubmit=${handleAdjustBalance} className="space-y-4">
+                    <p className="text-xs text-gray-500 mb-2">Adjusting balance for: <span className="font-bold text-gray-900 dark:text-white">${adjustmentModal.org?.name}</span></p>
+                    <${Input} 
+                        label="Amount (GHS)" 
+                        type="number" 
+                        step="0.01" 
+                        placeholder="e.g. 100 or -50" 
+                        value=${adjAmount}
+                        onChange=${(e) => setAdjAmount(e.target.value)}
+                        required
+                    />
+                    <${Input} 
+                        label="Description / Reason" 
+                        placeholder="Manual top-up for bank transfer" 
+                        value=${adjDesc}
+                        onChange=${(e) => setAdjDesc(e.target.value)}
+                        required
+                    />
+                    <div className="pt-4 flex gap-3">
+                        <${Button} type="button" variant="ghost" className="flex-1" onClick=${() => setAdjustmentModal({ open: false, org: null })}>Cancel</${Button}>
+                        <${Button} type="submit" variant="primary" className="flex-1" disabled=${adjLoading}>
+                            ${adjLoading ? 'Processing...' : 'Confirm Adjustment'}
+                        </${Button}>
+                    </div>
+                </form>
+            </${Modal}>
+        </div>
+    `;
+};
+
+const GlobalSearchPage = () => {
+    const [query, setQuery] = useState('');
+    const [results, setResults] = useState([]);
+    const [loading, setLoading] = useState(false);
+
+    const handleSearch = async (e) => {
+        if (e) e.preventDefault();
+        if (query.length < 3) return;
+        setLoading(true);
+        try {
+            const response = await apiClient.get('/admin/messages/search', { params: { q: query } });
+            setResults(response.data);
+        } catch (error) {
+            console.error('Search failed', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return html`
+        <div className="space-y-6 fade-in max-w-6xl mx-auto">
+            <${Card} className="p-6">
+                <form onSubmit=${handleSearch} className="flex gap-3">
+                    <div className="flex-1">
+                        <${Input} 
+                            placeholder="Search by Recipient, Sender ID, or Message content..." 
+                            value=${query}
+                            onChange=${(e) => setQuery(e.target.value)}
+                            className="text-lg"
+                        />
+                    </div>
+                    <${Button} type="submit" disabled=${loading || query.length < 3} className="px-8">
+                        <${Icon} name="search" size=${20} />
+                        ${loading ? 'Searching...' : 'Search'}
+                    </${Button}>
+                </form>
+            </${Card}>
+
+            ${loading ? html`<div className="p-20 text-center animate-pulse text-gray-400">Searching global message logs...</div>` : results.length > 0 ? html`
+                <${Card} className="overflow-hidden">
+                    <table className="w-full text-left">
+                        <thead className="bg-gray-50 dark:bg-midnight-900 border-b border-gray-100 dark:border-midnight-800">
+                            <tr>
+                                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Organization</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">From/To</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Content</th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50 dark:divide-midnight-800">
+                            ${results.map(msg => html`
+                                <tr key=${msg.id} className="hover:bg-gray-50/50 dark:hover:bg-midnight-900/20 transition-colors">
+                                    <td className="px-6 py-4">
+                                        <p className="text-xs font-bold text-primary-600 uppercase">${msg.organization_name}</p>
+                                        <p className="text-[10px] text-gray-400 mt-0.5">${new Date(msg.created_at).toLocaleString()}</p>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase">From: ${msg.sender}</span>
+                                            <span className="text-sm font-black text-gray-900 dark:text-white">${msg.recipient}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 max-w-xs">
+                                        <p className="text-xs text-gray-600 dark:text-gray-300 line-clamp-2">${msg.content}</p>
+                                    </td>
+                                    <td className="px-6 py-4 text-right">
+                                        <${Badge} variant=${msg.status === 'delivered' ? 'success' : msg.status === 'failed' ? 'error' : 'warning'}>${msg.status}</${Badge}>
+                                    </td>
+                                </tr>
+                            `)}
+                        </tbody>
+                    </table>
+                </${Card}>
+            ` : query.length >= 3 && html`
+                <div className="p-20 text-center text-gray-400">
+                    <${Icon} name="info" size=${48} className="mx-auto mb-4 opacity-20" />
+                    <p>No messages found matching "${query}"</p>
+                </div>
+            `}
+        </div>
+    `;
+};
+
+const AuditLogPage = () => {
+    const [logs, setLogs] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        apiClient.get('/admin/audit-logs')
+            .then(res => { setLogs(res.data); setLoading(false); })
+            .catch(() => setLoading(false));
+    }, []);
+
+    if (loading) return html`<div className="p-20 text-center animate-pulse text-gray-400">Loading audit trail...</div>`;
+
+    return html`
+        <div className="space-y-6 fade-in max-w-6xl mx-auto">
+            <h2 className="text-2xl font-bold dark:text-white">Audit Logs</h2>
+            <${Card} className="overflow-hidden">
+                <table className="w-full text-left">
+                    <thead className="bg-gray-50 dark:bg-midnight-900 border-b border-gray-100 dark:border-midnight-800">
+                        <tr>
+                            <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Admin</th>
+                            <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Action</th>
+                            <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Target</th>
+                            <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50 dark:divide-midnight-800">
+                        ${logs.map(log => html`
+                            <tr key=${log.id} className="hover:bg-gray-50/50 dark:hover:bg-midnight-900/20 transition-colors">
+                                <td className="px-6 py-4">
+                                    <p className="text-xs font-bold text-gray-900 dark:text-white">${log.admin_email}</p>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-primary-600 bg-primary-50 px-2 py-1 rounded">${log.action}</span>
+                                </td>
+                                <td className="px-6 py-4">
+                                    <p className="text-xs text-gray-500">${log.target_type}: ${log.target_id || 'N/A'}</p>
+                                </td>
+                                <td className="px-6 py-4 text-right text-xs text-gray-400">
+                                    ${new Date(log.created_at).toLocaleString()}
+                                </td>
+                            </tr>
+                        `)}
+                    </tbody>
+                </table>
+            </${Card}>
+        </div>
+    `;
+};
+
+const AnnouncementsPage = () => {
+    const { showToast } = useToast();
+    const [list, setList] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [isCreating, setIsCreating] = useState(false);
+    const [form, setForm] = useState({ title: '', content: '', type: 'info' });
+
+    useEffect(() => { fetchAnnouncements(); }, []);
+
+    const fetchAnnouncements = async () => {
+        try {
+            const res = await apiClient.get('/admin/announcements');
+            setList(res.data);
+            setLoading(false);
+        } catch (error) { setLoading(false); }
+    };
+
+    const handleCreate = async (e) => {
+        e.preventDefault();
+        try {
+            await apiClient.post('/admin/announcements', null, { params: form });
+            showToast('Announcement posted!', 'success');
+            setIsCreating(false);
+            setForm({ title: '', content: '', type: 'info' });
+            fetchAnnouncements();
+        } catch (error) { showToast('Failed to post', 'error'); }
+    };
+
+    return html`
+        <div className="space-y-6 fade-in max-w-4xl mx-auto">
+            <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold dark:text-white">Announcements</h2>
+                <${Button} onClick=${() => setIsCreating(true)}>
+                    <${Icon} name="plus" size=${18} /> New Announcement
+                </${Button}>
+            </div>
+
+            <${Modal} isOpen=${isCreating} onClose=${() => setIsCreating(false)} title="Create Announcement">
+                <form onSubmit=${handleCreate} className="space-y-4">
+                    <${Input} label="Title" value=${form.title} onChange=${e => setForm({...form, title: e.target.value})} required />
+                    <div className="space-y-1.5">
+                        <label className="block text-xs font-bold uppercase text-gray-500 ml-1">Content</label>
+                        <textarea 
+                            className="w-full px-4 py-2.5 bg-gray-50 dark:bg-midnight-900 border border-gray-200 dark:border-midnight-800 rounded-xl outline-none text-sm min-h-[100px]"
+                            value=${form.content}
+                            onChange=${e => setForm({...form, content: e.target.value})}
+                            required
+                        ></textarea>
+                    </div>
+                    <div className="flex gap-3 pt-4">
+                        <${Button} type="button" variant="ghost" className="flex-1" onClick=${() => setIsCreating(false)}>Cancel</${Button}>
+                        <${Button} type="submit" className="flex-1">Post Announcement</${Button}>
+                    </div>
+                </form>
+            </${Modal}>
+
+            <div className="space-y-4">
+                ${list.map(item => html`
+                    <${Card} key=${item.id} className="p-6 border-l-4 ${item.type === 'warning' ? 'border-amber-500' : item.type === 'emergency' ? 'border-rose-500' : 'border-primary-500'}">
+                        <div className="flex items-start justify-between">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">${item.title}</h3>
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">${item.content}</p>
+                                <div className="flex gap-3 mt-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                    <span>Posted: ${new Date(item.created_at).toLocaleDateString()}</span>
+                                    <span>Type: ${item.type}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </${Card}>
+                `)}
+            </div>
+        </div>
+    `;
+};
+
+const SystemHealthPage = () => {
+    const { showToast } = useToast();
+    const [health, setHealth] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    const fetchHealth = () => {
+        apiClient.get('/admin/system/health')
+            .then(res => { setHealth(res.data); setLoading(false); })
+            .catch(() => setLoading(false));
+    };
+
+    useEffect(() => { fetchHealth(); }, []);
+
+    const handleToggleGateway = async (gatewayId) => {
+        try {
+            await apiClient.post(`/admin/gateways/${gatewayId}/toggle`);
+            showToast('Gateway status updated', 'success');
+            fetchHealth();
+        } catch (error) {
+            showToast('Failed to toggle gateway', 'error');
+        }
+    };
+
+    if (loading) return html`<div className="p-20 text-center animate-pulse text-gray-400">Running diagnostic health checks...</div>`;
+
+    return html`
+        <div className="space-y-6 fade-in max-w-4xl mx-auto">
+            <h2 className="text-2xl font-bold dark:text-white">System Health</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <${Card} className="p-6 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl">
+                            <${Icon} name="database" size=${24} className="text-emerald-600" />
+                        </div>
+                        <div>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">PostgreSQL DB</p>
+                            <p className="text-lg font-black text-emerald-600">OPERATIONAL</p>
+                        </div>
+                    </div>
+                    <${Icon} name="check-circle" className="text-emerald-500" />
+                </${Card}>
+
+                <${Card} className="p-6 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-primary-50 dark:bg-primary-900/20 rounded-xl">
+                            <${Icon} name="server" size=${24} className="text-primary-600" />
+                        </div>
+                        <div>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">FastAPI Backend</p>
+                            <p className="text-lg font-black text-primary-600">ONLINE</p>
+                        </div>
+                    </div>
+                    <${Icon} name="check-circle" className="text-emerald-500" />
+                </${Card}>
+            </div>
+
+            <div className="flex items-center justify-between mt-8 mb-4">
+                <h3 className="text-xs font-black text-gray-400 dark:text-midnight-500 uppercase tracking-widest px-1">Gateway Connectivity</h3>
+                <${Button} variant="ghost" size="sm" onClick=${fetchHealth} className="h-8">
+                    <${Icon} name="refresh-cw" size=${14} className=${loading ? 'animate-spin' : ''} />
+                </${Button}>
+            </div>
+            
+            <div className="grid gap-3">
+                ${health?.gateways.map(gw => html`
+                    <${Card} key=${gw.id} className="p-4 flex items-center justify-between bg-white dark:bg-midnight-900/40">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-midnight-800 flex items-center justify-center">
+                                <${Icon} name="zap" size=${18} className=${gw.is_active ? 'text-amber-500' : 'text-gray-300'} />
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold text-gray-900 dark:text-white">${gw.name}</p>
+                                <p className="text-[10px] text-gray-500 font-mono">${gw.host}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <${Badge} variant=${gw.is_active ? 'success' : 'default'}>${gw.status}</${Badge}>
+                            <${Button} 
+                                size="sm" 
+                                variant=${gw.is_active ? 'outline' : 'primary'}
+                                className="h-8 text-[10px] font-black uppercase tracking-wider"
+                                onClick=${() => handleToggleGateway(gw.id)}
+                            >
+                                ${gw.is_active ? 'Disable' : 'Enable'}
+                            </${Button}>
+                        </div>
+                    </${Card}>
+                `)}
+            </div>
         </div>
     `;
 };
@@ -1246,6 +1675,14 @@ const BottomNav = ({ currentPage, onNavigate }) => {
                 `}
                 
                 <button 
+                    onClick=${() => onNavigate('search')}
+                    className="flex flex-col items-center gap-1 transition-colors ${currentPage === 'search' ? 'text-primary-600 font-bold' : 'text-gray-400'}"
+                >
+                    <${Icon} name="search" size=${20} />
+                    <span className="text-[10px] uppercase tracking-wider">Search</span>
+                </button>
+                
+                <button 
                     onClick=${() => onNavigate('settings')}
                     className="flex flex-col items-center gap-1 transition-colors ${currentPage === 'settings' ? 'text-primary-600 font-bold' : 'text-gray-400'}"
                 >
@@ -1261,12 +1698,12 @@ const AdminSidebar = ({ currentPage, onNavigate }) => {
     const { user, logout } = useAuth();
     
     return html`
-        <aside className="hidden lg:flex lg:flex-col lg:w-72 bg-white dark:bg-midnight-950 border-r border-gray-200 dark:border-midnight-800 h-screen sticky top-0 transition-colors">
-            <div className="p-6 border-b border-gray-200 dark:border-midnight-800 flex justify-center">
+        <aside className="hidden lg:flex lg:flex-col lg:w-72 bg-white dark:bg-midnight-950 border-r border-gray-200 dark:border-midnight-800 h-screen sticky top-0 transition-colors overflow-hidden">
+            <div className="p-6 border-b border-gray-200 dark:border-midnight-800 flex justify-center flex-shrink-0">
                 <img src="assets/NEXRA_IconBeside.png" alt="NEXRA Admin" className="h-14 lg:h-16 object-contain" />
             </div>
 
-            <nav className="flex-1 p-4 space-y-4">
+            <nav className="flex-1 p-4 space-y-4 overflow-y-auto no-scrollbar">
                 <div>
                      <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Platform</p>
                      <button
@@ -1310,6 +1747,43 @@ const AdminSidebar = ({ currentPage, onNavigate }) => {
                             <span>Staff Management</span>
                         </button>
                     `}
+                     <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 mt-4">God Mode</p>
+                     <button
+                        onClick=${() => onNavigate('search')}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentPage === 'search'
+                            ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 font-bold'
+                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}"
+                    >
+                        <${Icon} name="search" size=${20} />
+                        <span>Global Search</span>
+                    </button>
+                    <button
+                        onClick=${() => onNavigate('audit')}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentPage === 'audit'
+                            ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 font-bold'
+                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}"
+                    >
+                        <${Icon} name="shield-check" size=${20} />
+                        <span>Audit Logs</span>
+                    </button>
+                    <button
+                        onClick=${() => onNavigate('announcements')}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentPage === 'announcements'
+                            ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 font-bold'
+                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}"
+                    >
+                        <${Icon} name="megaphone" size=${20} />
+                        <span>Announcements</span>
+                    </button>
+                    <button
+                        onClick=${() => onNavigate('health')}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentPage === 'health'
+                            ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 font-bold'
+                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}"
+                    >
+                        <${Icon} name="activity" size=${20} />
+                        <span>System Health</span>
+                    </button>
                 </div>
             </nav>
             
@@ -1358,6 +1832,10 @@ const AdminApp = () => {
             case 'approvals': return html`<${AdminApprovalPage} />`;
             case 'management': return html`<${PlatformManagementPage} />`;
             case 'staff': return html`<${StaffManagementPage} />`;
+            case 'search': return html`<${GlobalSearchPage} />`;
+            case 'audit': return html`<${AuditLogPage} />`;
+            case 'announcements': return html`<${AnnouncementsPage} />`;
+            case 'health': return html`<${SystemHealthPage} />`;
             case 'settings': return html`
                 <div className="p-4 space-y-4">
                     <${Card} className="p-6">
@@ -1387,6 +1865,10 @@ const AdminApp = () => {
             case 'approvals': return 'Approvals';
             case 'management': return 'Management';
             case 'staff': return 'Staff Management';
+            case 'search': return 'Global Search';
+            case 'audit': return 'Audit Logs';
+            case 'announcements': return 'Announcements';
+            case 'health': return 'System Health';
             case 'settings': return 'Admin Settings';
             default: return 'Admin Console';
         }

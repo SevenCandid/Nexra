@@ -18,7 +18,12 @@ limiter = Limiter(key_func=get_remote_address)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Initialize gateways and start workers
+    # Startup: Initialize database tables and workers
+    from app.db.models import Base
+    from app.db.database import engine
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+        
     await gateway_manager.initialize_from_db()
     asyncio.create_task(retry_worker.start())
     asyncio.create_task(campaign_worker.start())

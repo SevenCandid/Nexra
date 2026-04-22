@@ -19,3 +19,6 @@ api_router.include_router(groups.router, prefix="/groups", tags=["groups"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
 api_router.include_router(developer.router, prefix="/developer", tags=["developer"])
 api_router.include_router(ws.router, prefix="/ws", tags=["websocket"])
+from app.api.v1.endpoints import admin
+api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
+
