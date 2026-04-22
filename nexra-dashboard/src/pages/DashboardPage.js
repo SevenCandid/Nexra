@@ -137,6 +137,15 @@ export const DashboardPage = () => {
         `;
     }
 
+    if (!analytics) {
+        return html`
+            <div className="flex flex-col items-center justify-center h-64 text-gray-500 fade-in">
+                <${Icon} name="alert-circle" size=${48} className="mb-4 text-gray-400" />
+                <p>Failed to load dashboard data. Please try refreshing.</p>
+            </div>
+        `;
+    }
+
     const totalMessages = (analytics.success_rate.delivered || 0) + 
                           (analytics.success_rate.completed || 0) + 
                           (analytics.success_rate.delivering || 0) + 
