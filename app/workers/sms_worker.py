@@ -87,8 +87,10 @@ async def _async_process_sms(sms_id: int):
             
             await db.commit()
             
-            # BROADCAST UPDATE
+            # BROADCAST UPDATE (WebSocket & Webhook)
             from app.core.websocket import manager
+            from app.services.webhook_service import webhook_service
+            
             await manager.broadcast_to_org(msg.organization_id, {
                 "type": "message_updated",
                 "data": {
@@ -97,10 +99,19 @@ async def _async_process_sms(sms_id: int):
                     "recipient": msg.recipient
                 }
             })
+            
+            # Dispatch Webhook
+            event = "message.sent" if msg.status == MessageStatus.SENT else "message.failed"
+            asyncio.create_task(webhook_service.dispatch_message_event(msg.id, event))
+
         except Exception as e:
             logger.error(f"Gateway error for msg_id={msg.id}: {str(e)}")
             msg.status = MessageStatus.FAILED
             await db.commit()
+            
+            # Dispatch Webhook for error
+            from app.services.webhook_service import webhook_service
+            asyncio.create_task(webhook_service.dispatch_message_event(msg.id, "message.failed"))
 
 async def process_campaign_batch(campaign_id: int):
     """Processes a campaign batch and updates campaign status."""

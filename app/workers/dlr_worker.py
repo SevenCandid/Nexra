@@ -68,9 +68,11 @@ async def _async_process_dlr(dlr_data: dict):
                     from app.services.billing_service import billing_service
                     await billing_service.refund_failed_sms(db, msg.id)
                 
-                # BROADCAST UPDATE
+                # BROADCAST UPDATE (WebSocket & Webhook)
                 try:
                     from app.core.websocket import manager
+                    from app.services.webhook_service import webhook_service
+
                     await manager.broadcast_to_org(msg.organization_id, {
                         "type": "message_updated",
                         "data": {
@@ -79,8 +81,13 @@ async def _async_process_dlr(dlr_data: dict):
                             "recipient": msg.recipient
                         }
                     })
+
+                    # Dispatch Webhook
+                    event = "message.delivered" if msg.status == MessageStatus.DELIVERED else "message.failed"
+                    asyncio.create_task(webhook_service.dispatch_message_event(msg.id, event))
+
                 except Exception as e:
-                    logger.error(f"WebSocket broadcast failed for DLR: {str(e)}")
+                    logger.error(f"Broadcasting failed for DLR: {str(e)}")
             else:
                 logger.warning(f"DLR received for unknown provider_msg_id={provider_msg_id}")
 

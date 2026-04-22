@@ -9,6 +9,7 @@ export const DashboardPage = () => {
     const [analytics, setAnalytics] = useState(null);
     const [campaigns, setCampaigns] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [dateRange, setDateRange] = useState('7d'); // 24h, 7d, 30d
     const activityChartRef = useRef(null);
     const successChartRef = useRef(null);
     const chartsInitialized = useRef({ activity: null, success: null });
@@ -16,8 +17,18 @@ export const DashboardPage = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
+                let start_date = '';
+                const now = new Date();
+                if (dateRange === '24h') {
+                    start_date = new Date(now.getTime() - (24 * 60 * 60 * 1000)).toISOString();
+                } else if (dateRange === '7d') {
+                    start_date = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000)).toISOString();
+                } else if (dateRange === '30d') {
+                    start_date = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000)).toISOString();
+                }
+
                 const [analyticsData, campaignsData] = await Promise.all([
-                    apiClient.get('/analytics/stats'),
+                    apiClient.get(`/analytics/stats?start_date=${start_date}`),
                     apiClient.get('/campaigns?limit=5')
                 ]);
                 setAnalytics(analyticsData.data);
@@ -39,7 +50,7 @@ export const DashboardPage = () => {
 
         window.addEventListener('nexra:update', handlePulse);
         return () => window.removeEventListener('nexra:update', handlePulse);
-    }, []);
+    }, [dateRange]);
 
     useEffect(() => {
         if (!loading && analytics) {
@@ -133,10 +144,33 @@ export const DashboardPage = () => {
 
     return html`
         <div className="space-y-6 fade-in">
+            <div className="flex items-center justify-between">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white">Pulse Overview</h2>
+                <div className="flex items-center gap-1 bg-gray-100 dark:bg-midnight-900 p-1 rounded-lg">
+                    ${['24h', '7d', '30d'].map(range => html`
+                        <button 
+                            key=${range}
+                            onClick=${() => setDateRange(range)}
+                            className="px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-md transition-all ${dateRange === range ? 'bg-white dark:bg-midnight-800 text-primary-600 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}"
+                        >
+                            ${range}
+                        </button>
+                    `)}
+                </div>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <${Card} className="lg:col-span-2 p-4">
                     <div className="flex items-center justify-between mb-3">
-                        <h2 className="text-[10px] font-black text-gray-400 dark:text-midnight-500 uppercase tracking-widest px-1">Weekly Activity</h2>
+                        <div className="flex items-center gap-3">
+                            <h2 className="text-[10px] font-black text-gray-400 dark:text-midnight-500 uppercase tracking-widest px-1">Activity</h2>
+                            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/30">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-tight">
+                                    ${analytics.avg_delivery_time}s Avg
+                                </span>
+                            </div>
+                        </div>
                         <span className="text-[10px] font-bold text-primary-600 bg-primary-50 dark:bg-primary-900/20 px-2 py-0.5 rounded-full">Pulse</span>
                     </div>
                     <div className="h-[180px] sm:h-[200px] relative">

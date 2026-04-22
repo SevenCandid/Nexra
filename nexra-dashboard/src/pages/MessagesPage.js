@@ -85,6 +85,33 @@ export const MessagesPage = () => {
         return html`<${Badge} variant=${variants[status] || 'default'}>${label.charAt(0).toUpperCase() + label.slice(1)}</${Badge}>`;
     };
 
+    const handleExport = async () => {
+        try {
+            // Use window.open for direct download if no complex auth headers needed, 
+            // but since we use token in headers, we must use axios + blob
+            const token = localStorage.getItem('nexra_token');
+            const apiBase = window.__NEXRA_API_URL__ || 'http://localhost:8000/api/v1';
+            
+            const response = await fetch(`${apiBase}/analytics/export/messages`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (!response.ok) throw new Error('Export failed');
+            
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `nexra_messages_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            showToast('CSV report downloaded', 'success');
+        } catch (error) {
+            showToast('Export failed', 'error');
+        }
+    };
+
     if (loading) {
         return html`
             <div className="flex items-center justify-center h-64">
@@ -95,17 +122,23 @@ export const MessagesPage = () => {
 
     return html`
         <div className="space-y-6 fade-in">
-
-            <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
-                ${['all', 'delivering', 'delivered', 'failed'].map((f) => html`
-                    <button
-                        key=${f}
-                        onClick=${() => setFilter(f)}
-                        className="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${filter === f ? 'bg-primary-600 text-white shadow-sm' : 'bg-primary-50 text-primary-700 hover:bg-primary-100 border border-primary-100/50'}"
-                    >
-                        ${f === 'delivering' ? 'Delivering' : f.charAt(0).toUpperCase() + f.slice(1)}
-                    </button>
-                `)}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar px-1 sm:px-0">
+                    ${['all', 'delivering', 'delivered', 'failed'].map((f) => html`
+                        <button
+                            key=${f}
+                            onClick=${() => setFilter(f)}
+                            className="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${filter === f ? 'bg-primary-600 text-white shadow-sm' : 'bg-primary-50 text-primary-700 hover:bg-primary-100 border border-primary-100/50'}"
+                        >
+                            ${f === 'delivering' ? 'Delivering' : f.charAt(0).toUpperCase() + f.slice(1)}
+                        </button>
+                    `)}
+                </div>
+                
+                <${Button} variant="outline" size="sm" onClick=${handleExport} className="flex items-center gap-2 text-primary-600 dark:text-primary-400 border-primary-100 dark:border-primary-900/50 bg-primary-50/30 dark:bg-primary-900/10">
+                    <${Icon} name="download" size=${16} />
+                    Export CSV
+                </${Button}>
             </div>
 
             <div className="campaign-history-container">

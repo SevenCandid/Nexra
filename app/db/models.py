@@ -437,3 +437,23 @@ class Waitlist(Base):
     position: Mapped[int] = mapped_column(Integer)  # Their place in line
     signup_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     notified: Mapped[bool] = mapped_column(Boolean, default=False)  # Sent launch email
+# --- DEVELOPER TOOLS ---
+
+class WebhookSubscription(Base):
+    """Developer webhooks for real-time delivery reports."""
+    __tablename__ = "webhook_subscriptions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    url: Mapped[str] = mapped_column(String(512))
+    events: Mapped[dict] = mapped_column(JSON, default=lambda: ["message.sent", "message.delivered", "message.failed"])
+    secret: Mapped[str] = mapped_column(String(128)) # For signing requests
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    
+    organization_id: Mapped[int] = mapped_column(Integer, ForeignKey("organizations.id"), index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    organization = relationship("Organization")
+    user = relationship("User")
+
+    __table_args__ = (Index('ix_webhooks_org_url', 'organization_id', 'url', unique=True),)
