@@ -125,11 +125,32 @@ async def quick_send_sms(
     # Determine Provider
     provider_name = await gateway_manager.route_message(normalized_recipient)
     
+    # Check for Contact to personalize message
+    from app.db.models import Contact
+    contact_stmt = select(Contact).where(
+        Contact.phone_number == normalized_recipient,
+        Contact.organization_id == current_user.organization_id
+    )
+    contact_result = await db.execute(contact_stmt)
+    contact = contact_result.scalar_one_or_none()
+
+    content = sms_in.message
+    if contact:
+        f_name = (contact.first_name or "").strip()
+        l_name = (contact.last_name or "").strip()
+        full_name = f"{f_name} {l_name}".strip()
+        display_name = full_name if full_name else (f_name if f_name else contact.phone_number)
+
+        content = content.replace("{first_name}", f_name)
+        content = content.replace("{last_name}", l_name)
+        content = content.replace("{name}", display_name)
+    content = content.replace("{phone_number}", normalized_recipient)
+
     # Log PENDING message
     db_obj = SMSMessage(
         sender=sms_in.sender,
         recipient=normalized_recipient,
-        content=sms_in.message,
+        content=content,
         status=MessageStatus.PENDING,
         provider_name=provider_name,
         user_id=current_user.id,
