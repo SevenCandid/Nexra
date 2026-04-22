@@ -27,6 +27,10 @@ async def get_analytics_stats(
     if not end_date:
         end_date = now
 
+    # Strip timezone info — DB stores naive UTC datetimes; incoming ISO strings may be tz-aware
+    start_date = start_date.replace(tzinfo=None)
+    end_date = end_date.replace(tzinfo=None)
+
     # 1. Activity (Messages per day)
     activity_query = (
         select(
@@ -76,12 +80,12 @@ async def get_analytics_stats(
     network_result = await db.execute(network_query)
     network_data = {row.provider_name: row.count for row in network_result}
 
-    # 4. Delivery Speed (Average)
+    # 4. Delivery Speed — avg seconds between sent_at and delivered_at (PostgreSQL only)
     speed_query = (
         select(
             func.avg(
-                func.julianday(SMSMessage.delivered_at) - func.julianday(SMSMessage.sent_at)
-            ) * 86400 # Convert to seconds
+                func.extract('epoch', SMSMessage.delivered_at - SMSMessage.sent_at)
+            )
         )
         .where(
             SMSMessage.organization_id == current_user.organization_id,

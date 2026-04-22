@@ -37,32 +37,36 @@ app = FastAPI(
 # Rate limiting
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# IMPORTANT: In Starlette, middleware added LAST wraps OUTERMOST (runs first).
+# So CORS must be added AFTER SlowAPI to ensure it fires before rate-limit rejections.
 app.add_middleware(SlowAPIMiddleware)
 
-@app.get("/")
-async def root():
-    return {"message": "NEXRA Messaging API is running"}
-
-# Set up CORS - Explicitly list origins when using allow_credentials=True
 origins = [
     "http://localhost:8080",
     "http://127.0.0.1:8080",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
 ]
 
+# Add CORS last so it is the outermost middleware (runs first on every request)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition"],
 )
 
 app.include_router(api_router, prefix=settings.API_STR)
 
+# Health check
+@app.get("/")
+async def root():
+    return {"message": "NEXRA Messaging API is running", "status": "ok"}
+
 # Serve the dashboard as static files
 app.mount("/nexra-dashboard", StaticFiles(directory="nexra-dashboard"), name="nexra-dashboard")
-# For demonstration purposes, I'll include the example router directly if not in api_router
-# Usually api_router would include it.
-# Trigger Reload
