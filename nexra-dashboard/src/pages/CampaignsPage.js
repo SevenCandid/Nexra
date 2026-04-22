@@ -5,11 +5,14 @@ import { Badge } from '../components/ui/Badge.js';
 import { Icon } from '../components/ui/Icon.js';
 import { useToast } from '../contexts/ToastContext.js';
 import apiClient from '../api/client.js';
+import { ConfirmModal } from '../components/ui/ConfirmModal.js';
 
 export const CampaignsPage = () => {
     const { showToast } = useToast();
     const [campaigns, setCampaigns] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null });
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         fetchCampaigns();
@@ -46,14 +49,17 @@ export const CampaignsPage = () => {
         }
     };
 
-    const handleDeleteCampaign = async (campaignId) => {
-        if (!confirm('Are you sure you want to delete this campaign?')) return;
+    const handleDeleteCampaign = async () => {
+        setIsDeleting(true);
         try {
-            await apiClient.delete(`/campaigns/${campaignId}`);
+            await apiClient.delete(`/campaigns/${confirmDelete.id}`);
             showToast('Campaign deleted', 'success');
+            setConfirmDelete({ open: false, id: null });
             fetchCampaigns();
         } catch (error) {
             showToast('Delete failed: ' + (error.response?.data?.detail || 'Unknown error'), 'error');
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -134,7 +140,7 @@ export const CampaignsPage = () => {
                                         </button>
                                     `}
                                     <button 
-                                        onClick=${() => handleDeleteCampaign(campaign.id)} 
+                                        onClick=${() => setConfirmDelete({ open: true, id: campaign.id })} 
                                         className="text-red-600 hover:text-red-700" 
                                         title="Delete"
                                     >
@@ -147,5 +153,16 @@ export const CampaignsPage = () => {
                 </div>
             `}
         </div>
+
+        <${ConfirmModal}
+            isOpen=${confirmDelete.open}
+            onClose=${() => setConfirmDelete({ open: false, id: null })}
+            onConfirm=${handleDeleteCampaign}
+            loading=${isDeleting}
+            title="Delete Campaign?"
+            message="Are you sure you want to delete this campaign? This action cannot be undone."
+            confirmText="Delete Campaign"
+            variant="danger"
+        />
     `;
 };

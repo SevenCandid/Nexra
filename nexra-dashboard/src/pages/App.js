@@ -18,6 +18,7 @@ import { TemplatesPage } from './TemplatesPage.js';
 import { SettingsPage } from './SettingsPage.js';
 import { HelpPage } from './HelpPage.js';
 import { APIDocsPage } from './APIDocsPage.js';
+import { DocsPage } from './DocsPage.js';
 
 export const App = () => {
     const { user, loading } = useAuth();
@@ -67,6 +68,8 @@ export const App = () => {
                 return html`<${HelpPage} />`;
             case 'api-docs':
                 return html`<${APIDocsPage} />`;
+            case 'docs':
+                return html`<${DocsPage} />`;
             default:
                 return html`<${DashboardPage} />`;
         }

@@ -27,6 +27,10 @@ class ArkeselProvider(SMSProvider):
             "recipients": [clean_recipient]
         }
 
+        from app.core.config import settings
+        if settings.WEBHOOK_BASE_URL:
+            payload["callback_url"] = f"{settings.WEBHOOK_BASE_URL.rstrip('/')}/api/v1/sms/webhook/arkesel"
+
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.post(self.base_url, json=payload, headers=headers)

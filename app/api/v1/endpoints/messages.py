@@ -12,6 +12,7 @@ router = APIRouter()
 @router.get("", response_model=MessageListResponse)
 async def get_messages(
     status: Optional[str] = None,
+    campaign_id: Optional[int] = None,
     limit: int = 50,
     skip: int = 0,
     db: AsyncSession = Depends(get_db),
@@ -24,11 +25,15 @@ async def get_messages(
     
     if status:
         query = query.where(SMSMessage.status == status)
+    if campaign_id:
+        query = query.where(SMSMessage.campaign_id == campaign_id)
     
     # Count total
     count_query = select(func.count(SMSMessage.id)).where(SMSMessage.organization_id == current_user.organization_id)
     if status:
         count_query = count_query.where(SMSMessage.status == status)
+    if campaign_id:
+        count_query = count_query.where(SMSMessage.campaign_id == campaign_id)
     
     total_result = await db.execute(count_query)
     total = total_result.scalar() or 0

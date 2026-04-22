@@ -165,6 +165,7 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
     const [selectedExisting, setSelectedExisting] = useState(new Set());
     const [isBulkAdding, setIsBulkAdding] = useState(false);
     const [confirmAction, setConfirmAction] = useState({ open: false, type: '', data: null });
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         if (segment) {
@@ -764,16 +765,7 @@ export const ContactsPage = () => {
                 </form>
             </${Modal}>
 
-            <${ConfirmModal}
-                isOpen=${confirmDelete.open}
-                onClose=${() => setConfirmDelete({ open: false, id: null })}
-                onConfirm=${handleDeleteGroup}
-                loading=${isDeleting}
-                title="Delete Segment?"
-                message="Are you sure? Contacts inside will not be deleted, but this segment will be removed."
-                confirmText="Delete Segment"
-                variant="danger"
-            />
+
         </div>
     `;
 };

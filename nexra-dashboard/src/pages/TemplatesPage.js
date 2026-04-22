@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button.js';
 import { Card } from '../components/ui/Card.js';
 import { Icon } from '../components/ui/Icon.js';
 import { Modal } from '../components/ui/Modal.js';
+import { ConfirmModal } from '../components/ui/ConfirmModal.js';
 
 export const TemplatesPage = () => {
     const { showToast } = useToast();
@@ -12,6 +13,8 @@ export const TemplatesPage = () => {
     const [loading, setLoading] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [templateData, setTemplateData] = useState({ title: '', content: '' });
+    const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null });
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         fetchTemplates();
@@ -41,14 +44,17 @@ export const TemplatesPage = () => {
         }
     };
 
-    const handleDelete = async (id) => {
-        if (!confirm('Are you sure?')) return;
+    const handleDelete = async () => {
+        setIsDeleting(true);
         try {
-            await apiClient.delete(`/templates/${id}`);
+            await apiClient.delete(`/templates/${confirmDelete.id}`);
             showToast('Template deleted', 'success');
+            setConfirmDelete({ open: false, id: null });
             fetchTemplates();
         } catch (error) {
             showToast('Failed to delete template', 'error');
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -80,7 +86,7 @@ export const TemplatesPage = () => {
                     ${templates.map(t => html`
                         <${Card} key=${t.id} className="p-6 flex flex-col group relative overflow-hidden">
                             <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick=${() => handleDelete(t.id)} className="p-2 bg-red-50 text-red-600 rounded-full hover:bg-red-100 transition-colors">
+                                <button onClick=${() => setConfirmDelete({ open: true, id: t.id })} className="p-2 bg-red-50 text-red-600 rounded-full hover:bg-red-100 transition-colors">
                                     <${Icon} name="trash-2" size=${16} />
                                 </button>
                             </div>
@@ -128,5 +134,16 @@ export const TemplatesPage = () => {
                 </form>
             </${Modal}>
         </div>
+
+        <${ConfirmModal}
+            isOpen=${confirmDelete.open}
+            onClose=${() => setConfirmDelete({ open: false, id: null })}
+            onConfirm=${handleDelete}
+            loading=${isDeleting}
+            title="Delete Template?"
+            message="Are you sure you want to delete this template? This action cannot be undone."
+            confirmText="Delete Template"
+            variant="danger"
+        />
     `;
 };

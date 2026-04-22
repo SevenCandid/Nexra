@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     POSTGRES_DB: str
     SQLALCHEMY_DATABASE_URI: Optional[str] = None
 
+    # Base URL for Webhooks
+    WEBHOOK_BASE_URL: Optional[str] = None
+
     # Redis
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379

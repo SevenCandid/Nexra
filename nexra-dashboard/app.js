@@ -1746,14 +1746,18 @@ const HelpPage = () => {
                     <div className="space-y-2">
                         <h2 className="text-2xl font-black uppercase tracking-tight">Need Assistance?</h2>
                         <p className="text-blue-100/80 text-sm max-w-sm">Our support team is available 24/7 to help you with your messaging needs.</p>
-                        <div className="flex gap-4 pt-4">
-                            <a href="mailto:support@nexra.com" className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl transition-all border border-white/20 text-xs font-bold uppercase tracking-wider">
+                        <div className="flex flex-wrap gap-3 pt-4">
+                            <a href="mailto:frankbediako07@gmail.com" className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl transition-all border border-white/20 text-xs font-bold uppercase tracking-wider">
                                 <${Icon} name="mail" size=${16} />
-                                Email Support
+                                frankbediako07@gmail.com
                             </a>
-                            <a href="tel:+23300000000" className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl transition-all border border-white/20 text-xs font-bold uppercase tracking-wider">
+                            <a href="tel:+233549437374" className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl transition-all border border-white/20 text-xs font-bold uppercase tracking-wider">
                                 <${Icon} name="phone" size=${16} />
-                                Call Us
+                                +233 54 943 7374
+                            </a>
+                            <a href="https://wa.me/233549437374" target="_blank" className="flex items-center gap-2 px-4 py-2 bg-green-500/30 hover:bg-green-500/50 rounded-xl transition-all border border-green-400/30 text-xs font-bold uppercase tracking-wider">
+                                <${Icon} name="message-circle" size=${16} />
+                                WhatsApp
                             </a>
                         </div>
                     </div>
@@ -1859,6 +1863,13 @@ const APIDocsPage = () => {
     const [createdKey, setCreatedKey] = useState(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [docTab, setDocTab] = useState('curl');
+    
+    // Webhooks state
+    const [webhooks, setWebhooks] = useState([]);
+    const [webhookLoading, setWebhookLoading] = useState(true);
+    const [showNewWebhookModal, setShowNewWebhookModal] = useState(false);
+    const [newWebhookUrl, setNewWebhookUrl] = useState('');
+    const [isSavingWebhook, setIsSavingWebhook] = useState(false);
 
     const fetchApiKeys = async () => {
         setLoading(true);
@@ -1872,7 +1883,22 @@ const APIDocsPage = () => {
         }
     };
 
-    useEffect(() => { fetchApiKeys(); }, []);
+    const fetchWebhooks = async () => {
+        setWebhookLoading(true);
+        try {
+            const res = await apiClient.get('/developer/webhooks');
+            setWebhooks(res.data || []);
+        } catch (error) {
+            console.error('Failed to fetch webhooks', error);
+        } finally {
+            setWebhookLoading(false);
+        }
+    };
+
+    useEffect(() => { 
+        fetchApiKeys(); 
+        fetchWebhooks();
+    }, []);
 
     const handleCreateKey = async (e) => {
         e.preventDefault();
@@ -1897,6 +1923,33 @@ const APIDocsPage = () => {
             fetchApiKeys();
         } catch (error) {
             showToast('Failed to revoke key', 'error');
+        }
+    };
+
+    const handleCreateWebhook = async (e) => {
+        e.preventDefault();
+        setIsSavingWebhook(true);
+        try {
+            await apiClient.post('/developer/webhooks', { url: newWebhookUrl, events: ["message.delivered", "message.failed"] });
+            setNewWebhookUrl('');
+            setShowNewWebhookModal(false);
+            showToast('Webhook registered successfully', 'success');
+            fetchWebhooks();
+        } catch (error) {
+            showToast('Failed to register webhook: ' + (error.response?.data?.detail || 'Unknown error'), 'error');
+        } finally {
+            setIsSavingWebhook(false);
+        }
+    };
+
+    const handleDeleteWebhook = async (id) => {
+        if (!confirm('Remove this webhook? Delivery reports will no longer be sent to this URL.')) return;
+        try {
+            await apiClient.delete(`/developer/webhooks/${id}`);
+            showToast('Webhook removed', 'success');
+            fetchWebhooks();
+        } catch (error) {
+            showToast('Failed to remove webhook', 'error');
         }
     };
 
@@ -1948,6 +2001,38 @@ const APIDocsPage = () => {
                                 <button onClick=${() => handleRevokeKey(key.id)} className="p-2 text-gray-400 hover:text-red-500 transition-colors">
                                     <${Icon} name="trash-2" size=${14} />
                                 </button>
+                            </div>
+                        `)}
+                    </${Card}>
+                </div>
+
+                <div className="lg:col-span-1 space-y-4">
+                    <div className="flex items-center justify-between px-1">
+                        <h3 className="text-xs font-black text-gray-500 dark:text-white uppercase tracking-widest flex items-center gap-2">
+                            <${Icon} name="webhook" size=${14} className="text-primary-600" />
+                            Webhooks
+                        </h3>
+                        <button onClick=${() => setShowNewWebhookModal(true)} className="text-[10px] font-bold text-primary-600 hover:text-primary-700 transition-colors">
+                            + ADD URL
+                        </button>
+                    </div>
+                    <${Card} className="divide-y divide-gray-50 dark:divide-midnight-800 bg-white dark:bg-midnight-950 shadow-sm overflow-hidden">
+                        ${webhookLoading ? html`<div className="p-8 text-center"><${Icon} name="loader-2" size=${24} className="animate-spin text-primary-600 mx-auto" /></div>`
+                        : webhooks.length === 0 ? html`<div className="p-8 text-center text-gray-400 dark:text-midnight-600"><p className="text-[10px] font-bold uppercase tracking-widest">No webhooks</p></div>`
+                        : webhooks.map(webhook => html`
+                            <div key=${webhook.id} className="p-4 flex flex-col gap-2 hover:bg-gray-50 dark:hover:bg-midnight-900/40 transition-colors">
+                                <div className="flex items-center justify-between">
+                                    <p className="text-xs font-bold text-gray-900 dark:text-white truncate max-w-[200px]" title=${webhook.url}>
+                                        ${webhook.url}
+                                    </p>
+                                    <button onClick=${() => handleDeleteWebhook(webhook.id)} className="p-1.5 text-gray-400 hover:text-red-500 transition-colors shrink-0">
+                                        <${Icon} name="trash-2" size=${14} />
+                                    </button>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full ${webhook.is_active ? 'bg-green-500' : 'bg-red-500'}"></span>
+                                    <p className="text-[9px] font-mono text-gray-400 dark:text-midnight-500 truncate">Secret: ${webhook.secret.substring(0,8)}...</p>
+                                </div>
                             </div>
                         `)}
                     </${Card}>
@@ -2018,6 +2103,30 @@ const APIDocsPage = () => {
                         </div>
                     </form>
                 `}
+            </${Modal}>
+
+            <${Modal} isOpen=${showNewWebhookModal} onClose=${() => setShowNewWebhookModal(false)} title="Add Webhook Endpoint">
+                <form onSubmit=${handleCreateWebhook} className="space-y-5 pt-2">
+                    <p className="text-sm text-gray-500 dark:text-midnight-500 font-medium mb-4">
+                        We will send HTTP POST requests to this URL when messages are delivered or failed.
+                    </p>
+                    <${Input}
+                        label="Endpoint URL"
+                        placeholder="https://your-domain.com/webhook"
+                        type="url"
+                        value=${newWebhookUrl}
+                        onChange=${(e) => setNewWebhookUrl(e.target.value)}
+                        required
+                    />
+                    <div className="flex gap-4 pt-4">
+                        <${Button} type="button" variant="outline" className="flex-1 rounded-2xl py-3.5" onClick=${() => setShowNewWebhookModal(false)}>
+                            Cancel
+                        </${Button}>
+                        <${Button} type="submit" variant="primary" loading=${isSavingWebhook} className="flex-1 rounded-2xl py-3.5 shadow-glow">
+                            Save Endpoint
+                        </${Button}>
+                    </div>
+                </form>
             </${Modal}>
         </div>
     `;
@@ -2109,10 +2218,15 @@ const DashboardPage = () => {
         chartsInitialized.current.success = new Chart(successCtx, {
             type: 'doughnut',
             data: {
-                labels: ['Delivered', 'Failed', 'Pending'],
+                labels: ['Delivered', 'Failed', 'Delivering', 'Sent'],
                 datasets: [{
-                    data: [s.delivered || 0, s.failed || 0, s.pending || 0],
-                    backgroundColor: ['#10b981', '#ef4444', '#f59e0b'],
+                    data: [
+                        s.delivered || 0, 
+                        s.failed || 0, 
+                        s.sent || 0, 
+                        (s.pending || 0) + (s.processing || 0)
+                    ],
+                    backgroundColor: ['#10b981', '#ef4444', '#3b82f6', '#f59e0b'],
                     borderWidth: 0,
                     hoverOffset: 4
                 }]
@@ -2157,32 +2271,39 @@ const DashboardPage = () => {
                             <canvas ref=${successChartRef}></canvas>
                             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                                 <p className="text-2xl font-black text-gray-900 dark:text-white leading-none">
-                                    ${((analytics.success_rate.delivered / (analytics.success_rate.delivered + analytics.success_rate.failed + analytics.success_rate.pending || 1)) * 100).toFixed(0)}%
+                                    ${((analytics.success_rate.delivered / (analytics.success_rate.delivered + analytics.success_rate.failed + analytics.success_rate.sent + analytics.success_rate.pending + analytics.success_rate.processing || 1)) * 100).toFixed(0)}%
                                 </p>
                                 <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">delivered</p>
                             </div>
                         </div>
-                        <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-2 lg:mt-4 lg:pt-4 lg:border-t border-gray-50 dark:border-midnight-800">
+                        <div className="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-2 lg:mt-4 lg:pt-4 lg:border-t border-gray-50 dark:border-midnight-800">
                             <div className="flex lg:flex-col items-center lg:items-center justify-between lg:justify-center gap-2">
                                 <div className="flex items-center gap-1.5">
                                     <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0"></span>
                                     <p className="text-[10px] font-bold text-gray-400 uppercase">Delivered</p>
                                 </div>
-                                <p className="text-sm font-black text-emerald-500">${analytics.success_rate.delivered}</p>
+                                <span className="font-black text-gray-900 dark:text-white">${analytics.success_rate.delivered || 0}</span>
                             </div>
                             <div className="flex lg:flex-col items-center lg:items-center justify-between lg:justify-center gap-2">
                                 <div className="flex items-center gap-1.5">
                                     <span className="w-2 h-2 rounded-full bg-rose-500 flex-shrink-0"></span>
                                     <p className="text-[10px] font-bold text-gray-400 uppercase">Failed</p>
                                 </div>
-                                <p className="text-sm font-black text-rose-500">${analytics.success_rate.failed}</p>
+                                <span className="font-black text-gray-900 dark:text-white">${analytics.success_rate.failed || 0}</span>
+                            </div>
+                            <div className="flex lg:flex-col items-center lg:items-center justify-between lg:justify-center gap-2">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0"></span>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase">Delivering</p>
+                                </div>
+                                <span className="font-black text-gray-900 dark:text-white">${analytics.success_rate.sent || 0}</span>
                             </div>
                             <div className="flex lg:flex-col items-center lg:items-center justify-between lg:justify-center gap-2">
                                 <div className="flex items-center gap-1.5">
                                     <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0"></span>
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase">Pending</p>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase">Sent</p>
                                 </div>
-                                <p className="text-sm font-black text-amber-500">${analytics.success_rate.pending}</p>
+                                <span className="font-black text-gray-900 dark:text-white">${(analytics.success_rate.pending || 0) + (analytics.success_rate.processing || 0)}</span>
                             </div>
                         </div>
                     </div>
@@ -2324,10 +2445,19 @@ const CampaignsPage = () => {
                                 <${Badge} variant=${
                                     campaign.status === 'completed' ? 'success' : 
                                     campaign.status === 'failed' ? 'danger' :
+                                    campaign.status === 'delivering' ? 'primary' :
                                     campaign.status === 'sending' ? 'info' :
-                                    campaign.status === 'scheduled' ? 'warning' : 'info'
+                                    campaign.status === 'scheduled' ? 'warning' : 'default'
                                 }>
-                                    ${campaign.status}
+                                    ${
+                                        campaign.status === 'sending' ? 'Sent' :
+                                        campaign.status === 'delivering' ? 'Delivering' :
+                                        campaign.status === 'completed' ? 'Delivered' :
+                                        campaign.status === 'failed' ? 'Failed' :
+                                        campaign.status === 'scheduled' ? 'Scheduled' :
+                                        campaign.status === 'draft' ? 'Draft' :
+                                        campaign.status
+                                    }
                                 </${Badge}>
                             </div>
                             <p className="text-sm text-gray-600 mb-4 line-clamp-2">${campaign.template}</p>
@@ -3751,6 +3881,7 @@ const MessagesPage = () => {
     const [filter, setFilter] = useState('all');
     const [expandedId, setExpandedId] = useState(null);
     const [campaignStats, setCampaignStats] = useState({});
+    const [campaignFailedMessages, setCampaignFailedMessages] = useState({});
 
     useEffect(() => {
         fetchCampaigns();
@@ -3759,11 +3890,12 @@ const MessagesPage = () => {
     const fetchCampaigns = async () => {
         try {
             const statusMap = {
-                'pending': 'pending',
-                'delivered': 'delivered',
+                'sending': 'sending',
+                'delivering': 'delivering',
+                'completed': 'completed',
                 'failed': 'failed'
             };
-            const params = filter !== 'all' ? { status: statusMap[filter] } : {};
+            const params = filter !== 'all' && statusMap[filter] ? { status: statusMap[filter] } : {};
             const response = await apiClient.get('/campaigns', { params });
             setCampaigns(response.data.items || []);
         } catch (error) {
@@ -3780,6 +3912,16 @@ const MessagesPage = () => {
             setCampaignStats(prev => ({ ...prev, [campaignId]: response.data }));
         } catch (error) {
             console.error('Failed to fetch campaign stats:', error);
+        }
+    };
+
+    const fetchCampaignFailedMessages = async (campaignId) => {
+        if (campaignFailedMessages[campaignId]) return;
+        try {
+            const response = await apiClient.get(`/messages`, { params: { campaign_id: campaignId, status: 'failed', limit: 50 } });
+            setCampaignFailedMessages(prev => ({ ...prev, [campaignId]: response.data.items || [] }));
+        } catch (error) {
+            console.error('Failed to fetch failed messages for campaign:', error);
         }
     };
 
@@ -3820,13 +3962,24 @@ const MessagesPage = () => {
 
     const getStatusBadge = (status) => {
         const variants = {
-            pending: 'warning',
-            sent: 'info',
-            delivered: 'success',
+            draft: 'default',
+            scheduled: 'warning',
+            sending: 'info',
+            delivering: 'primary',
+            completed: 'success',
             failed: 'danger',
-            expired: 'warning',
+            cancelled: 'danger'
         };
-        return html`<${Badge} variant=${variants[status] || 'default'}>${status}</${Badge}>`;
+        const labels = {
+            draft: 'Draft',
+            scheduled: 'Scheduled',
+            sending: 'Sent',
+            delivering: 'Delivering',
+            completed: 'Delivered',
+            failed: 'Failed',
+            cancelled: 'Cancelled'
+        };
+        return html`<${Badge} variant=${variants[status] || 'default'}>${labels[status] || status}</${Badge}>`;
     };
 
     if (loading) {
@@ -3841,13 +3994,19 @@ const MessagesPage = () => {
         <div className="space-y-6 fade-in">
 
             <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
-                ${['all', 'pending', 'delivered', 'failed'].map((f) => html`
+                ${[
+                    { id: 'all', label: 'All' }, 
+                    { id: 'sending', label: 'Sent' }, 
+                    { id: 'delivering', label: 'Delivering' }, 
+                    { id: 'completed', label: 'Delivered' }, 
+                    { id: 'failed', label: 'Failed' }
+                ].map((f) => html`
                     <button
-                        key=${f}
-                        onClick=${() => setFilter(f)}
-                        className="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${filter === f ? 'bg-primary-600 text-white shadow-sm' : 'bg-primary-50 text-primary-700 hover:bg-primary-100 border border-primary-100/50'}"
+                        key=${f.id}
+                        onClick=${() => setFilter(f.id)}
+                        className="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${filter === f.id ? 'bg-primary-600 text-white shadow-sm' : 'bg-primary-50 text-primary-700 hover:bg-primary-100 border border-primary-100/50'}"
                     >
-                        ${f.charAt(0).toUpperCase() + f.slice(1)}
+                        ${f.label}
                     </button>
                 `)}
             </div>
@@ -3879,7 +4038,10 @@ const MessagesPage = () => {
                                         const stats = campaignStats[campaign.id];
                                         
                                         const handleExpand = () => {
-                                            if (!isExpanded) fetchCampaignStats(campaign.id);
+                                            if (!isExpanded) {
+                                                fetchCampaignStats(campaign.id);
+                                                fetchCampaignFailedMessages(campaign.id);
+                                            }
                                             setExpandedId(isExpanded ? null : campaign.id);
                                         };
 
@@ -3948,19 +4110,19 @@ const MessagesPage = () => {
                                                                     ${stats ? html`
                                                                         <div className="bg-white dark:bg-midnight-900 p-3 rounded-xl border border-gray-100 dark:border-midnight-800 shadow-sm">
                                                                             <p className="text-[10px] font-bold text-gray-400 dark:text-midnight-500 uppercase tracking-widest mb-1">Delivered</p>
-                                                                            <p className="text-lg font-black text-green-600 dark:text-emerald-400">${stats.delivered}</p>
+                                                                            <p className="text-lg font-black text-green-600 dark:text-emerald-400">${stats.delivered || 0}</p>
                                                                         </div>
                                                                         <div className="bg-white dark:bg-midnight-900 p-3 rounded-xl border border-gray-100 dark:border-midnight-800 shadow-sm">
-                                                                            <p className="text-[10px] font-bold text-gray-400 dark:text-midnight-500 uppercase tracking-widest mb-1">Pending</p>
-                                                                            <p className="text-lg font-black text-amber-500 dark:text-amber-400">${stats.pending}</p>
+                                                                            <p className="text-[10px] font-bold text-gray-400 dark:text-midnight-500 uppercase tracking-widest mb-1">Delivering</p>
+                                                                            <p className="text-lg font-black text-blue-500 dark:text-blue-400">${stats.sent || 0}</p>
+                                                                        </div>
+                                                                        <div className="bg-white dark:bg-midnight-900 p-3 rounded-xl border border-gray-100 dark:border-midnight-800 shadow-sm">
+                                                                            <p className="text-[10px] font-bold text-gray-400 dark:text-midnight-500 uppercase tracking-widest mb-1">Sent (Queue)</p>
+                                                                            <p className="text-lg font-black text-amber-500 dark:text-amber-400">${(stats.pending || 0) + (stats.processing || 0)}</p>
                                                                         </div>
                                                                         <div className="bg-white dark:bg-midnight-900 p-3 rounded-xl border border-gray-100 dark:border-midnight-800 shadow-sm">
                                                                             <p className="text-[10px] font-bold text-gray-400 dark:text-midnight-500 uppercase tracking-widest mb-1">Failed</p>
-                                                                            <p className="text-lg font-black text-red-500 dark:text-rose-400">${stats.failed}</p>
-                                                                        </div>
-                                                                        <div className="bg-white dark:bg-midnight-900 p-3 rounded-xl border border-gray-100 dark:border-midnight-800 shadow-sm">
-                                                                            <p className="text-[10px] font-bold text-gray-400 dark:text-midnight-500 uppercase tracking-widest mb-1">Total</p>
-                                                                            <p className="text-lg font-black text-gray-900 dark:text-white">${stats.total}</p>
+                                                                            <p className="text-lg font-black text-red-500 dark:text-rose-400">${stats.failed || 0}</p>
                                                                         </div>
                                                                     ` : html`
                                                                         <div className="col-span-4 py-4 flex items-center gap-2 text-gray-400 dark:text-midnight-500 text-xs">
@@ -3982,6 +4144,28 @@ const MessagesPage = () => {
                                                                     View Detailed Logs <${Icon} name="chevron-right" size=${10} className="ml-1" />
                                                                 </${Button}>
                                                             </div>
+                                                            ${campaignFailedMessages[campaign.id] && campaignFailedMessages[campaign.id].length > 0 && html`
+                                                                <div className="mt-4 border-t border-red-100 dark:border-red-900/30 pt-4">
+                                                                    <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest mb-3 flex items-center gap-1">
+                                                                        <${Icon} name="alert-triangle" size=${12} /> Failed Message Logs
+                                                                    </p>
+                                                                    <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                                                                        ${campaignFailedMessages[campaign.id].map(msg => html`
+                                                                            <div key=${msg.id} className="bg-red-50 dark:bg-red-900/10 p-3 rounded-lg border border-red-100 dark:border-red-900/30 flex justify-between items-start gap-4">
+                                                                                <div>
+                                                                                    <p className="text-sm font-bold text-gray-900 dark:text-white">${msg.recipient}</p>
+                                                                                    <p className="text-xs text-red-600 dark:text-red-400 mt-1 line-clamp-2" title=${msg.error_message || 'Unknown error from provider'}>
+                                                                                        ${msg.error_message || 'Unknown error from provider'}
+                                                                                    </p>
+                                                                                </div>
+                                                                                <div className="text-[10px] text-gray-500 whitespace-nowrap">
+                                                                                    ${new Date(msg.created_at).toLocaleTimeString()}
+                                                                                </div>
+                                                                            </div>
+                                                                        `)}
+                                                                    </div>
+                                                                </div>
+                                                            `}
                                                         </div>
                                                     </td>
                                                 </tr>

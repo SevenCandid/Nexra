@@ -35,11 +35,18 @@ async def _async_process_dlr(dlr_data: dict):
             # Map SMPP status to internal MessageStatus
             # Standard SMPP stats: DELIVRD, EXPIRED, DELETED, UNDELIV, ACCEPTD, UNKNOWN, REJECTD
             status_map = {
+                # Standard SMPP stats
                 "DELIVRD": MessageStatus.DELIVERED,
                 "EXPIRED": MessageStatus.EXPIRED,
                 "UNDELIV": MessageStatus.UNDELIVERABLE,
                 "REJECTD": MessageStatus.FAILED,
                 "DELETED": MessageStatus.FAILED,
+                
+                # Arkesel & Webhook string stats
+                "DELIVERED": MessageStatus.DELIVERED,
+                "FAILED": MessageStatus.FAILED,
+                "UNDELIVERED": MessageStatus.UNDELIVERABLE,
+                "REJECTED": MessageStatus.FAILED,
             }
             
             new_status = status_map.get(stat, MessageStatus.SENT)
@@ -61,6 +68,9 @@ async def _async_process_dlr(dlr_data: dict):
                 msg.status = new_status
                 if new_status == MessageStatus.DELIVERED:
                     msg.delivered_at = datetime.utcnow()
+                elif new_status in [MessageStatus.FAILED, MessageStatus.EXPIRED, MessageStatus.UNDELIVERABLE]:
+                    if dlr_data.get("err"):
+                        msg.error_message = str(dlr_data.get("err"))
                 logger.info(f"Updated msg_id={msg.id} to status={new_status} via DLR")
 
                 # Check if refund is needed for failed deliveries

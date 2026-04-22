@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api import deps
 from app.db.database import get_db
@@ -203,3 +203,50 @@ async def retry_sms(
     await enqueue_sms(sms.id)
     
     return sms
+
+@router.post("/webhook/arkesel")
+async def arkesel_webhook(
+    request: Request
+):
+    """
+    Webhook endpoint to receive Delivery Reports (DLRs) from Arkesel.
+    Arkesel needs to be configured to send webhooks to this URL:
+    https://<your-domain>/api/v1/sms/webhook/arkesel
+    """
+    try:
+        payload = await request.json()
+        logger.info(f"Received Arkesel Webhook: {payload}")
+        
+        # Arkesel v2 Webhook format is usually inside the request body
+        # E.g., {"id": "12345", "status": "Delivered", ...} or {"data": {"id": ...}}
+        
+        # We enqueue the raw payload to our DLR worker to process asynchronously
+        from app.core.queue import enqueue_dlr
+        
+        # Determine the correct data payload
+        dlr_data = payload.get("data", payload)
+        
+        # To match our dlr_worker's expected format (which currently expects SMPP-like dict keys `id`, `stat`, `err`, `raw`), 
+        # we can pass it directly and handle the mapping in the worker, or map it here.
+        # Let's map it to the expected DLR dict format for the worker.
+        
+        mapped_dlr = {
+            "id": str(dlr_data.get("id") or dlr_data.get("message_id")),
+            "stat": str(dlr_data.get("status", "")).upper(),
+            "err": str(dlr_data.get("error_code") or dlr_data.get("reason") or ""),
+            "raw": str(payload)
+        }
+        
+        if not mapped_dlr["id"]:
+            logger.warning("Arkesel Webhook payload missing message 'id'")
+            return {"status": "ignored", "reason": "missing id"}
+
+        import asyncio
+        asyncio.create_task(enqueue_dlr(mapped_dlr))
+        
+        return {"status": "success"}
+        
+    except Exception as e:
+        logger.error(f"Error processing Arkesel Webhook: {str(e)}")
+        # We return 200 anyway so the provider doesn't keep retrying excessively if it's a structural error on our end
+        return {"status": "error", "message": str(e)}
