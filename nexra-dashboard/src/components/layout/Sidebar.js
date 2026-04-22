@@ -32,8 +32,22 @@ export const Sidebar = ({ currentPage, onNavigate }) => {
                     >
                         <${Icon} name=${item.icon} size=${20} />
                         <span>${item.label}</span>
-                    </button>
                 `)}
+
+                ${user?.role === 'superadmin' && html`
+                    <div className="pt-2 mt-2 border-t border-gray-100 dark:border-midnight-800">
+                        <p className="px-4 pb-1 text-[9px] font-black text-amber-500/70 uppercase tracking-widest">Admin</p>
+                        <button
+                            onClick=${() => onNavigate('admin-reports')}
+                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentPage === 'admin-reports'
+                                ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 font-medium'
+                                : 'text-amber-600 dark:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/10'}"
+                        >
+                            <${Icon} name="bar-chart-2" size=${20} />
+                            <span>Business Overview</span>
+                        </button>
+                    </div>
+                `}
 
             </nav>
             
