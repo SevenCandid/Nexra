@@ -5,7 +5,7 @@ import { AuthLayout } from './AuthLayout.js';
 import apiClient from '../api/client.js';
 
 export const LoginPage = () => {
-    const { login } = useAuth();
+    const { login, fetchUser } = useAuth();
     const [view, setView] = useState('showcase'); // Starts visual on mobile
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -26,13 +26,18 @@ export const LoginPage = () => {
             return hashParams.get(name);
         };
 
-        const token = getParam('token');
-        if (token) {
-            localStorage.setItem('access_token', token);
-            // Clean the URL without refreshing
-            window.history.replaceState({}, document.title, window.location.pathname + window.location.hash.split('?')[0]);
-            window.location.hash = '#/dashboard';
-        }
+        const processToken = async () => {
+            const token = getParam('token');
+            if (token) {
+                localStorage.setItem('access_token', token);
+                // Clean the URL without refreshing
+                window.history.replaceState({}, document.title, window.location.pathname + window.location.hash.split('?')[0]);
+                await fetchUser();
+                window.location.hash = '#/dashboard';
+            }
+        };
+
+        processToken();
 
         return () => window.removeEventListener('resize', handleResize);
     }, []);

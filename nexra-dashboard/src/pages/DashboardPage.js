@@ -1,6 +1,9 @@
-import { html, useEffect, useRef, useState } from '../lib/react-shim.js';
-import { Card, Button, Icon, Badge } from '../components/ui/index.js';
-import { api } from '../lib/api.js';
+import { html, useEffect, useRef, useState } from '../utils/htm.js';
+import { Card } from '../components/ui/Card.js';
+import { Button } from '../components/ui/Button.js';
+import { Icon } from '../components/ui/Icon.js';
+import { Badge } from '../components/ui/Badge.js';
+import apiClient from '../api/client.js';
 
 export const DashboardPage = () => {
     const [analytics, setAnalytics] = useState(null);
@@ -14,11 +17,11 @@ export const DashboardPage = () => {
         const fetchData = async () => {
             try {
                 const [analyticsData, campaignsData] = await Promise.all([
-                    api.get('/analytics/stats'),
-                    api.get('/campaigns?limit=5')
+                    apiClient.get('/analytics/stats'),
+                    apiClient.get('/campaigns?limit=5')
                 ]);
-                setAnalytics(analyticsData);
-                setCampaigns(campaignsData.items || []);
+                setAnalytics(analyticsData.data);
+                setCampaigns(campaignsData.data.items || []);
                 setLoading(false);
             } catch (error) {
                 console.error('Failed to fetch dashboard data:', error);
