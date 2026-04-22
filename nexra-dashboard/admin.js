@@ -1034,35 +1034,54 @@ const PlatformManagementPage = () => {
         }
     };
 
-    const handlePromote = async (u) => {
-        if (!confirm(`Promote ${u.email} to Superadmin? They will gain full platform access.`)) return;
-        try {
-            await apiClient.post(`/platform/users/${u.id}/promote`);
-            showToast(`${u.email} promoted to Superadmin!`, 'success');
-            fetchData();
-        } catch (error) {
-            showToast(error.response?.data?.detail || 'Promotion failed', 'error');
-        }
+    const handlePromote = (u) => {
+        setConfirmAction({
+            open: true,
+            title: 'Promote User?',
+            message: `Promote ${u.email} to Superadmin? They will gain full platform access and management rights.`,
+            onConfirm: async () => {
+                try {
+                    await apiClient.post(`/platform/users/${u.id}/promote`);
+                    showToast(`${u.email} promoted to Superadmin!`, 'success');
+                    setConfirmAction({ open: false });
+                    fetchData();
+                } catch (error) {
+                    showToast(error.response?.data?.detail || 'Promotion failed', 'error');
+                }
+            }
+        });
     };
 
-    const handleImpersonate = async (u) => {
-        if (!confirm(`Login as ${u.full_name}? This will open their dashboard in a new tab.`)) return;
-        try {
-            const response = await apiClient.post(`/auth/admin/impersonate/${u.id}`);
-            const { access_token } = response.data;
-            // Pulse dashboard is at index.html
-            const url = `index.html?impersonate_token=${access_token}#/dashboard`;
-            window.open(url, '_blank');
-            showToast(`Logged in as ${u.full_name}`, 'success');
-        } catch (error) {
-            showToast('Impersonation failed', 'error');
-        }
+    const handleImpersonate = (u) => {
+        setConfirmAction({
+            open: true,
+            title: 'Impersonate User?',
+            message: `Login as ${u.full_name}? This will grant you full access to their dashboard and account as if you were them.`,
+            onConfirm: async () => {
+                try {
+                    const response = await apiClient.post(`/auth/admin/impersonate/${u.id}`);
+                    const { access_token } = response.data;
+                    const url = `index.html?impersonate_token=${access_token}#/dashboard`;
+                    window.open(url, '_blank');
+                    showToast(`Logged in as ${u.full_name}`, 'success');
+                    setConfirmAction({ open: false });
+                } catch (error) {
+                    showToast('Impersonation failed', 'error');
+                }
+            }
+        });
     };
 
     const [adjustmentModal, setAdjustmentModal] = useState({ open: false, org: null });
     const [adjAmount, setAdjAmount] = useState('');
     const [adjDesc, setAdjDesc] = useState('');
     const [adjLoading, setAdjLoading] = useState(false);
+
+    const [planModal, setPlanModal] = useState({ open: false, org: null });
+    const [selectedPlan, setSelectedPlan] = useState('');
+    const [planLoading, setPlanLoading] = useState(false);
+
+    const [confirmAction, setConfirmAction] = useState({ open: false, title: '', message: '', onConfirm: null });
 
     const handleAdjustBalance = async (e) => {
         e.preventDefault();
@@ -1088,17 +1107,44 @@ const PlatformManagementPage = () => {
         }
     };
 
-    const handleDelete = async (id, name) => {
-        if (!confirm(`Are you absolutely sure you want to delete ${name}? This action cannot be undone.`)) return;
-        
+    const handleAssignPlan = async (e) => {
+        if (e) e.preventDefault();
+        if (!planModal.org) return;
+        setPlanLoading(true);
         try {
-            const endpoint = activeTab === 'users' ? `/platform/users/${id}` : `/platform/organizations/${id}`;
-            await apiClient.delete(endpoint);
-            showToast('Deleted successfully', 'success');
+            await apiClient.post('/billing/admin/assign-plan', null, {
+                params: {
+                    org_id: planModal.org.id,
+                    plan_slug: selectedPlan || undefined
+                }
+            });
+            showToast('Plan updated successfully', 'success');
+            setPlanModal({ open: false, org: null });
             fetchData();
         } catch (error) {
-            showToast(error.response?.data?.detail || 'Delete failed', 'error');
+            showToast(error.response?.data?.detail || 'Update failed', 'error');
+        } finally {
+            setPlanLoading(false);
         }
+    };
+
+    const handleDelete = (id, name) => {
+        setConfirmAction({
+            open: true,
+            title: 'Delete Forever?',
+            message: `Are you absolutely sure you want to delete ${name}? This action is irreversible and will remove all associated data.`,
+            onConfirm: async () => {
+                try {
+                    const endpoint = activeTab === 'users' ? `/platform/users/${id}` : `/platform/organizations/${id}`;
+                    await apiClient.delete(endpoint);
+                    showToast('Deleted successfully', 'success');
+                    setConfirmAction({ open: false });
+                    fetchData();
+                } catch (error) {
+                    showToast(error.response?.data?.detail || 'Delete failed', 'error');
+                }
+            }
+        });
     };
 
     const totalPages = Math.ceil(total / PAGE_SIZE);
@@ -1228,6 +1274,19 @@ const PlatformManagementPage = () => {
                                                         <${Icon} name="plus-circle" size=${14} />
                                                         <span className="hidden sm:inline">Add Credit</span>
                                                     </${Button}>
+                                                    <${Button}
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        className="h-8 !px-3 text-primary-600 hover:bg-primary-50"
+                                                        title="Manage Subscription Plan"
+                                                        onClick=${() => {
+                                                            setPlanModal({ open: true, org: item });
+                                                            setSelectedPlan(item.plan_slug || '');
+                                                        }}
+                                                    >
+                                                        <${Icon} name="credit-card" size=${14} />
+                                                        <span className="hidden sm:inline">Plan</span>
+                                                    </${Button}>
                                                 `}
                                                 ${activeTab === 'users' && user?.role === 'superadmin' && item.role !== 'superadmin' && html`
                                                     <${Button}
@@ -1316,6 +1375,59 @@ const PlatformManagementPage = () => {
                     </div>
                 </form>
             </${Modal}>
+
+            <${Modal} 
+                isOpen=${planModal.open} 
+                onClose=${() => setPlanModal({ open: false, org: null })}
+                title="Manage Organization Plan"
+            >
+                <form onSubmit=${handleAssignPlan} className="space-y-4">
+                    <div className="p-4 bg-primary-50 dark:bg-primary-900/10 rounded-2xl border border-primary-100 dark:border-primary-900/20 mb-4">
+                        <p className="text-[10px] text-primary-700 dark:text-primary-400 font-bold uppercase tracking-widest">Plan Management</p>
+                        <p className="text-xs text-primary-600/80 dark:text-primary-400/60 mt-1">Forcefully assign or cancel a subscription plan for <span className="font-bold text-primary-700 dark:text-primary-300">${planModal.org?.name}</span>.</p>
+                    </div>
+
+                    <div className="space-y-3">
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-widest px-1">Select New Plan</label>
+                        <div className="grid grid-cols-1 gap-2">
+                            ${[
+                                { id: '', name: 'No Plan / Cancel Plan', desc: 'Remove all subscription benefits' },
+                                { id: 'payg', name: 'Pay As You Go', desc: 'Standard usage-based pricing' },
+                                { id: 'starter', name: 'Starter Plan', desc: 'GHS 25 / Month - 500 Credits' },
+                                { id: 'enterprise', name: 'Enterprise Plan', desc: 'GHS 50 / Month - 1,250 Credits' }
+                            ].map(p => html`
+                                <button
+                                    type="button"
+                                    onClick=${() => setSelectedPlan(p.id)}
+                                    className=${`flex flex-col items-start p-4 rounded-2xl border transition-all text-left ${selectedPlan === p.id ? 'bg-primary-50 border-primary-500 ring-1 ring-primary-500 dark:bg-primary-900/20' : 'bg-white dark:bg-midnight-900 border-gray-100 dark:border-midnight-800 hover:border-primary-200'}`}
+                                >
+                                    <div className="flex items-center justify-between w-full">
+                                        <span className=${`text-sm font-bold ${selectedPlan === p.id ? 'text-primary-700 dark:text-primary-400' : 'text-gray-900 dark:text-white'}`}>${p.name}</span>
+                                        ${selectedPlan === p.id && html`<${Icon} name="check-circle" size=${16} className="text-primary-500" />`}
+                                    </div>
+                                    <span className="text-[11px] text-gray-500 mt-0.5">${p.desc}</span>
+                                </button>
+                            `)}
+                        </div>
+                    </div>
+
+                    <div className="pt-4 flex gap-3">
+                        <${Button} type="button" variant="ghost" className="flex-1" onClick=${() => setPlanModal({ open: false, org: null })}>Cancel</${Button}>
+                        <${Button} type="submit" variant="primary" className="flex-1" disabled=${planLoading}>
+                            ${planLoading ? 'Updating...' : 'Update Plan'}
+                        </${Button}>
+                    </div>
+                </form>
+            </${Modal}>
+
+            <${ConfirmModal}
+                isOpen=${confirmAction.open}
+                onClose=${() => setConfirmAction({ ...confirmAction, open: false })}
+                onConfirm=${confirmAction.onConfirm}
+                title=${confirmAction.title}
+                message=${confirmAction.message}
+                variant="danger"
+            />
         </div>
     `;
 };

@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.api import deps
-from app.db.models import User, Wallet, NetworkPricing, BillingLedger
+from app.db.models import User, Wallet, NetworkPricing, BillingLedger, Organization, SubscriptionPlan
 from app.db.database import get_db
 from app.schemas.schemas import WalletResponse, NetworkPricingResponse, BillingLedgerResponse
 
