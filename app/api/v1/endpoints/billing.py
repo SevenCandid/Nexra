@@ -133,3 +133,41 @@ async def admin_adjust_balance(
         str(organization_id), {"amount": amount, "description": description}
     )
 
+@router.post("/admin/assign-plan")
+async def assign_org_plan(
+    org_id: int,
+    plan_slug: str = None, 
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_platform_manager)
+):
+    """
+    Manually assign or cancel a plan for an organization (Admin only).
+    """
+    result = await db.execute(select(Organization).where(Organization.id == org_id))
+    organization = result.scalar_one_or_none()
+    if not organization:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    if not plan_slug or plan_slug.lower() == "none" or plan_slug.lower() == "cancel":
+        organization.plan_id = None
+        await db.commit()
+        await deps.log_admin_action(
+            db, current_user, "cancel_plan", "organization", 
+            str(org_id), {}
+        )
+        return {"message": "Plan cancelled successfully"}
+
+    plan_result = await db.execute(select(SubscriptionPlan).where(SubscriptionPlan.slug == plan_slug))
+    plan = plan_result.scalar_one_or_none()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    organization.plan_id = plan.id
+    await db.commit()
+    
+    await deps.log_admin_action(
+        db, current_user, "assign_plan", "organization", 
+        str(org_id), {"plan_slug": plan_slug}
+    )
+    return {"message": f"Plan {plan_slug} assigned successfully"}
+
