@@ -71,7 +71,8 @@ async def _async_process_sms(sms_id: int):
             result = await gateway_manager.send_sms(
                 recipient=msg.recipient,
                 sender=msg.sender,
-                content=msg.content 
+                content=msg.content,
+                provider_name=msg.provider_name
             )
 
             if result.get("status") == "success":
@@ -85,6 +86,17 @@ async def _async_process_sms(sms_id: int):
                 msg.error_message = result.get("message", "Provider rejected message")
             
             await db.commit()
+            
+            # BROADCAST UPDATE
+            from app.core.websocket import manager
+            await manager.broadcast_to_org(msg.organization_id, {
+                "type": "message_updated",
+                "data": {
+                    "id": msg.id,
+                    "status": msg.status,
+                    "recipient": msg.recipient
+                }
+            })
         except Exception as e:
             logger.error(f"Gateway error for msg_id={msg.id}: {str(e)}")
             msg.status = MessageStatus.FAILED

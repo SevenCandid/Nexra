@@ -30,6 +30,15 @@ export const DashboardPage = () => {
         };
 
         fetchData();
+
+        // Real-time Update Listener
+        const handlePulse = (e) => {
+            console.log('NEXRA Pulse Received:', e.detail);
+            fetchData(); // Re-fetch to update charts and lists
+        };
+
+        window.addEventListener('nexra:update', handlePulse);
+        return () => window.removeEventListener('nexra:update', handlePulse);
     }, []);
 
     useEffect(() => {

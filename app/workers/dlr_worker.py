@@ -67,6 +67,20 @@ async def _async_process_dlr(dlr_data: dict):
                 if new_status in [MessageStatus.FAILED, MessageStatus.EXPIRED, MessageStatus.UNDELIVERABLE]:
                     from app.services.billing_service import billing_service
                     await billing_service.refund_failed_sms(db, msg.id)
+                
+                # BROADCAST UPDATE
+                try:
+                    from app.core.websocket import manager
+                    await manager.broadcast_to_org(msg.organization_id, {
+                        "type": "message_updated",
+                        "data": {
+                            "id": msg.id,
+                            "status": msg.status,
+                            "recipient": msg.recipient
+                        }
+                    })
+                except Exception as e:
+                    logger.error(f"WebSocket broadcast failed for DLR: {str(e)}")
             else:
                 logger.warning(f"DLR received for unknown provider_msg_id={provider_msg_id}")
 

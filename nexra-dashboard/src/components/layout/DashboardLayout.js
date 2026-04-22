@@ -26,7 +26,36 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
         };
 
         fetchUserData();
-        const interval = setInterval(fetchUserData, 30000); // 30s refresh
+        const interval = setInterval(fetchUserData, 60000); // Slower fallback refresh (1m)
+        
+        // WebSocket Connection for Real-time Updates
+        const token = localStorage.getItem('nexra_token');
+        if (token) {
+            const apiBase = window.__NEXRA_API_URL__ || 'http://localhost:8000';
+            const wsBase = apiBase.replace('http', 'ws');
+            const socket = new WebSocket(`${wsBase}/ws/${token}`);
+
+            socket.onmessage = (event) => {
+                try {
+                    const msg = JSON.parse(event.data);
+                    if (msg.type === 'message_updated') {
+                        fetchWallet();
+                        fetchNotifications();
+                        // Broadcast to child pages
+                        window.dispatchEvent(new CustomEvent('nexra:update', { detail: msg }));
+                    }
+                } catch (e) {
+                    console.error('WS Message Parse Error:', e);
+                }
+            };
+
+            socket.onclose = () => console.log('NEXRA Pulse Disconnected');
+            return () => {
+                clearInterval(interval);
+                socket.close();
+            };
+        }
+
         return () => clearInterval(interval);
     }, []);
 

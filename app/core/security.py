@@ -42,3 +42,20 @@ def get_password_hash(password: str) -> str:
 def generate_api_key() -> str:
     import secrets
     return f"nx_{secrets.token_urlsafe(32)}"
+
+async def get_user_from_token(token: str) -> Optional[Any]:
+    payload = verify_token(token)
+    if not payload:
+        return None
+    
+    user_id = payload.get("sub")
+    if not user_id:
+        return None
+        
+    from app.db.database import SessionLocal
+    from app.db.models import User
+    from sqlalchemy.future import select
+    
+    async with SessionLocal() as db:
+        result = await db.execute(select(User).where(User.id == int(user_id)))
+        return result.scalar_one_or_none()

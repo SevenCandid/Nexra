@@ -89,8 +89,18 @@ class GatewayManager:
 
     async def send_sms(self, recipient: str, sender: str, content: str, provider_name: str = None) -> Dict:
         """
-        Send SMS using the active provider configured in settings.
+        Send SMS using the active provider or a specific routed adapter.
         """
+        # 1. Try to use a routed adapter if provider_name is specified
+        if provider_name and provider_name in self.adapters:
+            adapter = self.adapters[provider_name]
+            if adapter.is_connected():
+                logger.info(f"Using routed adapter for {provider_name}")
+                return await adapter.send(recipient, sender, content)
+            else:
+                logger.warning(f"Routed adapter for {provider_name} is offline, falling back to default.")
+
+        # 2. Fallback to default provider (e.g. Arkesel/Hubtel via API)
         provider = get_sms_provider()
         return await provider.send(recipient, sender, content)
 

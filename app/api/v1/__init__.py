@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import sms, auth, billing, campaigns, messages, contacts, waitlist, sender_ids, staff, platform, payments, analytics, templates, groups, notifications, developer
+from app.api.v1.endpoints import sms, auth, billing, campaigns, messages, contacts, waitlist, sender_ids, staff, platform, payments, analytics, templates, groups, notifications, developer, ws
 
 api_router = APIRouter()
 api_router.include_router(sms.router, prefix="/sms", tags=["sms"])
@@ -18,3 +18,4 @@ api_router.include_router(templates.router, prefix="/templates", tags=["template
 api_router.include_router(groups.router, prefix="/groups", tags=["groups"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
 api_router.include_router(developer.router, prefix="/developer", tags=["developer"])
+api_router.include_router(ws.router, prefix="/ws", tags=["websocket"])

@@ -23,15 +23,15 @@ async def get_analytics_stats(
     # 1. Activity (Messages per day for last 7 days)
     activity_query = (
         select(
-            func.date(SMSMessage.created_at).label("day"),
-            func.count(SMSMessage.id).label("count")
+            func.date(SMSMessage.created_at).label("day"),  # type: ignore
+            func.count(SMSMessage.id).label("count")  # type: ignore
         )
         .where(
             SMSMessage.organization_id == current_user.organization_id,
             SMSMessage.created_at >= last_7_days
         )
-        .group_by(func.date(SMSMessage.created_at))
-        .order_by(func.date(SMSMessage.created_at))
+        .group_by(func.date(SMSMessage.created_at))  # type: ignore
+        .order_by(func.date(SMSMessage.created_at))  # type: ignore
     )
     activity_result = await db.execute(activity_query)
     activity_data = [{"day": row.day.isoformat(), "count": row.count} for row in activity_result]
@@ -40,7 +40,7 @@ async def get_analytics_stats(
     success_query = (
         select(
             SMSMessage.status,
-            func.count(SMSMessage.id).label("count")
+            func.count(SMSMessage.id).label("count")  # type: ignore
         )
         .where(SMSMessage.organization_id == current_user.organization_id)
         .group_by(SMSMessage.status)
@@ -52,7 +52,7 @@ async def get_analytics_stats(
     network_query = (
         select(
             SMSMessage.provider_name,
-            func.count(SMSMessage.id).label("count")
+            func.count(SMSMessage.id).label("count")  # type: ignore
         )
         .where(SMSMessage.organization_id == current_user.organization_id)
         .group_by(SMSMessage.provider_name)
