@@ -5,7 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
 from app.api import deps
 from app.db.database import get_db
-from app.db.models import User, SMSMessage, MessageStatus
+from app.db.models import User, SMSMessage, MessageStatus, BillingLedger, Wallet, LedgerType, UserRole
+from fastapi import HTTPException, status
 
 router = APIRouter()
 
@@ -162,3 +163,99 @@ async def export_messages_csv(
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+@router.get("/admin/overview")
+async def get_admin_overview(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """
+    SUPERADMIN ONLY. Returns a high-level business financial overview:
+    - Total Revenue (sum of all top-up credits)
+    - Total Liability (sum of all current wallet balances = what we owe users)
+    - Total SMS Cost (sum of all per-message costs logged)
+    - Estimated Profit (Revenue - Liability - Cost)
+    - Platform-wide message stats
+    """
+    if current_user.role != UserRole.SUPERADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Superadmin access required"
+        )
+
+    # 1. Total Revenue: Sum of all topup credits ever received
+    revenue_q = select(func.coalesce(func.sum(BillingLedger.amount), 0)).where(  # type: ignore
+        BillingLedger.category == "topup",
+        BillingLedger.type == LedgerType.CREDIT
+    )
+    revenue_result = await db.execute(revenue_q)
+    total_revenue = float(revenue_result.scalar() or 0)
+
+    # 2. Total Liability: Sum of all wallet balances (credit owed to users)
+    liability_q = select(func.coalesce(func.sum(Wallet.balance), 0))  # type: ignore
+    liability_result = await db.execute(liability_q)
+    total_liability = float(liability_result.scalar() or 0)
+
+    # 3. Total SMS Network Cost (what we paid to send messages)
+    cost_q = select(func.coalesce(func.sum(SMSMessage.cost), 0)).where(  # type: ignore
+        SMSMessage.cost.is_not(None)
+    )
+    cost_result = await db.execute(cost_q)
+    total_network_cost = float(cost_result.scalar() or 0)
+
+    # 4. Estimated Profit
+    estimated_profit = total_revenue - total_liability - total_network_cost
+
+    # 5. Platform-wide message counts
+    msg_stats_q = (
+        select(SMSMessage.status, func.count(SMSMessage.id).label("count"))  # type: ignore
+        .group_by(SMSMessage.status)
+    )
+    msg_stats_result = await db.execute(msg_stats_q)
+    msg_stats = {row.status: row.count for row in msg_stats_result}
+
+    total_messages = sum(msg_stats.values())
+
+    # 6. Total active organizations
+    from app.db.models import Organization
+    orgs_q = select(func.count(Organization.id)).where(Organization.is_active == True)  # type: ignore
+    orgs_result = await db.execute(orgs_q)
+    total_orgs = int(orgs_result.scalar() or 0)
+
+    # 7. Recent top-ups (last 10)
+    recent_topups_q = (
+        select(BillingLedger)
+        .where(
+            BillingLedger.category == "topup",
+            BillingLedger.type == LedgerType.CREDIT
+        )
+        .order_by(BillingLedger.created_at.desc())
+        .limit(10)
+    )
+    recent_topups_result = await db.execute(recent_topups_q)
+    recent_topups = [
+        {
+            "id": t.id,
+            "amount": float(t.amount),
+            "description": t.description,
+            "created_at": t.created_at.isoformat()
+        }
+        for t in recent_topups_result.scalars().all()
+    ]
+
+    return {
+        "financials": {
+            "total_revenue": round(total_revenue, 2),
+            "total_liability": round(total_liability, 2),
+            "total_network_cost": round(total_network_cost, 4),
+            "estimated_profit": round(estimated_profit, 2),
+        },
+        "platform": {
+            "total_organizations": total_orgs,
+            "total_messages": total_messages,
+            "delivered": msg_stats.get(MessageStatus.DELIVERED, 0),
+            "failed": msg_stats.get(MessageStatus.FAILED, 0),
+            "pending": msg_stats.get(MessageStatus.PENDING, 0) + msg_stats.get(MessageStatus.PROCESSING, 0),
+        },
+        "recent_topups": recent_topups
+    }

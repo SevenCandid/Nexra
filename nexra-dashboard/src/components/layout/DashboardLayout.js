@@ -110,6 +110,7 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
         templates: { title: 'Templates', subtitle: 'Manage your reusable message templates' },
         help: { title: 'Help Center', subtitle: 'Everything you need to know about NEXRA' },
         'api-docs': { title: 'Developer API', subtitle: 'Integrate NEXRA into your own applications' },
+        'admin-reports': { title: 'Business Overview', subtitle: 'Platform-wide financial health and metrics' },
     };
 
     const { title, subtitle } = pageInfo[currentPage] || { title: 'Pulse', subtitle: '' };
