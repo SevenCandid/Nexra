@@ -17,21 +17,27 @@ class RateLimiter:
         - period: Time window in seconds
         """
         now = time.time()
-        pipeline = redis_client.pipeline()
-        
-        # Remove old entries outside the window
-        pipeline.zremrangebyscore(key, 0, now - period)
-        # Count current entries
-        pipeline.zcard(key)
-        # Add current entry
-        pipeline.zadd(key, {str(now): now})
-        # Set expiration for the key
-        pipeline.expire(key, period + 1)
-        
-        results = await pipeline.execute()
-        current_count = results[1]
-        
-        return current_count < limit
+        try:
+            pipeline = redis_client.pipeline()
+            
+            # Remove old entries outside the window
+            pipeline.zremrangebyscore(key, 0, now - period)
+            # Count current entries
+            pipeline.zcard(key)
+            # Add current entry
+            pipeline.zadd(key, {str(now): now})
+            # Set expiration for the key
+            pipeline.expire(key, period + 1)
+            
+            results = await pipeline.execute()
+            current_count = results[1]
+            
+            return current_count < limit
+        except Exception as e:
+            # Fallback: If Redis is down, allow the action but log a warning
+            import logging
+            logging.getLogger(__name__).warning(f"RateLimiter: Redis failed, bypassing limit check: {e}")
+            return True
 
     @staticmethod
     async def wait_for_slot(key: str, limit: int, period: int = 1, timeout: int = 10):

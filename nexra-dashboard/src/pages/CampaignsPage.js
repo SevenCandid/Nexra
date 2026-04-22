@@ -88,12 +88,16 @@ export const CampaignsPage = () => {
                             <div className="flex items-start justify-between mb-4">
                                 <h3 className="font-bold text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">${campaign.name}</h3>
                                 <${Badge} variant=${
-                                    campaign.status === 'completed' ? 'success' : 
+                                    campaign.status === 'completed' || campaign.status === 'delivered' ? 'success' : 
                                     campaign.status === 'failed' ? 'danger' :
-                                    campaign.status === 'sending' ? 'info' :
+                                    campaign.status === 'sending' || campaign.status === 'delivering' ? 'info' :
                                     campaign.status === 'scheduled' ? 'warning' : 'info'
                                 }>
-                                    ${campaign.status}
+                                    ${campaign.status === 'completed' ? 'Delivered' : 
+                                      campaign.status === 'delivering' ? 'Delivering' : 
+                                      campaign.status === 'sending' ? 'Sending' :
+                                      campaign.status === 'failed' ? 'Failed' :
+                                      campaign.status}
                                 </${Badge}>
                             </div>
                             <p className="text-sm text-gray-600 mb-4 line-clamp-2">${campaign.template}</p>

@@ -21,7 +21,7 @@ export const MessagesPage = () => {
     const fetchCampaigns = async () => {
         try {
             const statusMap = {
-                'pending': 'pending',
+                'delivering': 'delivering',
                 'delivered': 'delivered',
                 'failed': 'failed'
             };
@@ -49,23 +49,10 @@ export const MessagesPage = () => {
         try {
             await apiClient.post(`/campaigns/${campaignId}/retry`);
             showToast('All failed messages have been re-enqueued', 'success');
-            // Force stats refresh
             if (expandedId === campaignId) {
                 const response = await apiClient.get(`/campaigns/${campaignId}/stats`);
                 setCampaignStats(prev => ({ ...prev, [campaignId]: response.data }));
             }
-        } catch (error) {
-            showToast('Retry failed: ' + (error.response?.data?.detail || 'Unknown error'), 'error');
-        }
-    };
-
-    // Note: handleRetry for individual messages is missing in the render, 
-    // but was part of the original component just in case it's used elsewhere.
-    const handleRetry = async (messageId) => {
-        try {
-            await apiClient.post(`/sms/retry/${messageId}`);
-            showToast('Message re-enqueued for delivery', 'success');
-            // Note: Normally fetchMessages would be called here. As Campaigns are fetched instead, this might not apply directly. 
         } catch (error) {
             showToast('Retry failed: ' + (error.response?.data?.detail || 'Unknown error'), 'error');
         }
@@ -83,13 +70,19 @@ export const MessagesPage = () => {
 
     const getStatusBadge = (status) => {
         const variants = {
-            pending: 'warning',
+            delivering: 'info',
+            processing: 'warning',
             sent: 'info',
+            completed: 'success',
             delivered: 'success',
             failed: 'danger',
-            expired: 'warning',
         };
-        return html`<${Badge} variant=${variants[status] || 'default'}>${status}</${Badge}>`;
+        
+        let label = status;
+        if (status === 'sent' || status === 'completed') label = 'Completed';
+        if (status === 'delivering' || status === 'processing' || status === 'pending') label = 'Delivering';
+        
+        return html`<${Badge} variant=${variants[status] || 'default'}>${label.charAt(0).toUpperCase() + label.slice(1)}</${Badge}>`;
     };
 
     if (loading) {
@@ -104,13 +97,13 @@ export const MessagesPage = () => {
         <div className="space-y-6 fade-in">
 
             <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
-                ${['all', 'pending', 'delivered', 'failed'].map((f) => html`
+                ${['all', 'delivering', 'delivered', 'failed'].map((f) => html`
                     <button
                         key=${f}
                         onClick=${() => setFilter(f)}
                         className="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${filter === f ? 'bg-primary-600 text-white shadow-sm' : 'bg-primary-50 text-primary-700 hover:bg-primary-100 border border-primary-100/50'}"
                     >
-                        ${f.charAt(0).toUpperCase() + f.slice(1)}
+                        ${f === 'delivering' ? 'Delivering' : f.charAt(0).toUpperCase() + f.slice(1)}
                     </button>
                 `)}
             </div>
@@ -173,7 +166,7 @@ export const MessagesPage = () => {
                                                         >
                                                             <${Icon} name="edit" size=${16} />
                                                         </${Button}>
-                                                        ${campaign.status === 'failed' && html`
+                                                        ${(campaign.status === 'failed' || (stats && stats.failed > 0)) && html`
                                                             <${Button} 
                                                                 variant="outline"
                                                                 size="sm"
@@ -211,19 +204,19 @@ export const MessagesPage = () => {
                                                                     ${stats ? html`
                                                                         <div className="bg-white dark:bg-midnight-900 p-3 rounded-xl border border-gray-100 dark:border-midnight-800 shadow-sm">
                                                                             <p className="text-[10px] font-bold text-gray-400 dark:text-midnight-500 uppercase tracking-widest mb-1">Delivered</p>
-                                                                            <p className="text-lg font-black text-green-600 dark:text-emerald-400">${stats.delivered}</p>
+                                                                            <p className="text-lg font-black text-emerald-500">${stats.delivered}</p>
                                                                         </div>
                                                                         <div className="bg-white dark:bg-midnight-900 p-3 rounded-xl border border-gray-100 dark:border-midnight-800 shadow-sm">
-                                                                            <p className="text-[10px] font-bold text-gray-400 dark:text-midnight-500 uppercase tracking-widest mb-1">Pending</p>
-                                                                            <p className="text-lg font-black text-amber-500 dark:text-amber-400">${stats.pending}</p>
+                                                                            <p className="text-[10px] font-bold text-gray-400 dark:text-midnight-500 uppercase tracking-widest mb-1">Completed</p>
+                                                                            <p className="text-lg font-black text-blue-500">${stats.sent || 0}</p>
                                                                         </div>
                                                                         <div className="bg-white dark:bg-midnight-900 p-3 rounded-xl border border-gray-100 dark:border-midnight-800 shadow-sm">
                                                                             <p className="text-[10px] font-bold text-gray-400 dark:text-midnight-500 uppercase tracking-widest mb-1">Failed</p>
-                                                                            <p className="text-lg font-black text-red-500 dark:text-rose-400">${stats.failed}</p>
+                                                                            <p className="text-lg font-black text-rose-500">${stats.failed}</p>
                                                                         </div>
                                                                         <div className="bg-white dark:bg-midnight-900 p-3 rounded-xl border border-gray-100 dark:border-midnight-800 shadow-sm">
-                                                                            <p className="text-[10px] font-bold text-gray-400 dark:text-midnight-500 uppercase tracking-widest mb-1">Total</p>
-                                                                            <p className="text-lg font-black text-gray-900 dark:text-white">${stats.total}</p>
+                                                                            <p className="text-[10px] font-bold text-gray-400 dark:text-midnight-500 uppercase tracking-widest mb-1">Delivering</p>
+                                                                            <p className="text-lg font-black text-amber-500">${stats.pending + (stats.processing || 0)}</p>
                                                                         </div>
                                                                     ` : html`
                                                                         <div className="col-span-4 py-4 flex items-center gap-2 text-gray-400 dark:text-midnight-500 text-xs">
@@ -232,18 +225,6 @@ export const MessagesPage = () => {
                                                                         </div>
                                                                     `}
                                                                 </div>
-                                                            </div>
-                                                            
-                                                            <div className="flex justify-between items-center pt-2 border-t border-gray-100 dark:border-midnight-800">
-                                                                <p className="text-[10px] text-gray-500 dark:text-midnight-500 font-medium tracking-tight">Campaign ID: #${campaign.id}</p>
-                                                                <${Button} 
-                                                                    variant="outline" 
-                                                                    size="sm" 
-                                                                    className="text-[10px] py-1"
-                                                                    onClick=${() => window.location.hash = `#/campaigns/create?edit=${campaign.id}`}
-                                                                >
-                                                                    View Detailed Logs <${Icon} name="chevron-right" size=${10} className="ml-1" />
-                                                                </${Button}>
                                                             </div>
                                                         </div>
                                                     </td>

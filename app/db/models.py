@@ -17,6 +17,7 @@ class UserRole(str, Enum):
 
 class MessageStatus(str, Enum):
     PENDING = "pending"
+    PROCESSING = "processing"
     SENT = "sent"
     DELIVERED = "delivered"
     FAILED = "failed"
@@ -27,6 +28,7 @@ class CampaignStatus(str, Enum):
     DRAFT = "draft"
     SCHEDULED = "scheduled"
     SENDING = "sending"
+    DELIVERING = "delivering"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
     FAILED = "failed"
@@ -252,6 +254,7 @@ class SMSMessage(Base):
     # Telco metadata
     provider_name: Mapped[str] = mapped_column(String(50), index=True)
     provider_msg_id: Mapped[Optional[str]] = mapped_column(String(100), index=True)
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)

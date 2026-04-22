@@ -1,47 +1,36 @@
-import { html, useState, useEffect, useRef } from '../utils/htm.js';
-import { Card } from '../components/ui/Card.js';
-import { Button } from '../components/ui/Button.js';
-import { Badge } from '../components/ui/Badge.js';
-import { Icon } from '../components/ui/Icon.js';
-import apiClient from '../api/client.js';
+import { html, useEffect, useRef, useState } from '../lib/react-shim.js';
+import { Card, Button, Icon, Badge } from '../components/ui/index.js';
+import { api } from '../lib/api.js';
 
 export const DashboardPage = () => {
-    const [stats, setStats] = useState({ pending: 0, delivered: 0, failed: 0 });
+    const [analytics, setAnalytics] = useState(null);
     const [campaigns, setCampaigns] = useState([]);
-    const [analytics, setAnalytics] = useState({ activity: [], success_rate: {}, networks: {} });
     const [loading, setLoading] = useState(true);
-
     const activityChartRef = useRef(null);
     const successChartRef = useRef(null);
     const chartsInitialized = useRef({ activity: null, success: null });
 
     useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const [analyticsData, campaignsData] = await Promise.all([
+                    api.get('/analytics/stats'),
+                    api.get('/campaigns?limit=5')
+                ]);
+                setAnalytics(analyticsData);
+                setCampaigns(campaignsData.items || []);
+                setLoading(false);
+            } catch (error) {
+                console.error('Failed to fetch dashboard data:', error);
+                setLoading(false);
+            }
+        };
+
         fetchData();
     }, []);
 
-    const fetchData = async () => {
-        try {
-            const [statsRes, campaignsRes, analyticsRes] = await Promise.all([
-                apiClient.get('/messages/stats'),
-                apiClient.get('/campaigns?limit=5'),
-                apiClient.get('/analytics/stats')
-            ]);
-            setStats({
-                pending: statsRes.data.pending || 0,
-                delivered: statsRes.data.delivered || 0,
-                failed: statsRes.data.failed || 0
-            });
-            setCampaigns(campaignsRes.data.items || []);
-            setAnalytics(analyticsRes.data);
-        } catch (error) {
-            console.error('Failed to fetch dashboard data:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     useEffect(() => {
-        if (!loading && analytics.activity.length >= 0) {
+        if (!loading && analytics) {
             initCharts();
         }
         return () => {
@@ -51,27 +40,27 @@ export const DashboardPage = () => {
     }, [loading, analytics]);
 
     const initCharts = () => {
-        if (!activityChartRef.current || !successChartRef.current || !window.Chart) return;
+        if (!activityChartRef.current || !successChartRef.current) return;
 
-        // Cleanup existing
+        // Cleanup existing charts
         if (chartsInitialized.current.activity) chartsInitialized.current.activity.destroy();
         if (chartsInitialized.current.success) chartsInitialized.current.success.destroy();
 
-        // Activity Chart (Line)
+        // Activity Chart (Bar)
         const activityCtx = activityChartRef.current.getContext('2d');
+        const labels = analytics.activity.map(d => d.date);
+        const data = analytics.activity.map(d => d.count);
+
         chartsInitialized.current.activity = new window.Chart(activityCtx, {
-            type: 'line',
+            type: 'bar',
             data: {
-                labels: analytics.activity.map(a => new Date(a.day).toLocaleDateString(undefined, { weekday: 'short' })),
+                labels: labels,
                 datasets: [{
-                    label: 'Messages',
-                    data: analytics.activity.map(a => a.count),
-                    borderColor: '#3b82f6',
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    borderWidth: 3,
-                    fill: true,
-                    tension: 0.4,
-                    pointRadius: 0
+                    label: 'Messages Sent',
+                    data: data,
+                    backgroundColor: '#3b82f6',
+                    borderRadius: 4,
+                    barThickness: 12
                 }]
             },
             options: {
@@ -88,13 +77,22 @@ export const DashboardPage = () => {
         // Success Rate Chart (Doughnut)
         const successCtx = successChartRef.current.getContext('2d');
         const s = analytics.success_rate;
+        const labels_doughnut = ['Delivered', 'Completed', 'Delivering', 'Failed'];
+        const data_doughnut = [
+            s.delivered || 0, 
+            s.completed || 0, 
+            s.delivering || 0, 
+            s.failed || 0
+        ];
+        const colors = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444'];
+        
         chartsInitialized.current.success = new window.Chart(successCtx, {
             type: 'doughnut',
             data: {
-                labels: ['Delivered', 'Failed', 'Pending'],
+                labels: labels_doughnut,
                 datasets: [{
-                    data: [s.delivered || 0, s.failed || 0, s.pending || 0],
-                    backgroundColor: ['#10b981', '#ef4444', '#f59e0b'],
+                    data: data_doughnut,
+                    backgroundColor: colors,
                     borderWidth: 0,
                     hoverOffset: 4
                 }]
@@ -115,6 +113,11 @@ export const DashboardPage = () => {
             </div>
         `;
     }
+
+    const totalMessages = (analytics.success_rate.delivered || 0) + 
+                          (analytics.success_rate.completed || 0) + 
+                          (analytics.success_rate.delivering || 0) + 
+                          (analytics.success_rate.failed || 0);
 
     return html`
         <div className="space-y-6 fade-in">
@@ -137,32 +140,32 @@ export const DashboardPage = () => {
                             <canvas ref=${successChartRef}></canvas>
                             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                                 <p className="text-2xl font-black text-gray-900 dark:text-white leading-none">
-                                    ${analytics.success_rate.delivered > 0 ? ((analytics.success_rate.delivered / (analytics.success_rate.delivered + analytics.success_rate.failed + analytics.success_rate.pending || 1)) * 100).toFixed(0) : 0}%
+                                    ${totalMessages > 0 ? ((analytics.success_rate.delivered / totalMessages) * 100).toFixed(0) : 0}%
                                 </p>
                                 <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Delivered</p>
                             </div>
                         </div>
-                        <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-2 lg:mt-4 lg:pt-4 lg:border-t border-gray-50 dark:border-midnight-800">
-                            <div className="flex lg:flex-col items-center lg:items-center justify-between lg:justify-center gap-2">
-                                <div className="flex items-center gap-1.5">
-                                    <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0"></span>
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase">Delivered</p>
+                        <div className="flex-1 grid grid-cols-1 gap-2 lg:mt-4 lg:pt-4 lg:border-t border-gray-50 dark:border-midnight-800">
+                            <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50/50 dark:bg-midnight-900/50 border border-gray-100 dark:border-midnight-800">
+                                <div className="flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                                    <span className="text-[10px] font-bold text-gray-500 uppercase">Delivering</span>
                                 </div>
-                                <p className="text-sm font-black text-emerald-500">${analytics.success_rate.delivered}</p>
+                                <span className="text-xs font-black text-gray-900 dark:text-white">${analytics.success_rate.delivering || 0}</span>
                             </div>
-                            <div className="flex lg:flex-col items-center lg:items-center justify-between lg:justify-center gap-2">
-                                <div className="flex items-center gap-1.5">
-                                    <span className="w-2 h-2 rounded-full bg-rose-500 flex-shrink-0"></span>
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase">Failed</p>
+                            <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50/50 dark:bg-midnight-900/50 border border-gray-100 dark:border-midnight-800">
+                                <div className="flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                                    <span className="text-[10px] font-bold text-gray-500 uppercase">Completed</span>
                                 </div>
-                                <p className="text-sm font-black text-rose-500">${analytics.success_rate.failed}</p>
+                                <span className="text-xs font-black text-gray-900 dark:text-white">${analytics.success_rate.completed || 0}</span>
                             </div>
-                            <div className="flex lg:flex-col items-center lg:items-center justify-between lg:justify-center gap-2">
-                                <div className="flex items-center gap-1.5">
-                                    <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0"></span>
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase">Pending</p>
+                            <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50/50 dark:bg-midnight-900/50 border border-gray-100 dark:border-midnight-800">
+                                <div className="flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                    <span className="text-[10px] font-bold text-gray-500 uppercase">Delivered</span>
                                 </div>
-                                <p className="text-sm font-black text-amber-500">${analytics.success_rate.pending}</p>
+                                <span className="text-xs font-black text-emerald-500">${analytics.success_rate.delivered || 0}</span>
                             </div>
                         </div>
                     </div>
@@ -193,12 +196,16 @@ export const DashboardPage = () => {
                                     </p>
                                 </div>
                                 <${Badge} variant=${
-                                    campaign.status === 'completed' ? 'success' : 
+                                    campaign.status === 'completed' || campaign.status === 'delivered' ? 'success' : 
                                     campaign.status === 'failed' ? 'danger' :
-                                    campaign.status === 'sending' ? 'info' :
+                                    campaign.status === 'sending' || campaign.status === 'delivering' ? 'info' :
                                     campaign.status === 'scheduled' ? 'warning' : 'info'
                                 }>
-                                    ${campaign.status}
+                                    ${campaign.status === 'completed' ? 'Delivered' : 
+                                      campaign.status === 'delivering' ? 'Delivering' : 
+                                      campaign.status === 'sending' ? 'Sending' :
+                                      campaign.status === 'failed' ? 'Failed' :
+                                      campaign.status}
                                 </${Badge}>
                             </div>
                         `)}
