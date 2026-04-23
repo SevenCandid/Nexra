@@ -8,10 +8,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str
 
     # Database
-    POSTGRES_SERVER: str
-    POSTGRES_USER: str
-    POSTGRES_PASSWORD: str
-    POSTGRES_DB: str
+    DATABASE_URL: Optional[str] = None
     SQLALCHEMY_DATABASE_URI: Optional[str] = None
 
     # Base URL for Webhooks
@@ -69,11 +66,20 @@ class Settings(BaseSettings):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        
+        # If DATABASE_URL is provided, ensure it uses asyncpg
+        if self.DATABASE_URL:
+            # SQLAlchemy 1.4+ requires postgresql:// to be replaced if using asyncpg
+            if self.DATABASE_URL.startswith("postgres://"):
+                self.DATABASE_URL = self.DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
+            elif self.DATABASE_URL.startswith("postgresql://"):
+                self.DATABASE_URL = self.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+            
+            self.SQLALCHEMY_DATABASE_URI = self.DATABASE_URL
+        
+        # Fallback if someone passed SQLALCHEMY_DATABASE_URI directly
         if not self.SQLALCHEMY_DATABASE_URI:
-            self.SQLALCHEMY_DATABASE_URI = (
-                f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
-                f"@{self.POSTGRES_SERVER}/{self.POSTGRES_DB}"
-            )
+            self.SQLALCHEMY_DATABASE_URI = "sqlite+aiosqlite:///./test.db" # Default fallback for local testing
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 
