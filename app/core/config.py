@@ -72,6 +72,10 @@ class Settings(BaseSettings):
                 self.DATABASE_URL = self.DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
             elif self.DATABASE_URL.startswith("postgresql://"):
                 self.DATABASE_URL = self.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+                
+            # Remove asyncpg-incompatible sslmode
+            if "?sslmode=" in self.DATABASE_URL:
+                self.DATABASE_URL = self.DATABASE_URL.split("?sslmode=")[0]
             
             self.SQLALCHEMY_DATABASE_URI = self.DATABASE_URL
         
