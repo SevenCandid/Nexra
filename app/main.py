@@ -61,7 +61,7 @@ origins = [
 # Add CORS last so it is the outermost middleware (runs first on every request)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
