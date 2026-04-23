@@ -27,3 +27,5 @@ services:
         sync: false
       - key: ADMIN_REGISTRATION_KEY
         sync: false
+      - key: FRONTEND_URL
+        value: https://nexrasms.netlify.app
