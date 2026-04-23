@@ -206,8 +206,6 @@ async def google_login():
         raise HTTPException(status_code=500, detail="Google Client ID not configured")
         
     redirect_uri = settings.GOOGLE_REDIRECT_URI
-    if "localhost" not in redirect_uri:
-        redirect_uri = redirect_uri.replace("http://", "https://")
     
     params = {
         "client_id": settings.GOOGLE_CLIENT_ID,
@@ -251,8 +249,8 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
             )
             
             if token_response.status_code != 200:
-                logger.error(f"OAuth: Token exchange failed ({token_response.status_code}): {token_response.text}")
-                return RedirectResponse(url="http://localhost:3000/#/login?error=token_exchange_failed")
+                logger.error(f"Failed to fetch Google token: {token_response.text}")
+                return RedirectResponse(url=f"{settings.FRONTEND_URL}/#/login?error=token_exchange_failed")
                 
             token_data = token_response.json()
             access_token = token_data.get("access_token")
@@ -267,8 +265,8 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
             )
             
             if user_info_response.status_code != 200:
-                logger.error(f"OAuth: Profile fetch failed ({user_info_response.status_code}): {user_info_response.text}")
-                return RedirectResponse(url="http://localhost:3000/#/login?error=profile_fetch_failed")
+                logger.error(f"Failed to fetch Google user profile: {user_info_response.text}")
+                return RedirectResponse(url=f"{settings.FRONTEND_URL}/#/login?error=profile_fetch_failed")
                 
             google_user = user_info_response.json()
             email = google_user.get("email").lower().strip()
@@ -333,14 +331,14 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
         
         # 4. Issue token and redirect to frontend
         token = security.create_access_token(user.id)
-        frontend_url = f"http://localhost:3000/#/login?token={token}"
+        frontend_url = f"{settings.FRONTEND_URL}/#/login?token={token}"
         
         logger.info(f"OAuth: Final redirect to frontend")
         return RedirectResponse(url=frontend_url, status_code=302)
 
     except Exception as e:
-        logger.exception(f"OAuth: CRITICAL ERROR in callback: {str(e)}")
-        return RedirectResponse(url="http://localhost:3000/#/login?error=internal_server_error")
+        logger.error(f"Google OAuth Callback Error: {str(e)}")
+        return RedirectResponse(url=f"{settings.FRONTEND_URL}/#/login?error=internal_server_error")
 
 @router.post("/admin/impersonate/{user_id}", response_model=Token)
 async def admin_impersonate(

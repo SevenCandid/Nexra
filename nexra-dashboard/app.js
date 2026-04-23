@@ -1954,12 +1954,12 @@ const APIDocsPage = () => {
     };
 
     const codeExamples = {
-        curl: `curl -X POST "http://localhost:8000/api/v1/sms/send" \\
+        curl: `curl -X POST "https://nexra-api.onrender.com/api/v1/sms/send" \\
      -H "X-API-Key: YOUR_API_KEY" \\
      -H "Content-Type: application/json" \\
      -d '{"recipient":"23324XXXXXXX","sender":"NEXRA","message":"Hello!"}'`,
-        python: `import requests\n\nheaders = {"X-API-Key": "YOUR_API_KEY"}\ndata = {"recipient": "23324XXXXXXX", "sender": "NEXRA", "message": "Hello!"}\nresponse = requests.post(\n    "http://localhost:8000/api/v1/sms/send",\n    json=data, headers=headers\n)\nprint(response.json())`,
-        javascript: `fetch('http://localhost:8000/api/v1/sms/send', {\n  method: 'POST',\n  headers: {'X-API-Key': 'YOUR_API_KEY', 'Content-Type': 'application/json'},\n  body: JSON.stringify({recipient: '23324XXXXXXX', sender: 'NEXRA', message: 'Hello!'})\n}).then(r => r.json()).then(console.log);`
+        python: `import requests\n\nheaders = {"X-API-Key": "YOUR_API_KEY"}\ndata = {"recipient": "23324XXXXXXX", "sender": "NEXRA", "message": "Hello!"}\nresponse = requests.post(\n    "https://nexra-api.onrender.com/api/v1/sms/send",\n    json=data, headers=headers\n)\nprint(response.json())`,
+        javascript: `fetch('https://nexra-api.onrender.com/api/v1/sms/send', {\n  method: 'POST',\n  headers: {'X-API-Key': 'YOUR_API_KEY', 'Content-Type': 'application/json'},\n  body: JSON.stringify({recipient: '23324XXXXXXX', sender: 'NEXRA', message: 'Hello!'})\n}).then(r => r.json()).then(console.log);`
     };
 
     return html`

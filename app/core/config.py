@@ -23,7 +23,10 @@ class Settings(BaseSettings):
     # Google OAuth
     GOOGLE_CLIENT_ID: Optional[str] = None
     GOOGLE_CLIENT_SECRET: Optional[str] = None
-    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/google/callback"
+    GOOGLE_REDIRECT_URI: str = "https://nexra-api.onrender.com/api/v1/auth/google/callback"
+
+    # Frontend URL (for redirects)
+    FRONTEND_URL: str = "https://nexrasms.netlify.app"
 
     # Admin Registration
     ADMIN_REGISTRATION_KEY: Optional[str] = "nexra-admin-2026-secure-key"
