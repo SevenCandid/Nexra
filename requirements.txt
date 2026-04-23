@@ -19,3 +19,4 @@ rq
 redis
 email-validator
 httpx
+slowapi
