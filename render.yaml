@@ -19,5 +19,11 @@ services:
         sync: false
       - key: ARKESEL_API_KEY
         sync: false
+      - key: ARKESEL_SENDER_ID
+        sync: false
       - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: PAYSTACK_PUBLIC_KEY
+        sync: false
+      - key: ADMIN_REGISTRATION_KEY
         sync: false
