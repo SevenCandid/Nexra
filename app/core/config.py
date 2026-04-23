@@ -18,12 +18,7 @@ class Settings(BaseSettings):
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
 
-    # SMPP MTN Ghana
-    MTN_SMPP_HOST: str
-    MTN_SMPP_PORT: int
-    MTN_SMPP_SYSTEM_ID: str
-    MTN_SMPP_PASSWORD: str
-    MTN_SMPP_SYSTEM_TYPE: str
+
 
     # Google OAuth
     GOOGLE_CLIENT_ID: Optional[str] = None
