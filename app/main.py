@@ -61,7 +61,12 @@ origins = [
 # Add CORS last so it is the outermost middleware (runs first on every request)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:8080",
+        "http://localhost:3000",
+        "https://nexrasms.netlify.app",
+        "https://nexrasms.netlify.app/"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
