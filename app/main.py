@@ -54,6 +54,8 @@ origins = [
     "http://127.0.0.1:3000",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "https://nexrasms.netlify.app",
+    "https://nexrasms.netlify.app/"
 ]
 
 # Add CORS last so it is the outermost middleware (runs first on every request)
