@@ -31,7 +31,7 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
         // WebSocket Connection for Real-time Updates
         const token = localStorage.getItem('nexra_token');
         if (token) {
-            const apiBase = window.__NEXRA_API_URL__ || 'http://localhost:8000';
+            const apiBase = window.__NEXRA_API_URL__ || 'https://nexra-api.onrender.com';
             const wsBase = apiBase.replace('http', 'ws');
             const socket = new WebSocket(`${wsBase}/ws/${token}`);
 

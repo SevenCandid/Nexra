@@ -14,7 +14,7 @@ const hideSplashScreen = () => {
 // API CLIENT
 // ============================================================================
 
-const API_BASE_URL = window.__NEXRA_API_URL__ || 'http://localhost:8000/api/v1';
+const API_BASE_URL = window.__NEXRA_API_URL__ || 'https://nexra-api.onrender.com/api/v1';
 
 const apiClient = axios.create({
     baseURL: API_BASE_URL,

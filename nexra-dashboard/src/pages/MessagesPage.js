@@ -117,7 +117,7 @@ export const MessagesPage = () => {
             // Use window.open for direct download if no complex auth headers needed, 
             // but since we use token in headers, we must use axios + blob
             const token = localStorage.getItem('nexra_token');
-            const apiBase = window.__NEXRA_API_URL__ || 'http://localhost:8000/api/v1';
+            const apiBase = window.__NEXRA_API_URL__ || 'https://nexra-api.onrender.com/api/v1';
             
             const response = await fetch(`${apiBase}/analytics/export/messages`, {
                 headers: { 'Authorization': `Bearer ${token}` }
