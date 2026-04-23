@@ -98,7 +98,7 @@ async def register(
         organization = Organization(
             name=user_data.organization_name,
             slug=org_slug,
-            plan_id=None,
+            plan_id=plan.id,
             is_active=True
         )
         db.add(organization)
