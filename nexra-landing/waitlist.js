@@ -1,5 +1,5 @@
 // Google Apps Script Web App URL
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw7032ZcU09vxIPUmmq1tvXXATs9MP_TThiA0wHjbbF7DJQCP6HVSfZHI04hfnwrmkiLQ/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbztfdwxUTDhRoUKLgWQLL4TwKBXc21-L8R0QZuChHQ0ch0CtRWuRdkIFoUPGJGu6kzH9Q/exec';
 
 let currentData = [];
 let activeTab = 'waitlist';

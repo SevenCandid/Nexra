@@ -56,7 +56,7 @@ const faqData = [
         items: [
             {
                 q: 'What CSV format is required for uploading contacts?',
-                a: 'Your CSV must have these columns: phone_number, first_name, last_name. The phone_number column is required; others are optional. Numbers can be in 0XXXXXXXXX or 233XXXXXXXXX format.'
+                a: 'Your CSV must have these columns (in any order): phone_number, first_name, last_name. The phone_number column is required; others are optional. Numbers can be in 0XXXXXXXXX or 233XXXXXXXXX format.'
             },
             {
                 q: 'What happens to duplicate phone numbers?',

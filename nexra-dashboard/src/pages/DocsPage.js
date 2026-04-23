@@ -98,7 +98,7 @@ const sections = [
             },
             {
                 heading: 'CSV Upload Format',
-                body: `When uploading contacts via CSV, ensure your file has these columns (order matters):\n\nphone_number, first_name, last_name\n\nExample:\n0241234567, John, Doe\n0551234567, Abena, Mensah\n\nThe phone_number column is required. All others are optional. Duplicate numbers are automatically skipped.`
+                body: `When uploading contacts via CSV, ensure your file has these columns (in any order):\n\nphone_number, first_name, last_name\n\nExample:\n0241234567, John, Doe\n0551234567, Abena, Mensah\n\nThe phone_number column is required. All others are optional. Duplicate numbers are automatically skipped.`
             },
             {
                 heading: 'Managing Contacts',
