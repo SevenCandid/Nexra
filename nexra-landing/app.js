@@ -75,6 +75,7 @@ function bindDashboardLinks() {
 
 function createParticles() {
     const container = document.getElementById('particles');
+    if (!container) return; // Safe guard - don't crash if element missing
     const particleCount = window.innerWidth < 768 ? 30 : 50;
 
     for (let i = 0; i < particleCount; i++) {
@@ -98,7 +99,8 @@ function createParticles() {
 
 function animateCounter() {
     const counter = document.getElementById('waitlist-count');
-    const target = waitlistCount;
+    if (!counter) return;
+    const target = typeof waitlistCount !== 'undefined' ? waitlistCount : 0;
     const duration = 2000;
     const start = target - 50;
     const increment = (target - start) / (duration / 16);
@@ -419,21 +421,18 @@ document.addEventListener('DOMContentLoaded', () => {
             100, 200, 300, 400, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000, 250000, 500000, 1000000
         ];
 
+        const formatNumber = (n) => n.toLocaleString();
+        const formatCurrency = (n) => 'GH\u20B5 ' + Math.round(n).toLocaleString();
+
         const updateROI = () => {
             const index = parseInt(volumeSlider.value);
             const volume = volumeValues[index];
 
-            const formatter = new Intl.NumberFormat('en-GH', {
-                style: 'currency',
-                currency: 'GHS',
-                maximumFractionDigits: 0
-            });
-
-            volumeDisplay.textContent = new Intl.NumberFormat('en-GH').format(volume);
+            volumeDisplay.textContent = formatNumber(volume);
 
             // Logic Adjusted for Realistic Ghana Rates (2024/2025):
             const annualSavings = volume * 0.04 * 12;
-            savingsDisplay.textContent = formatter.format(Math.round(annualSavings));
+            savingsDisplay.textContent = formatCurrency(annualSavings);
         };
 
         // Set slider max to match array length
@@ -471,22 +470,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // 4. Testimonial Slider
+    const sliderContainer = document.querySelector('.testimonial-slider-container');
     const track = document.querySelector('.testimonial-track');
     const slides = document.querySelectorAll('.testimonial-slide');
-    if (track && slides.length > 0) {
+    if (sliderContainer && track && slides.length > 0) {
         let currentSlide = 0;
         const totalSlides = slides.length;
 
-        const rotateSlides = () => {
-            currentSlide = (currentSlide + 1) % totalSlides;
-            track.style.transform = `translateX(-${(currentSlide * 100) / totalSlides}%)`;
-        };
-
-        // Fix track width based on slide count
+        // Each slide is 100% of the container; track is totalSlides * 100%
         track.style.width = `${totalSlides * 100}%`;
         slides.forEach(slide => {
-            slide.style.width = `${100 / totalSlides}%`;
+            // Override any CSS/Tailwind w-full so each slide fills exactly 1/N of the track
+            slide.style.cssText += `width: ${100 / totalSlides}%; flex-shrink: 0;`;
         });
+
+        const goToSlide = (index) => {
+            // Move the track left by one container-width per slide
+            const containerWidth = sliderContainer.offsetWidth;
+            track.style.transform = `translateX(-${index * containerWidth}px)`;
+        };
+
+        const rotateSlides = () => {
+            currentSlide = (currentSlide + 1) % totalSlides;
+            goToSlide(currentSlide);
+        };
+
+        // Also update on resize so pixel values stay correct
+        window.addEventListener('resize', () => goToSlide(currentSlide));
 
         setInterval(rotateSlides, 5000);
     }
@@ -504,6 +514,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // ============================================================================
 // Fetch Real Waitlist Count (Optional)
 // ============================================================================
+
+let waitlistCount = 0;
 
 async function fetchWaitlistCount() {
     // If the URL hasn't been set yet, just use the default count
