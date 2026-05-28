@@ -15,6 +15,7 @@ import urllib.parse
 from app.core.config import settings
 import logging
 import traceback
+import uuid
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -336,11 +337,13 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
                 db.add(plan)
                 await db.flush()
                 
-            # Create organization
-            org_name = f"{full_name}'s Org"
+            # Create organization with a unique slug to avoid collisions
+            org_name = f"{full_name}'s Org" if full_name else f"{email.split('@')[0]}'s Org"
+            base_slug = org_name.lower().replace(" ", "-").replace("'", "")
+            unique_slug = f"{base_slug}-{uuid.uuid4().hex[:8]}"
             organization = Organization(
                 name=org_name,
-                slug=org_name.lower().replace(" ", "-").replace("'", ""),
+                slug=unique_slug,
                 plan_id=plan.id,
                 is_active=True
             )
@@ -382,6 +385,10 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
     except Exception as e:
         logger.error(f"Google OAuth Callback Error: {str(e)}")
         logger.error(f"Full traceback:\n{traceback.format_exc()}")
+        try:
+            await db.rollback()
+        except Exception:
+            pass
         return RedirectResponse(url=f"{safe_frontend_url}/#/login?error=internal_server_error")
 
 @router.post("/admin/impersonate/{user_id}", response_model=Token)
