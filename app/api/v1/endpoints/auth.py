@@ -260,6 +260,10 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
     Handle the callback from Google, exchange code for token, and login/register.
     """
     try:
+        base_frontend_url = settings.FRONTEND_URL.rstrip('/')
+        if "netlify.app" in base_frontend_url and not base_frontend_url.endswith("/app"):
+            base_frontend_url = f"{base_frontend_url}/app"
+
         logger.info(f"OAuth: Callback sequence started (code: {code[:5]}...)")
         
         if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
@@ -285,7 +289,7 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
             
             if token_response.status_code != 200:
                 logger.error(f"Failed to fetch Google token: {token_response.text}")
-                return RedirectResponse(url=f"{settings.FRONTEND_URL}/#/login?error=token_exchange_failed")
+                return RedirectResponse(url=f"{base_frontend_url}/#/login?error=token_exchange_failed")
                 
             token_data = token_response.json()
             access_token = token_data.get("access_token")
@@ -301,7 +305,7 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
             
             if user_info_response.status_code != 200:
                 logger.error(f"Failed to fetch Google user profile: {user_info_response.text}")
-                return RedirectResponse(url=f"{settings.FRONTEND_URL}/#/login?error=profile_fetch_failed")
+                return RedirectResponse(url=f"{base_frontend_url}/#/login?error=profile_fetch_failed")
                 
             google_user = user_info_response.json()
             email = google_user.get("email").lower().strip()
@@ -366,14 +370,14 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
         
         # 4. Issue token and redirect to frontend
         token = security.create_access_token(user.id)
-        frontend_url = f"{settings.FRONTEND_URL}/#/login?token={token}"
+        frontend_url = f"{base_frontend_url}/#/login?token={token}"
         
         logger.info(f"OAuth: Final redirect to frontend")
         return RedirectResponse(url=frontend_url, status_code=302)
 
     except Exception as e:
         logger.error(f"Google OAuth Callback Error: {str(e)}")
-        return RedirectResponse(url=f"{settings.FRONTEND_URL}/#/login?error=internal_server_error")
+        return RedirectResponse(url=f"{base_frontend_url}/#/login?error=internal_server_error")
 
 @router.post("/admin/impersonate/{user_id}", response_model=Token)
 async def admin_impersonate(
