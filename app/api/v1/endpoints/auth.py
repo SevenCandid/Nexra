@@ -366,11 +366,7 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
         
         # 4. Issue token and redirect to frontend
         token = security.create_access_token(user.id)
-        is_new_user = not user.phone_number
-        if is_new_user:
-            frontend_url = f"{settings.FRONTEND_URL}/#/complete-profile?token={token}"
-        else:
-            frontend_url = f"{settings.FRONTEND_URL}/#/login?token={token}"
+        frontend_url = f"{settings.FRONTEND_URL}/#/login?token={token}"
         
         logger.info(f"OAuth: Final redirect to frontend")
         return RedirectResponse(url=frontend_url, status_code=302)
