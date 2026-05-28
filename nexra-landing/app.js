@@ -1,5 +1,5 @@
 // ============================================================================
-// NEXRA Waitlist Landing Page - JavaScript
+// NEXRA Landing Page - JavaScript
 // ============================================================================
 
 // Configuration
@@ -7,10 +7,67 @@
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbztfdwxUTDhRoUKLgWQLL4TwKBXc21-L8R0QZuChHQ0ch0CtRWuRdkIFoUPGJGu6kzH9Q/exec';
 
 // Paystack Configuration
-// TODO: Replace with your Paystack Public Key
 const PAYSTACK_PUBLIC_KEY = 'pk_live_f2bc33d7eb129d525b3786314c8054415a262ad7';
 
-let waitlistCount = 500; // Initial count
+// ============================================================================
+// Mobile Menu
+// ============================================================================
+
+function toggleMobileMenu() {
+    const menu = document.getElementById('mobile-menu');
+    const hamburger = document.getElementById('hamburger-icon');
+    const closeIcon = document.getElementById('close-icon');
+    if (!menu) return;
+    const isOpen = !menu.classList.contains('hidden');
+    menu.classList.toggle('hidden', isOpen);
+    hamburger.classList.toggle('hidden', !isOpen);
+    closeIcon.classList.toggle('hidden', isOpen);
+}
+
+// Close mobile menu on outside click
+document.addEventListener('click', function (e) {
+    const menu = document.getElementById('mobile-menu');
+    const btn = document.getElementById('mobile-menu-btn');
+    if (menu && btn && !menu.classList.contains('hidden') && !menu.contains(e.target) && !btn.contains(e.target)) {
+        menu.classList.add('hidden');
+        document.getElementById('hamburger-icon')?.classList.remove('hidden');
+        document.getElementById('close-icon')?.classList.add('hidden');
+    }
+});
+
+
+// ============================================================================
+// Dashboard URL and Routing Helpers
+// ============================================================================
+
+function getDashboardUrl(path) {
+    // If running from local filesystem (file:///...)
+    if (window.location.protocol === 'file:') {
+        const currentPath = window.location.pathname;
+        const parentDir = currentPath.substring(0, currentPath.lastIndexOf('/'));
+        const grandParentDir = parentDir.substring(0, parentDir.lastIndexOf('/'));
+        return 'file://' + grandParentDir + '/nexra-dashboard/index.html' + path;
+    }
+
+    // If running on a web server
+    const hostname = window.location.hostname;
+    const port = window.location.port;
+
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        // If the server is serving the repo root, we must prepend the dashboard path
+        return '/nexra-dashboard/index.html' + path;
+    }
+
+    // Production/Default fallback: Assume /nexra-dashboard/ is mapped to the dashboard
+    return '/nexra-dashboard/index.html' + path;
+}
+
+function bindDashboardLinks() {
+    document.querySelectorAll('[data-link]').forEach(el => {
+        const route = el.getAttribute('data-link');
+        el.href = getDashboardUrl(route);
+    });
+}
 
 // ============================================================================
 // Particle Animation
@@ -325,6 +382,9 @@ function setupSmoothScroll() {
 // ============================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Bind dynamic dashboard routes
+    bindDashboardLinks();
+
     // Create particles
     createParticles();
 
@@ -362,7 +422,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const updateROI = () => {
             const index = parseInt(volumeSlider.value);
             const volume = volumeValues[index];
-            
+
             const formatter = new Intl.NumberFormat('en-GH', {
                 style: 'currency',
                 currency: 'GHS',
@@ -408,32 +468,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 3. Live Activity Feed
-    const liveFeedToast = document.getElementById('live-feed-toast');
-    const liveFeedText = document.getElementById('live-feed-text');
-    const liveFeedTime = document.getElementById('live-feed-time');
 
-    if (liveFeedToast && liveFeedText && liveFeedTime) {
-        const locations = ['Accra', 'Kumasi', 'Tamale', 'Takoradi', 'Cape Coast', 'Koforidua', 'Ho', 'Sunyani', 'Tema', 'Obuasi'];
-        const types = ['marketing agency', 'startup founder', 'developer', 'business owner', 'growth lead'];
-
-        const showNextEvent = () => {
-            const location = locations[Math.floor(Math.random() * locations.length)];
-            const type = types[Math.floor(Math.random() * types.length)];
-            const timeAgo = Math.floor(Math.random() * 5) + 1;
-
-            liveFeedText.innerHTML = `<span class="text-purple-600 font-black">A ${type}</span> from ${location} just joined!`;
-            liveFeedTime.textContent = `${timeAgo}m ago`;
-
-            liveFeedToast.classList.add('show');
-            setTimeout(() => liveFeedToast.classList.remove('show'), 6000);
-        };
-
-        setTimeout(() => {
-            showNextEvent();
-            setInterval(showNextEvent, 25000);
-        }, 5000);
-    }
 
     // 4. Testimonial Slider
     const track = document.querySelector('.testimonial-track');
@@ -673,9 +708,84 @@ function toggleCard(button) {
 // Make toggleCard globally available
 window.toggleCard = toggleCard;
 
-// Initialize all channel enhancements when DOM is ready
+// ============================================================================
+// Map Expansion Animation
+// ============================================================================
+
+function initMapExpansion() {
+    const ghanaNode = document.querySelector('.node-ghana');
+    const waNodes = document.querySelectorAll('.node-wa');
+    const globalNodes = document.querySelectorAll('.node-global');
+    const linesGroup = document.getElementById('expansion-lines');
+    
+    if (!ghanaNode || !linesGroup) return;
+    
+    const gx = parseFloat(ghanaNode.dataset.x) * 10;
+    const gy = parseFloat(ghanaNode.dataset.y) * 5;
+    
+    // Create lines to all nodes
+    const allNodes = [...waNodes, ...globalNodes];
+    allNodes.forEach(node => {
+        const nx = parseFloat(node.dataset.x) * 10;
+        const ny = parseFloat(node.dataset.y) * 5;
+        
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        const cx = (gx + nx) / 2;
+        const cy = Math.min(gy, ny) - 100; // Curve upwards
+        
+        path.setAttribute("d", `M ${gx} ${gy} Q ${cx} ${cy} ${nx} ${ny}`);
+        path.setAttribute("class", "map-line");
+        path.setAttribute("fill", "none");
+        node.mapLine = path; // Attach to node for later
+        linesGroup.appendChild(path);
+    });
+
+    const phase1Card = document.getElementById('phase-1-card');
+    const phase2Card = document.getElementById('phase-2-card');
+    const phase3Card = document.getElementById('phase-3-card');
+
+    let currentPhase = 1;
+
+    setInterval(() => {
+        // Reset
+        allNodes.forEach(node => {
+            node.classList.remove('active');
+            if (node.mapLine) {
+                node.mapLine.classList.remove('drawn', 'active');
+            }
+        });
+        
+        if (phase1Card) phase1Card.classList.add('opacity-50');
+        if (phase2Card) phase2Card.classList.add('opacity-50');
+        if (phase3Card) phase3Card.classList.add('opacity-50');
+
+        currentPhase = currentPhase % 3 + 1;
+
+        if (currentPhase === 1) {
+            if (phase1Card) phase1Card.classList.remove('opacity-50');
+        } else if (currentPhase === 2) {
+            if (phase1Card) phase1Card.classList.remove('opacity-50');
+            if (phase2Card) phase2Card.classList.remove('opacity-50');
+            waNodes.forEach(node => {
+                node.classList.add('active');
+                if (node.mapLine) node.mapLine.classList.add('drawn', 'active');
+            });
+        } else if (currentPhase === 3) {
+            if (phase1Card) phase1Card.classList.remove('opacity-50');
+            if (phase2Card) phase2Card.classList.remove('opacity-50');
+            if (phase3Card) phase3Card.classList.remove('opacity-50');
+            allNodes.forEach(node => {
+                node.classList.add('active');
+                if (node.mapLine) node.mapLine.classList.add('drawn', 'active');
+            });
+        }
+    }, 4000);
+}
+
+// Initialize all enhancements when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     initChannelAnimations();
     initLiveCounter();
+    initMapExpansion();
+    bindDashboardLinks();
 });
-

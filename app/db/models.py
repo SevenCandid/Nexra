@@ -110,6 +110,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     hashed_password: Mapped[str] = mapped_column(String(255))
     full_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    phone_number: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     role: Mapped[UserRole] = mapped_column(String(20), default=UserRole.USER)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     permissions: Mapped[Optional[dict]] = mapped_column(JSON, default=dict)

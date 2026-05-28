@@ -7,6 +7,7 @@ import { DashboardLayout } from '../components/layout/DashboardLayout.js';
 // Pages
 import { LoginPage } from './LoginPage.js';
 import { RegisterPage } from './RegisterPage.js';
+import { CompleteProfilePage } from './CompleteProfilePage.js';
 import { DashboardPage } from './DashboardPage.js';
 import { CampaignsPage } from './CampaignsPage.js';
 import { CreateCampaignPage } from './CreateCampaignPage.js';
@@ -39,12 +40,25 @@ export const App = () => {
         return () => window.removeEventListener('hashchange', handleHashChange);
     }, []);
 
+    if (loading) return null;
+
+    // Always allow the complete-profile page (token stored in localStorage; user may not be loaded yet)
+    if (currentPage === 'complete-profile') {
+        return html`<${CompleteProfilePage} />`;
+    }
+
     // Public routes
     if (!user) {
         if (currentPage === 'register') {
             return html`<${RegisterPage} />`;
         }
         return html`<${LoginPage} />`;
+    }
+
+    // If user is authenticated but has no phone number, force complete-profile
+    if (!user.phone_number && currentPage !== 'complete-profile') {
+        window.location.hash = '#/complete-profile';
+        return html`<${CompleteProfilePage} />`;
     }
 
     // Protected routes

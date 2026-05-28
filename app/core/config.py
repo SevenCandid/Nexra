@@ -83,6 +83,6 @@ class Settings(BaseSettings):
         if not self.SQLALCHEMY_DATABASE_URI:
             self.SQLALCHEMY_DATABASE_URI = "sqlite+aiosqlite:///./test.db" # Default fallback for local testing
 
-    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
 
 settings = Settings()

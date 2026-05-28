@@ -9,7 +9,7 @@ from app.db.models import User, Organization, Wallet, SubscriptionPlan, StaffInv
 from datetime import datetime
 from sqlalchemy import select, func
 from app.db.database import get_db
-from app.schemas.schemas import Token, User as UserSchema, UserRegister
+from app.schemas.schemas import Token, User as UserSchema, UserRegister, UserProfileUpdate
 import httpx
 import urllib.parse
 from app.core.config import settings
@@ -126,6 +126,7 @@ async def register(
         email=email,
         hashed_password=security.get_password_hash(user_data.password),
         full_name=user_data.full_name,
+        phone_number=user_data.phone_number,
         organization_id=organization.id,
         role=role,
         is_active=True
@@ -195,6 +196,40 @@ async def read_users_me(
         user_data.plan_slug = user.organization.plan.slug if user.organization.plan else None
         return user_data
         
+    return current_user
+
+@router.put("/me", response_model=UserSchema)
+async def update_users_me(
+    profile: UserProfileUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """
+    Update current user profile. Used after Google OAuth to capture phone number.
+    """
+    if profile.phone_number is not None:
+        current_user.phone_number = profile.phone_number
+    if profile.full_name is not None:
+        current_user.full_name = profile.full_name
+    
+    await db.commit()
+    await db.refresh(current_user)
+    
+    # Return full user schema with org details
+    from sqlalchemy.orm import selectinload
+    query = (
+        select(User)
+        .options(selectinload(User.organization).selectinload(Organization.plan))
+        .where(User.id == current_user.id)
+    )
+    result = await db.execute(query)
+    user = result.scalar_one_or_none()
+    if user:
+        user_data = UserSchema.from_orm(user)
+        user_data.organization_name = user.organization.name
+        user_data.plan_name = user.organization.plan.name if user.organization.plan else None
+        user_data.plan_slug = user.organization.plan.slug if user.organization.plan else None
+        return user_data
     return current_user
 
 @router.get("/google/login")
@@ -331,7 +366,11 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
         
         # 4. Issue token and redirect to frontend
         token = security.create_access_token(user.id)
-        frontend_url = f"{settings.FRONTEND_URL}/#/login?token={token}"
+        is_new_user = not user.phone_number
+        if is_new_user:
+            frontend_url = f"{settings.FRONTEND_URL}/#/complete-profile?token={token}"
+        else:
+            frontend_url = f"{settings.FRONTEND_URL}/#/login?token={token}"
         
         logger.info(f"OAuth: Final redirect to frontend")
         return RedirectResponse(url=frontend_url, status_code=302)

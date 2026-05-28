@@ -350,13 +350,13 @@ body {
     overflow: hidden;
     user-select: none;
     display: flex;
-    gap: 4rem;
-    padding: 2.5rem 0;
+    gap: 3rem;
+    padding: 1.5rem 0;
 }
 
 .marquee-content {
     display: flex;
-    gap: 4rem;
+    gap: 3rem;
     animation: marquee 40s linear infinite;
     min-width: fit-content;
 }
@@ -381,50 +381,7 @@ body {
     animation-play-state: paused;
 }
 
-.logo-card {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem 1.5rem;
-    background: white;
-    border: 1px solid rgba(226, 232, 240, 0.8);
-    border-radius: 1.25rem;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-}
-
-.logo-card img {
-    width: 24px !important;
-    height: 24px !important;
-    object-contain: contain;
-}
-
-.logo-card:hover {
-    border-color: #8b5cf6;
-    transform: translateY(-4px);
-    box-shadow: 0 20px 25px -5px rgba(139, 92, 246, 0.1);
-}
-
-/* Feature & Card Enhancements */
-.feature-card-glow {
-    position: relative;
-    overflow: hidden;
-}
-
-.feature-card-glow::before {
-    content: '';
-    position: absolute;
-    inset: -1px;
-    background: linear-gradient(45deg, transparent, rgba(139, 92, 246, 0.1), transparent);
-    z-index: -1;
-    transition: opacity 0.3s ease;
-    opacity: 0;
-}
-
-.feature-card-glow:hover::before {
-    opacity: 1;
-}
+/* Removed logo-card and feature-card-glow for cleaner design */
 
 /* ROI Calculator */
 .range-slider {
@@ -1303,4 +1260,101 @@ body {
     #channel-cards-container {
         gap: 1.5rem !important;
     }
+}
+
+/* ============================================================================
+   Map Expansion Animations
+   ============================================================================ */
+
+.expansion-node {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    pointer-events: none;
+}
+
+.node-dot {
+    width: 12px;
+    height: 12px;
+    background-color: #cbd5e1;
+    border-radius: 50%;
+    position: relative;
+    z-index: 2;
+    transition: all 0.5s ease;
+}
+
+.node-dot.small {
+    width: 6px;
+    height: 6px;
+}
+
+.expansion-node.active .node-dot {
+    background-color: #8b5cf6;
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.6);
+}
+
+.pulse-ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: rgba(139, 92, 246, 0.3);
+    z-index: 1;
+    animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+    display: none;
+}
+
+.expansion-node.active .pulse-ring {
+    display: block;
+}
+
+@keyframes pulse-ring {
+    0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(3); opacity: 0; }
+}
+
+.node-label {
+    position: absolute;
+    top: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 255, 255, 0.9);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #475569;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.expansion-node.active .node-label {
+    opacity: 1;
+    color: #8b5cf6;
+    border-color: #ddd6fe;
+}
+
+.map-line {
+    stroke: #e2e8f0;
+    stroke-width: 1.5;
+    fill: none;
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 1000;
+    transition: stroke-dashoffset 2s ease-in-out, stroke 0.5s ease;
+}
+
+.map-line.drawn {
+    stroke-dashoffset: 0;
+}
+
+.map-line.active {
+    stroke: #8b5cf6;
+    stroke-width: 2;
+    filter: drop-shadow(0 0 4px rgba(139,92,246,0.4));
 }

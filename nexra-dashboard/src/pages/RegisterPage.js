@@ -4,6 +4,83 @@ import { Icon } from '../components/ui/Icon.js';
 import { AuthLayout } from './AuthLayout.js';
 import apiClient from '../api/client.js';
 
+// Common country codes, Ghana (+233) is default
+const COUNTRY_CODES = [
+    { code: '+233', flag: '🇬🇭', name: 'Ghana' },
+    { code: '+1',   flag: '🇺🇸', name: 'USA / Canada' },
+    { code: '+44',  flag: '🇬🇧', name: 'UK' },
+    { code: '+234', flag: '🇳🇬', name: 'Nigeria' },
+    { code: '+225', flag: '🇨🇮', name: "Côte d'Ivoire" },
+    { code: '+221', flag: '🇸🇳', name: 'Senegal' },
+    { code: '+254', flag: '🇰🇪', name: 'Kenya' },
+    { code: '+27',  flag: '🇿🇦', name: 'South Africa' },
+    { code: '+251', flag: '🇪🇹', name: 'Ethiopia' },
+    { code: '+255', flag: '🇹🇿', name: 'Tanzania' },
+    { code: '+256', flag: '🇺🇬', name: 'Uganda' },
+    { code: '+237', flag: '🇨🇲', name: 'Cameroon' },
+    { code: '+31',  flag: '🇳🇱', name: 'Netherlands' },
+    { code: '+33',  flag: '🇫🇷', name: 'France' },
+    { code: '+49',  flag: '🇩🇪', name: 'Germany' },
+    { code: '+91',  flag: '🇮🇳', name: 'India' },
+    { code: '+86',  flag: '🇨🇳', name: 'China' },
+    { code: '+971', flag: '🇦🇪', name: 'UAE' },
+];
+
+export const PhoneInput = ({ value, onChange, required = true }) => {
+    const [countryCode, setCountryCode] = useState('+233');
+    const [localNumber, setLocalNumber] = useState('');
+    const [open, setOpen] = useState(false);
+
+    useEffect(() => {
+        onChange(countryCode + localNumber.replace(/^0/, ''));
+    }, [countryCode, localNumber]);
+
+    const selected = COUNTRY_CODES.find(c => c.code === countryCode) || COUNTRY_CODES[0];
+
+    return html`
+        <div class="relative flex items-stretch gap-0">
+            <!-- Country Code Trigger -->
+            <button
+                type="button"
+                onClick=${() => setOpen(!open)}
+                class="flex items-center gap-1.5 px-3 py-2 bg-gray-50 dark:bg-gray-800/50 border border-r-0 border-gray-200 dark:border-gray-700 rounded-l-xl text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+            >
+                <span class="text-base leading-none">${selected.flag}</span>
+                <span class="font-semibold text-xs text-gray-600 dark:text-gray-400">${selected.code}</span>
+                <${Icon} name="chevron-down" size=${12} class="text-gray-400" />
+            </button>
+
+            <!-- Dropdown -->
+            ${open && html`
+                <div class="absolute top-full left-0 z-50 mt-1 w-60 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden max-h-56 overflow-y-auto">
+                    ${COUNTRY_CODES.map(c => html`
+                        <button
+                            key=${c.code}
+                            type="button"
+                            onClick=${() => { setCountryCode(c.code); setOpen(false); }}
+                            class="w-full flex items-center gap-3 px-3 py-2 text-sm text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${c.code === countryCode ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 font-semibold' : 'text-gray-700 dark:text-gray-300'}"
+                        >
+                            <span class="text-base">${c.flag}</span>
+                            <span class="flex-1 truncate">${c.name}</span>
+                            <span class="text-xs font-mono text-gray-400 dark:text-gray-500">${c.code}</span>
+                        </button>
+                    `)}
+                </div>
+            `}
+
+            <!-- Number Input -->
+            <input
+                type="tel"
+                value=${localNumber}
+                onInput=${e => setLocalNumber(e.target.value)}
+                placeholder="XX XXX XXXX"
+                required=${required}
+                class="flex-1 px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-r-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:focus:border-primary-500 text-sm text-gray-900 dark:text-white outline-none transition-all"
+            />
+        </div>
+    `;
+};
+
 export const RegisterPage = () => {
     const { register } = useAuth();
     const [view, setView] = useState('showcase');
@@ -12,6 +89,7 @@ export const RegisterPage = () => {
         organization_name: '',
         email: '',
         password: '',
+        phone_number: '',
     });
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
@@ -44,12 +122,21 @@ export const RegisterPage = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+        if (!formData.phone_number || formData.phone_number.replace(/\D/g, '').length < 7) {
+            setError('Please enter a valid phone number.');
+            return;
+        }
         setLoading(true);
         try {
             await register(formData);
             window.location.hash = '#/dashboard';
         } catch (err) {
-            setError(err.response?.data?.detail || 'Registration failed');
+            const detail = err.response?.data?.detail;
+            if (Array.isArray(detail)) {
+                setError(detail[0].msg || 'Validation error in form data');
+            } else {
+                setError(detail || 'Registration failed');
+            }
         } finally {
             setLoading(false);
         }
@@ -61,7 +148,7 @@ export const RegisterPage = () => {
         <${AuthLayout} view=${view} setView=${setView} isLogin=${false}>
             <div>
                 <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Create an account</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Start your 14-day free trial. No credit card required.</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Sign up to get started.</p>
             </div>
 
             <div>
@@ -102,6 +189,15 @@ export const RegisterPage = () => {
                                 className="w-full pl-9 pr-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:focus:border-primary-500 text-sm text-gray-900 dark:text-white outline-none transition-all"
                             />
                         </div>
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-[11px] font-semibold tracking-wide uppercase text-gray-500 dark:text-gray-400 ml-1">Phone Number</label>
+                        <${PhoneInput}
+                            value=${formData.phone_number}
+                            onChange=${(val) => setFormData({ ...formData, phone_number: val })}
+                        />
+                        <p className="text-[10px] text-gray-400 ml-1 mt-0.5">Used for account security and notifications.</p>
                     </div>
 
                     <div className="space-y-1">

@@ -38,7 +38,10 @@ export const Header = ({ user, balance, onLogout, title, subtitle, onQuickSend, 
 
                     <${Dropdown}
                         trigger=${html`
-                            <button className="flex items-center gap-1.5 p-1 hover:bg-gray-100 dark:hover:bg-midnight-800 rounded-xl transition-all">
+                            <button className="flex items-center gap-2 p-1 px-2 hover:bg-gray-100 dark:hover:bg-midnight-800 rounded-xl transition-all">
+                                <div className="text-right mr-1">
+                                    <p className="text-xs font-bold text-gray-900 dark:text-white tracking-wide">${user?.organization_name || 'Personal'}</p>
+                                </div>
                                 <div className="h-7 w-7 bg-primary-100 dark:bg-primary-900/50 rounded-full flex items-center justify-center text-primary-700 dark:text-primary-400 font-bold border border-primary-200 dark:border-primary-800/50 text-xs">
                                     ${user?.full_name?.charAt(0) || 'U'}
                                 </div>
@@ -125,12 +128,7 @@ export const Header = ({ user, balance, onLogout, title, subtitle, onQuickSend, 
                         trigger=${html`
                             <button className="flex items-center gap-2 p-1 px-2 hover:bg-gray-100 dark:hover:bg-midnight-800 rounded-xl transition-all">
                                 <div className="text-right mr-1">
-                                    <p className="text-sm font-semibold text-gray-900 dark:text-white">${user?.full_name}</p>
-                                    <div className="flex items-center gap-1.5 justify-end">
-                                        <p className="text-[10px] font-bold text-primary-600 dark:text-primary-400 uppercase tracking-widest">${user?.organization_name || 'Personal'}</p>
-                                        <span className="h-1 w-1 rounded-full bg-gray-300 dark:bg-midnight-700"></span>
-                                        <p className="text-gray-500 dark:text-midnight-400 text-xs">${user?.email}</p>
-                                    </div>
+                                    <p className="text-sm font-bold text-gray-900 dark:text-white tracking-wide">${user?.organization_name || 'Personal'}</p>
                                 </div>
                                 <div className="h-8 w-8 bg-primary-100 dark:bg-primary-900/50 rounded-full flex items-center justify-center text-primary-700 dark:text-primary-400 font-bold border border-primary-200 dark:border-primary-800/50">
                                     ${user?.full_name?.charAt(0) || 'U'}
@@ -139,6 +137,11 @@ export const Header = ({ user, balance, onLogout, title, subtitle, onQuickSend, 
                             </button>
                         `}
                     >
+                        <div className="px-4 py-3 border-b border-gray-100 dark:border-midnight-800">
+                            <p className="text-sm font-bold text-gray-900 dark:text-white truncate">${user?.full_name}</p>
+                            <p className="text-[10px] text-gray-500 dark:text-midnight-400 truncate mt-0.5">${user?.email}</p>
+                        </div>
+
                         <div className="px-4 py-3 border-b border-gray-50 dark:border-midnight-800 bg-primary-50/30 dark:bg-primary-900/10">
                             <p className="text-[10px] font-bold text-primary-600 dark:text-primary-400 uppercase tracking-wider mb-1">Available Balance</p>
                             <div className="flex items-center gap-2">

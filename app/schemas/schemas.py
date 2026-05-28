@@ -7,6 +7,7 @@ import re
 class UserBase(BaseModel):
     email: EmailStr
     full_name: Optional[str] = None
+    phone_number: Optional[str] = None
 
 class UserCreate(UserBase):
     password: str
@@ -57,6 +58,7 @@ class UserRegister(BaseModel):
     password: str
     full_name: str
     organization_name: str
+    phone_number: str
     admin_secret: Optional[str] = None
     staff_id: Optional[str] = None
 
@@ -70,6 +72,10 @@ class UserRegister(BaseModel):
         if not re.search(r'\d', v):
             raise ValueError('Password must contain at least one digit')
         return v
+
+class UserProfileUpdate(BaseModel):
+    phone_number: Optional[str] = None
+    full_name: Optional[str] = None
 
 # SMS Schemas
 class SMSCreate(BaseModel):
