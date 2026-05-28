@@ -3,7 +3,7 @@
 
 [build]
   # No build step needed — it's a static vanilla JS app
-  publish = "nexra-dashboard"
+  publish = "."
 
 # Redirect all routes to index.html for hash-based SPA routing
 [[redirects]]
