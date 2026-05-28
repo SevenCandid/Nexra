@@ -1,11 +1,14 @@
-# Netlify Configuration for NEXRA
-# Deploys the frontend dashboard from the nexra-dashboard directory
-
 [build]
-  # No build step needed — it's a static vanilla JS app
-  publish = "."
+  command = "sh build.sh"
+  publish = "dist"
 
-# Redirect all routes to index.html for hash-based SPA routing
+# Redirect for the dashboard SPA
+[[redirects]]
+  from = "/app/*"
+  to = "/app/index.html"
+  status = 200
+
+# Optional fallback for landing page missing routes
 [[redirects]]
   from = "/*"
   to = "/index.html"

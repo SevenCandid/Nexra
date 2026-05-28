@@ -58,8 +58,8 @@ function getDashboardUrl(path) {
         return '/nexra-dashboard/index.html' + path;
     }
 
-    // Production/Default fallback: Assume /nexra-dashboard/ is mapped to the dashboard
-    return '/nexra-dashboard/index.html' + path;
+    // Production/Default fallback: Netlify serves dashboard under /app/
+    return '/app/index.html' + path;
 }
 
 function bindDashboardLinks() {
