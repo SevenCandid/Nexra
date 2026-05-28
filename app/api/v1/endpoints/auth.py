@@ -364,6 +364,7 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
             )
             db.add(wallet)
             await db.commit()
+            await db.refresh(user)
             logger.info(f"OAuth: Account created successfully")
         else:
             logger.info(f"OAuth: User already exists, proceeding to login")
