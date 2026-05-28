@@ -14,6 +14,7 @@ import httpx
 import urllib.parse
 from app.core.config import settings
 import logging
+import traceback
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -259,10 +260,12 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
     """
     Handle the callback from Google, exchange code for token, and login/register.
     """
+    safe_frontend_url = settings.FRONTEND_URL.rstrip('/')
+    if "netlify.app" in safe_frontend_url and not safe_frontend_url.endswith("/app"):
+        safe_frontend_url = f"{safe_frontend_url}/app"
+
     try:
-        base_frontend_url = settings.FRONTEND_URL.rstrip('/')
-        if "netlify.app" in base_frontend_url and not base_frontend_url.endswith("/app"):
-            base_frontend_url = f"{base_frontend_url}/app"
+        base_frontend_url = safe_frontend_url
 
         logger.info(f"OAuth: Callback sequence started (code: {code[:5]}...)")
         
@@ -378,7 +381,8 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
 
     except Exception as e:
         logger.error(f"Google OAuth Callback Error: {str(e)}")
-        return RedirectResponse(url=f"{base_frontend_url}/#/login?error=internal_server_error")
+        logger.error(f"Full traceback:\n{traceback.format_exc()}")
+        return RedirectResponse(url=f"{safe_frontend_url}/#/login?error=internal_server_error")
 
 @router.post("/admin/impersonate/{user_id}", response_model=Token)
 async def admin_impersonate(
