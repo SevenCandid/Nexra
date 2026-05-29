@@ -25,6 +25,10 @@ export const SettingsPage = () => {
                         <p className="text-gray-900 dark:text-white font-medium">${user?.email}</p>
                     </div>
                     <div className="p-4 bg-gray-50 dark:bg-midnight-900/50 rounded-xl border border-gray-100 dark:border-midnight-800">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 font-semibold uppercase tracking-wider">Phone Number</p>
+                        <p className="text-gray-900 dark:text-white font-medium">${user?.phone_number || 'Not provided'}</p>
+                    </div>
+                    <div className="p-4 bg-gray-50 dark:bg-midnight-900/50 rounded-xl border border-gray-100 dark:border-midnight-800">
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 font-semibold uppercase tracking-wider">Organization ID</p>
                         <p className="text-gray-900 dark:text-white font-medium">ORG-${(user?.organization_id || 0).toString().padStart(4, '0')}</p>
                     </div>

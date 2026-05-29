@@ -71,15 +71,15 @@ async def register(
         )
     
     # Get default subscription plan (or create one if none exists)
-    result = await db.execute(select(SubscriptionPlan).where(SubscriptionPlan.slug == "starter"))
+    result = await db.execute(select(SubscriptionPlan).where(SubscriptionPlan.slug == "custom"))
     plan = result.scalar_one_or_none()
     
     if not plan:
         # Create a default plan if none exists
         plan = SubscriptionPlan(
-            name="Starter",
-            slug="starter",
-            monthly_price=50.0,
+            name="Custom",
+            slug="custom",
+            monthly_price=0.0,
             sms_rate=0.05,
             max_users=5,
             monthly_credits=1000.0,
@@ -324,13 +324,13 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
         if not user:
             logger.info(f"OAuth: Creating new account for {email}")
             # Get or create default plan
-            result = await db.execute(select(SubscriptionPlan).where(SubscriptionPlan.slug == "starter"))
+            result = await db.execute(select(SubscriptionPlan).where(SubscriptionPlan.slug == "custom"))
             plan = result.scalar_one_or_none()
             
             if not plan:
                 logger.info("OAuth: Initializing default subscription plan")
                 plan = SubscriptionPlan(
-                    name="Starter", slug="starter", monthly_price=50.0, sms_rate=0.05,
+                    name="Custom", slug="custom", monthly_price=0.0, sms_rate=0.05,
                     max_users=5, monthly_credits=0.0, bonus_credits_on_signup=0.0,
                     pricing_model="hybrid", payg_rate_multiplier=1.2, features={"tps_limit": 5}
                 )
