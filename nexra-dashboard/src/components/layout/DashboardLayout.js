@@ -5,6 +5,7 @@ import { Sidebar } from './Sidebar.js';
 import { Header } from './Header.js';
 import { MobileNav } from './MobileNav.js';
 import { QuickSendModal } from '../QuickSendModal.js';
+import { CompleteProfileModal } from '../CompleteProfileModal.js';
 
 export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
     const { logout } = useAuth();
@@ -13,18 +14,18 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
     const [notifications, setNotifications] = useState([]);
     const [isQuickSendOpen, setIsQuickSendOpen] = useState(false);
 
-    useEffect(() => {
-        const fetchUserData = async () => {
-            try {
-                const res = await apiClient.get('/auth/me');
-                setUser(res.data);
-                fetchWallet(res.data.id);
-                fetchNotifications();
-            } catch (err) {
-                console.error('Core data fetch failed');
-            }
-        };
+    const fetchUserData = async () => {
+        try {
+            const res = await apiClient.get('/auth/me');
+            setUser(res.data);
+            fetchWallet();
+            fetchNotifications();
+        } catch (err) {
+            console.error('Core data fetch failed');
+        }
+    };
 
+    useEffect(() => {
         fetchUserData();
         const interval = setInterval(fetchUserData, 60000); // Slower fallback refresh (1m)
         
@@ -150,6 +151,13 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
                     onSent=${() => {
                         fetchWallet();
                         fetchNotifications();
+                    }}
+                />
+
+                <${CompleteProfileModal}
+                    user=${user}
+                    onComplete=${() => {
+                        fetchUserData();
                     }}
                 />
             </div>
