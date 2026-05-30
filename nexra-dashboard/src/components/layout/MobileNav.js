@@ -11,18 +11,25 @@ export const MobileNav = ({ currentPage, onNavigate }) => {
     ];
 
     return html`
-        <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[90%] max-w-sm glass rounded-2xl lg:hidden z-40 shadow-2xl transition-all">
-            <div className="flex justify-around p-1">
+        <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[95%] max-w-sm glass rounded-2xl lg:hidden z-40 shadow-2xl transition-all">
+            <div className="flex justify-around p-1 overflow-x-auto no-scrollbar">
                 ${navItems.map((item) => html`
                     <button
                         key=${item.id}
                         onClick=${() => onNavigate(item.id)}
-                        className="flex-1 flex flex-col items-center py-1.5 rounded-xl transition-all ${currentPage === item.id ? 'text-primary-600 dark:text-primary-400 bg-primary-50/50 dark:bg-primary-900/20 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-midnight-900/30'}"
+                        className="flex-1 min-w-[3.5rem] flex flex-col items-center py-1.5 rounded-xl transition-all ${currentPage === item.id ? 'text-primary-600 dark:text-primary-400 bg-primary-50/50 dark:bg-primary-900/20 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-midnight-900/30'}"
                     >
                         <${Icon} name=${item.icon} size=${18} />
                         <span className="text-[9px] mt-0.5 font-bold uppercase tracking-wider">${item.label}</span>
                     </button>
                 `)}
+                <button
+                    onClick=${onReportIssue}
+                    className="flex-1 min-w-[3.5rem] flex flex-col items-center py-1.5 rounded-xl transition-all text-gray-500 dark:text-gray-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 hover:text-rose-500 dark:hover:text-rose-400"
+                >
+                    <${Icon} name="bug" size=${18} />
+                    <span className="text-[9px] mt-0.5 font-bold uppercase tracking-wider">Report</span>
+                </button>
             </div>
         </nav>
     `;

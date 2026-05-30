@@ -77,6 +77,10 @@ export const Header = ({ user, balance, onLogout, title, subtitle, onQuickSend, 
                             <${Icon} name="help-circle" size=${16} className="text-gray-400 dark:text-midnight-500" />
                             Help & Support
                         </a>
+                        <button onClick=${onReportIssue} className="flex w-full items-center gap-2 px-4 py-3 text-sm text-gray-700 dark:text-midnight-200 hover:bg-gray-50 dark:hover:bg-midnight-800 text-left transition-colors">
+                            <${Icon} name="bug" size=${16} className="text-rose-400 dark:text-rose-500" />
+                            Report a Bug
+                        </button>
                         <button onClick=${onLogout} className="flex w-full items-center gap-2 px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 text-left transition-colors border-t border-gray-50 dark:border-midnight-800">
                             <${Icon} name="log-out" size=${16} />
                             Sign out
@@ -168,6 +172,14 @@ export const Header = ({ user, balance, onLogout, title, subtitle, onQuickSend, 
                             <${Icon} name="help-circle" size=${16} className="text-gray-400 dark:text-midnight-500" />
                             Help & Support
                         </a>
+                        <button
+                            onClick=${onReportIssue}
+                            className="flex w-full items-center gap-2 px-4 py-3 text-sm text-gray-700 dark:text-midnight-200 hover:bg-gray-50 dark:hover:bg-midnight-800 text-left transition-colors"
+                            role="menuitem"
+                        >
+                            <${Icon} name="bug" size=${16} className="text-rose-400 dark:text-rose-500" />
+                            Report a Bug
+                        </button>
                         <button
                             onClick=${onLogout}
                             className="flex w-full items-center gap-2 px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 text-left transition-colors border-t border-gray-50 dark:border-midnight-800"

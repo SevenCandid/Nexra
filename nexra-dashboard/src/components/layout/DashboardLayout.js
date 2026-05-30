@@ -133,6 +133,7 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
                     notifications=${notifications}
                     onMarkRead=${handleMarkRead}
                     onMarkAllRead=${handleMarkAllRead}
+                    onReportIssue=${() => setIsBugReportOpen(true)}
                 />
                 
                 <main className="flex-1 p-4 lg:p-6 pb-28 lg:pb-6 pt-28 lg:pt-6 overflow-y-auto custom-scrollbar">
@@ -144,7 +145,7 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
                     ${children}
                 </main>
 
-                <${MobileNav} currentPage=${currentPage} onNavigate=${onNavigate} />
+                <${MobileNav} currentPage=${currentPage} onNavigate=${onNavigate} onReportIssue=${() => setIsBugReportOpen(true)} />
 
                 <${QuickSendModal} 
                     isOpen=${isQuickSendOpen} 
