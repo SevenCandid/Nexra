@@ -3,13 +3,22 @@
   command = "sh build.sh"
   publish = "dist"
 
-# Redirect for the dashboard SPA
+# Dashboard SPA redirect — hash-based routing.
+# Netlify tries real files first; this only fires for non-existent paths.
+# This must NOT catch .js / .css / asset requests, which Netlify serves natively.
 [[redirects]]
   from = "/app/*"
   to = "/app/index.html"
   status = 200
 
-# Optional fallback for landing page missing routes
+# Admin SPA redirect
+[[redirects]]
+  from = "/app/admin.html"
+  to = "/app/admin.html"
+  status = 200
+  force = false
+
+# Fallback for the landing page SPA
 [[redirects]]
   from = "/*"
   to = "/index.html"

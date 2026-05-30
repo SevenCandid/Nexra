@@ -80,4 +80,4 @@ async def root():
     return {"message": "NEXRA Messaging API is running", "status": "ok"}
 
 # Serve the dashboard as static files
-app.mount("/nexra-dashboard", StaticFiles(directory="nexra-dashboard"), name="nexra-dashboard")
+app.mount("/nexra-dashboard", StaticFiles(directory="nexra-dashboard", html=True), name="nexra-dashboard")
