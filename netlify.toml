@@ -11,12 +11,16 @@
   to = "/app/index.html"
   status = 200
 
-# Admin SPA redirect
+# Admin SPA redirects
 [[redirects]]
-  from = "/app/admin.html"
+  from = "/admin"
   to = "/app/admin.html"
-  status = 200
-  force = false
+  status = 301
+
+[[redirects]]
+  from = "/admin.html"
+  to = "/app/admin.html"
+  status = 301
 
 # Fallback for the landing page SPA
 [[redirects]]
