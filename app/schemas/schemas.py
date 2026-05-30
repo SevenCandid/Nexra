@@ -289,3 +289,24 @@ class NotificationResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+# Bug Report Schemas
+class BugReportCreate(BaseModel):
+    subject: str = Field(..., max_length=255)
+    description: str
+
+class BugReportUpdate(BaseModel):
+    status: str
+
+class BugReportOut(BaseModel):
+    id: int
+    user_id: int
+    organization_id: int
+    subject: str
+    description: str
+    status: str
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True

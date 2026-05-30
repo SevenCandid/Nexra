@@ -2,7 +2,7 @@ import { html } from '../../utils/htm.js';
 import { Icon } from '../ui/Icon.js';
 import { useAuth } from '../../contexts/AuthContext.js';
 
-export const Sidebar = ({ currentPage, onNavigate }) => {
+export const Sidebar = ({ currentPage, onNavigate, onReportIssue }) => {
     const { user } = useAuth();
     const navItems = [
         { id: 'dashboard', label: 'Pulse', icon: 'home' },
@@ -57,6 +57,13 @@ export const Sidebar = ({ currentPage, onNavigate }) => {
                 >
                     <${Icon} name="code" size=${20} />
                     <span>API Docs</span>
+                </button>
+                <button
+                    onClick=${onReportIssue}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors mt-2"
+                >
+                    <${Icon} name="alert-triangle" size=${20} />
+                    <span>Report Issue</span>
                 </button>
             </div>
         </aside>

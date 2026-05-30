@@ -6,6 +6,7 @@ import { Header } from './Header.js';
 import { MobileNav } from './MobileNav.js';
 import { QuickSendModal } from '../QuickSendModal.js';
 import { CompleteProfileModal } from '../CompleteProfileModal.js';
+import { ReportBugModal } from '../ReportBugModal.js';
 
 export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
     const { logout } = useAuth();
@@ -13,6 +14,7 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
     const [balance, setBalance] = useState({ wallet: 0, subscription: 0 });
     const [notifications, setNotifications] = useState([]);
     const [isQuickSendOpen, setIsQuickSendOpen] = useState(false);
+    const [isBugReportOpen, setIsBugReportOpen] = useState(false);
 
     const fetchUserData = async () => {
         try {
@@ -118,7 +120,7 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
 
     return html`
         <div className="flex h-[100dvh] overflow-hidden bg-[#f8fafc] dark:bg-midnight-950 transition-colors">
-            <${Sidebar} currentPage=${currentPage} onNavigate=${onNavigate} />
+            <${Sidebar} currentPage=${currentPage} onNavigate=${onNavigate} onReportIssue=${() => setIsBugReportOpen(true)} />
 
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
                 <${Header} 
@@ -159,6 +161,11 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
                     onComplete=${() => {
                         fetchUserData();
                     }}
+                />
+
+                <${ReportBugModal}
+                    isOpen=${isBugReportOpen}
+                    onClose=${() => setIsBugReportOpen(false)}
                 />
             </div>
         </div>

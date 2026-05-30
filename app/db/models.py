@@ -38,6 +38,12 @@ class LedgerType(str, Enum):
     CREDIT = "credit"
     DEBIT = "debit"
 
+class BugReportStatus(str, Enum):
+    PENDING = "pending"
+    INVESTIGATING = "investigating"
+    RESOLVED = "resolved"
+    CLOSED = "closed"
+
 # --- SaaS & MULTI-TENANCY ---
 
 class NetworkPricing(Base):
@@ -472,3 +478,20 @@ class SystemAnnouncement(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     created_by: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
 
+class BugReport(Base):
+    """Bug reports and issues submitted by users."""
+    __tablename__ = "bug_reports"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), index=True)
+    organization_id: Mapped[int] = mapped_column(Integer, ForeignKey("organizations.id"), index=True)
+    
+    subject: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(50), default=BugReportStatus.PENDING.value)
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User")
+    organization = relationship("Organization")
