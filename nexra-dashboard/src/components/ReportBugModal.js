@@ -1,6 +1,6 @@
-import { html, useState } from '../../utils/htm.js';
+import { html, useState } from '../utils/htm.js';
 import { Icon } from './ui/Icon.js';
-import apiClient from '../../api/client.js';
+import apiClient from '../api/client.js';
 
 export const ReportBugModal = ({ isOpen, onClose }) => {
     const [subject, setSubject] = useState('');
