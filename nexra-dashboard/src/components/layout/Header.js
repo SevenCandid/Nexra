@@ -4,7 +4,7 @@ import { Dropdown } from '../ui/Dropdown.js';
 import { Button } from '../ui/Button.js';
 import { NotificationDropdown } from './NotificationDropdown.js';
 
-export const Header = ({ user, balance, onLogout, title, subtitle, onQuickSend, notifications, onMarkRead, onMarkAllRead }) => {
+export const Header = ({ user, balance, onLogout, title, subtitle, onQuickSend, notifications, onMarkRead, onMarkAllRead, onReportIssue }) => {
     const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
     
     const toggleDarkMode = () => {

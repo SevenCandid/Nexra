@@ -1,7 +1,7 @@
 import { html } from '../../utils/htm.js';
 import { Icon } from '../ui/Icon.js';
 
-export const MobileNav = ({ currentPage, onNavigate }) => {
+export const MobileNav = ({ currentPage, onNavigate, onReportIssue }) => {
     const navItems = [
         { id: 'dashboard', label: 'Pulse', icon: 'home' },
         { id: 'campaigns', label: 'Campaigns', icon: 'send' },
