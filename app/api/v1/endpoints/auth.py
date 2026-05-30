@@ -257,7 +257,14 @@ async def google_login():
     return {"url": auth_url}
 
 @router.get("/google/callback")
-async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
+async def google_callback(
+    code: str,
+    db: AsyncSession = Depends(get_db),
+    iss: str = None,
+    scope: str = None,
+    authuser: str = None,
+    prompt: str = None,
+):
     """
     Handle the callback from Google, exchange code for token, and login/register.
     """
