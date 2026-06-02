@@ -204,6 +204,7 @@ class SenderIDResponse(SenderIDBase):
     organization_id: int
     organization_name: Optional[str] = None
     admin_comment: Optional[str] = None
+    application_snapshot: Optional[dict] = None
     verification_payload: Optional[dict] = None
     verification_submitted_at: Optional[datetime] = None
     created_at: datetime

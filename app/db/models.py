@@ -376,6 +376,7 @@ class SenderID(Base):
     official_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     registration_certificate: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     authorization_letter: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    application_snapshot: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     verification_payload: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     verification_submitted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     
