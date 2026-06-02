@@ -28,12 +28,13 @@ def _verification_link(sender_id_id: int) -> str:
 
 def _safe_org(user: User) -> dict:
     org = getattr(user, "organization", None)
+    plan = org.__dict__.get("plan") if org else None
     return {
         "organization_id": org.id if org else user.organization_id,
         "name": org.name if org else None,
         "slug": org.slug if org else None,
-        "plan_name": org.plan.name if org and org.plan else None,
-        "plan_slug": org.plan.slug if org and org.plan else None,
+        "plan_name": plan.name if plan else None,
+        "plan_slug": plan.slug if plan else None,
     }
 
 
