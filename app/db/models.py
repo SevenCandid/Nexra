@@ -358,6 +358,7 @@ class SMPPAccount(Base):
 
 class SenderIDStatus(str, Enum):
     PENDING = "pending"
+    NEED_VERIFICATION = "need_verification"
     APPROVED = "approved"
     REJECTED = "rejected"
 
@@ -368,6 +369,15 @@ class SenderID(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     sender_id: Mapped[str] = mapped_column(String(11), index=True)
     status: Mapped[SenderIDStatus] = mapped_column(String(20), default=SenderIDStatus.PENDING)
+    company_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    username: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    use_case: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    website_or_social: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    official_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    registration_certificate: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    authorization_letter: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    verification_payload: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    verification_submitted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     
     # Audit trail
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

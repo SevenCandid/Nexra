@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 from typing import Optional, List
 from datetime import datetime
 import re
@@ -181,9 +181,22 @@ class WaitlistResponse(BaseModel):
 # Sender ID Schemas
 class SenderIDBase(BaseModel):
     sender_id: str = Field(..., max_length=11, min_length=3)
+    company_name: Optional[str] = Field(default=None, max_length=255)
+    username: Optional[str] = Field(default=None, max_length=255)
+    use_case: Optional[str] = Field(default=None, description="Explain how the Sender ID will be used.")
+    website_or_social: Optional[str] = Field(default=None, max_length=255)
+    official_email: Optional[EmailStr] = None
+    registration_certificate: Optional[str] = None
+    authorization_letter: Optional[str] = None
 
 class SenderIDRequest(SenderIDBase):
-    pass
+    use_case: str = Field(..., min_length=10, description="Explain how the Sender ID will be used.")
+
+    @model_validator(mode="after")
+    def require_company_or_username(self):
+        if not (self.company_name or self.username):
+            raise ValueError("Provide either a company name or a username.")
+        return self
 
 class SenderIDResponse(SenderIDBase):
     id: int
@@ -191,13 +204,15 @@ class SenderIDResponse(SenderIDBase):
     organization_id: int
     organization_name: Optional[str] = None
     admin_comment: Optional[str] = None
+    verification_payload: Optional[dict] = None
+    verification_submitted_at: Optional[datetime] = None
     created_at: datetime
     
     class Config:
         from_attributes = True
 
 class SenderIDUpdate(BaseModel):
-    status: str
+    status: str = Field(..., description="pending, need_verification, approved, or rejected")
     admin_comment: Optional[str] = None
 
 # Organization Schemas

@@ -2,10 +2,11 @@
 Email notification service using aiosmtplib.
 Gracefully no-ops if SMTP is not configured.
 """
-import asyncio
+
 import logging
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+
 from app.core.config import settings
 
 logger = logging.getLogger("uvicorn.error")
@@ -14,7 +15,7 @@ logger = logging.getLogger("uvicorn.error")
 async def send_email(to: str, subject: str, body_html: str, body_text: str = "") -> bool:
     """Send an email. Returns True on success, False if SMTP not configured or on error."""
     if not settings.SMTP_HOST or not settings.SMTP_USER:
-        logger.debug("SMTP not configured — skipping email notification")
+        logger.debug("SMTP not configured - skipping email notification")
         return False
 
     try:
@@ -49,23 +50,38 @@ async def send_sender_id_status_email(
     to_email: str,
     sender_id: str,
     status: str,
-    comment: str | None = None
+    comment: str | None = None,
+    verification_url: str | None = None,
 ) -> None:
-    """Fire-and-forget email for Sender ID approval/rejection."""
-    status_label = "Approved ✅" if status == "approved" else "Rejected ❌"
-    color = "#16a34a" if status == "approved" else "#dc2626"
+    """Fire-and-forget email for Sender ID status updates."""
+    status_labels = {
+        "approved": ("Approved ✅", "#16a34a"),
+        "need_verification": ("Need Verification 🟡", "#ca8a04"),
+        "rejected": ("Rejected ❌", "#dc2626"),
+    }
+    status_label, color = status_labels.get(status, (status.replace("_", " ").title(), "#334155"))
     comment_section = f"<p><strong>Admin Comment:</strong> {comment}</p>" if comment else ""
+    verification_section = (
+        f'<p><a href="{verification_url}" style="display:inline-block;padding:12px 18px;background:{color};color:#fff;text-decoration:none;border-radius:10px;font-weight:700;">Open verification page</a></p>'
+        if verification_url
+        else ""
+    )
 
     body_html = f"""
     <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 24px;">
         <h2 style="color: {color};">Sender ID {status_label}</h2>
         <p>Your Sender ID request for <strong style="font-size: 1.2em;">{sender_id}</strong> has been <strong>{status}</strong>.</p>
         {comment_section}
+        {verification_section}
         <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;">
         <p style="color: #888; font-size: 12px;">NEXRA Messaging Platform</p>
     </div>
     """
-    body_text = f"Your Sender ID '{sender_id}' has been {status}. {f'Comment: {comment}' if comment else ''}"
+    body_text = (
+        f"Your Sender ID '{sender_id}' has been {status}. "
+        f"{f'Comment: {comment}' if comment else ''} "
+        f"{f'Verification: {verification_url}' if verification_url else ''}"
+    )
     subject = f"NEXRA: Sender ID '{sender_id}' {status_label}"
 
     await send_email(to_email, subject, body_html, body_text)
