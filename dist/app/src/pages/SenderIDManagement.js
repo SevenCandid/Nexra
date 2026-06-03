@@ -561,10 +561,27 @@ export const SenderIDManagement = () => {
         const meta = statusMeta(detailRequest.status);
         const verificationLink = `#/sender-ids/verify/${detailRequest.id}`;
 
-        const detailField = (label, value, wide = false) => html`
-            <div className=${`p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-gray-50 dark:bg-midnight-900/50 border border-gray-100 dark:border-midnight-800 ${wide ? 'col-span-1 sm:col-span-2' : ''}`}>
-                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5">${label}</p>
-                <p className="text-sm font-medium text-gray-900 dark:text-white whitespace-pre-wrap break-words">${value || 'Not provided'}</p>
+        const formatDetailValue = (value) => {
+            const text = value == null ? '' : String(value).trim();
+            if (!text) {
+                return html`<span className="text-gray-400 dark:text-midnight-500">Not provided</span>`;
+            }
+            return text;
+        };
+
+        const detailRow = (label, value) => html`
+            <div className="px-4 py-3.5 sm:px-5 sm:py-4 flex flex-col gap-1 sm:flex-row sm:gap-4 sm:items-start">
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-midnight-500 sm:w-36 sm:shrink-0 sm:pt-0.5">${label}</p>
+                <div className="text-sm font-medium text-gray-900 dark:text-white whitespace-pre-wrap break-words flex-1 min-w-0">${formatDetailValue(value)}</div>
+            </div>
+        `;
+
+        const detailSection = (title, rows) => html`
+            <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-midnight-500 mb-2 px-1">${title}</p>
+                <div className="rounded-2xl border border-gray-100 dark:border-midnight-800 bg-gray-50/50 dark:bg-midnight-900/30 overflow-hidden divide-y divide-gray-100 dark:divide-midnight-800">
+                    ${rows}
+                </div>
             </div>
         `;
 
@@ -577,33 +594,35 @@ export const SenderIDManagement = () => {
                     aria-label="Close sender ID details"
                 ></button>
 
-                <aside className="relative z-10 flex flex-col w-full sm:max-w-md lg:max-w-lg max-h-[92dvh] sm:max-h-none sm:h-[100dvh] bg-white dark:bg-midnight-950 shadow-2xl border-t sm:border-t-0 sm:border-l border-gray-100 dark:border-midnight-800 rounded-t-2xl sm:rounded-none sm:rounded-l-2xl overflow-hidden">
-                    <div className="shrink-0 flex justify-center pt-2 pb-0 sm:hidden">
+                <aside className="relative z-10 flex flex-col w-full sm:w-[min(100%,32rem)] max-h-[92dvh] sm:max-h-none sm:h-[100dvh] bg-white dark:bg-midnight-950 shadow-2xl border-t sm:border-t-0 sm:border-l border-gray-100 dark:border-midnight-800 rounded-t-2xl sm:rounded-none sm:rounded-l-2xl overflow-hidden">
+                    <div className="shrink-0 flex justify-center pt-2.5 pb-0 sm:hidden">
                         <span className="w-10 h-1 rounded-full bg-gray-200 dark:bg-midnight-700" aria-hidden="true"></span>
                     </div>
 
-                    <div className="shrink-0 px-4 py-3 sm:px-6 sm:py-5 border-b border-gray-100 dark:border-midnight-800 flex items-start justify-between gap-3 bg-white dark:bg-midnight-950">
-                        <div className="space-y-1.5 min-w-0 flex-1 pr-2">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-primary-600">Sender ID Details</p>
-                            <div className="flex flex-wrap items-center gap-2">
-                                <h3 className="text-lg sm:text-2xl font-black text-gray-900 dark:text-white tracking-wide uppercase break-all">${detailRequest.sender_id}</h3>
-                                <${Badge} variant=${meta.variant}>${meta.label}</${Badge}>
+                    <div className="shrink-0 px-5 pt-4 pb-4 sm:px-6 sm:pt-6 sm:pb-5 border-b border-gray-100 dark:border-midnight-800 bg-white dark:bg-midnight-950">
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1 space-y-2">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-primary-600">Sender ID Details</p>
+                                <h3 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white tracking-wide uppercase break-all leading-tight">${detailRequest.sender_id}</h3>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <${Badge} variant=${meta.variant}>${meta.label}</${Badge}>
+                                    <span className="text-xs text-gray-500 dark:text-midnight-400">
+                                        Request #${detailRequest.id} · ${new Date(detailRequest.created_at).toLocaleDateString()}
+                                    </span>
+                                </div>
                             </div>
-                            <p className="text-xs sm:text-sm text-gray-500 dark:text-midnight-400">
-                                #${detailRequest.id} · ${new Date(detailRequest.created_at).toLocaleDateString()}
-                            </p>
+                            <button
+                                type="button"
+                                onClick=${closeRequestDetails}
+                                className="inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-gray-200 dark:border-midnight-800 text-gray-500 dark:text-midnight-300 hover:bg-gray-50 dark:hover:bg-midnight-900 transition-colors shrink-0"
+                                aria-label="Close details"
+                            >
+                                <${Icon} name="x" size=${18} />
+                            </button>
                         </div>
-                        <button
-                            type="button"
-                            onClick=${closeRequestDetails}
-                            className="inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-gray-200 dark:border-midnight-800 text-gray-500 dark:text-midnight-300 hover:bg-gray-50 dark:hover:bg-midnight-900 transition-colors shrink-0"
-                            aria-label="Close details"
-                        >
-                            <${Icon} name="x" size=${18} />
-                        </button>
                     </div>
 
-                    <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-6 space-y-4 sm:space-y-6 pb-8 sm:pb-6">
+                    <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6 sm:py-6 space-y-5 pb-10 sm:pb-8">
                         ${detailRequest.status === 'approved' && html`
                             <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/50 flex gap-3">
                                 <${Icon} name="check-circle" size=${18} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
@@ -625,21 +644,21 @@ export const SenderIDManagement = () => {
                         `}
 
                         ${detailRequest.status === 'need_verification' && html`
-                            <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/50 flex gap-3">
-                                <${Icon} name="file-search" size=${18} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                                <div className="space-y-3">
+                            <div className="p-4 sm:p-5 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 space-y-3">
+                                <div className="flex gap-3">
+                                    <${Icon} name="file-search" size=${18} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                                     <div>
-                                        <p className="text-sm font-bold text-amber-800 dark:text-amber-200">Verification required</p>
-                                        <p className="text-xs text-amber-700/80 dark:text-amber-300/80 mt-1">Upload supporting documents so the team can complete your review.</p>
+                                        <p className="text-sm font-bold text-amber-900 dark:text-amber-100">Verification required</p>
+                                        <p className="text-xs text-amber-800/90 dark:text-amber-200/90 mt-1 leading-relaxed">Upload supporting documents so the team can complete your review.</p>
                                     </div>
-                                    <a
-                                        href=${verificationLink}
-                                        className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500 text-white text-xs font-black uppercase tracking-widest hover:bg-amber-600 transition-colors"
-                                    >
-                                        <${Icon} name="upload" size=${14} />
-                                        Continue Verification
-                                    </a>
                                 </div>
+                                <a
+                                    href=${verificationLink}
+                                    className="flex w-full items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 text-white text-xs font-black uppercase tracking-wider hover:bg-amber-600 transition-colors"
+                                >
+                                    <${Icon} name="upload" size=${14} />
+                                    Continue Verification
+                                </a>
                             </div>
                         `}
 
@@ -677,32 +696,24 @@ export const SenderIDManagement = () => {
                             </div>
                         `}
 
-                        <div>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Application Details</p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                                ${detailField('Company / Username', request.company_name || request.username)}
-                                ${detailField('Official Email', request.official_email)}
-                                ${detailField('Website / Social', request.website_or_social)}
-                                ${detailField('Organization', organization.name)}
-                                ${detailField('Use Case', request.use_case, true)}
-                                ${detailField('Registration Certificate', request.registration_certificate ? 'Provided' : 'Not provided')}
-                                ${detailField('Authorization Letter', request.authorization_letter ? 'Provided' : 'Not provided')}
-                            </div>
-                        </div>
+                        ${detailSection('Application Details', html`
+                            ${detailRow('Company / Username', request.company_name || request.username)}
+                            ${detailRow('Official Email', request.official_email)}
+                            ${detailRow('Website / Social', request.website_or_social)}
+                            ${detailRow('Organization', organization.name)}
+                            ${detailRow('Use Case', request.use_case)}
+                            ${detailRow('Registration Certificate', request.registration_certificate ? 'Provided' : null)}
+                            ${detailRow('Authorization Letter', request.authorization_letter ? 'Provided' : null)}
+                        `)}
 
-                        ${adminMode && html`
-                            <div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Requester</p>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    ${detailField('Name', requester.full_name)}
-                                    ${detailField('Email', requester.email)}
-                                    ${detailField('Phone', requester.phone_number)}
-                                    ${detailField('Role', requester.role)}
-                                    ${detailField('Organization Plan', organization.plan_name)}
-                                    ${detailField('Verification Submitted', detailRequest.verification_submitted_at ? new Date(detailRequest.verification_submitted_at).toLocaleString() : 'Not yet submitted')}
-                                </div>
-                            </div>
-                        `}
+                        ${adminMode && detailSection('Requester', html`
+                            ${detailRow('Name', requester.full_name)}
+                            ${detailRow('Email', requester.email)}
+                            ${detailRow('Phone', requester.phone_number)}
+                            ${detailRow('Role', requester.role)}
+                            ${detailRow('Organization Plan', organization.plan_name)}
+                            ${detailRow('Verification Submitted', detailRequest.verification_submitted_at ? new Date(detailRequest.verification_submitted_at).toLocaleString() : null)}
+                        `)}
 
                         ${adminMode && Object.keys(verification).length > 0 && html`
                             <div className="p-4 rounded-2xl bg-gray-50 dark:bg-midnight-900/50 border border-gray-100 dark:border-midnight-800">
