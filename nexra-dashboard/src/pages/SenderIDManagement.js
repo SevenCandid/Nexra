@@ -9,12 +9,14 @@ import { useAuth } from '../contexts/AuthContext.js';
 import apiClient from '../api/client.js';
 
 const STATUS_FILTERS = [
-    { key: 'all', label: 'All' },
-    { key: 'approved', label: 'Approved' },
-    { key: 'pending', label: 'Pending' },
-    { key: 'need_verification', label: 'Need Verification' },
-    { key: 'rejected', label: 'Rejected' },
+    { key: 'all', label: 'All', shortLabel: 'All' },
+    { key: 'approved', label: 'Approved', shortLabel: 'OK' },
+    { key: 'pending', label: 'Pending', shortLabel: 'Wait' },
+    { key: 'need_verification', label: 'Need Verification', shortLabel: 'Verify' },
+    { key: 'rejected', label: 'Rejected', shortLabel: 'No' },
 ];
+
+const { createPortal } = window.ReactDOM;
 
 const statusMeta = (status) => {
     const normalized = (status || 'pending').toLowerCase();
@@ -378,7 +380,7 @@ export const SenderIDManagement = () => {
         }, {});
 
         return html`
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+            <div className="grid grid-cols-5 gap-1 sm:gap-2">
                 ${STATUS_FILTERS.map((filter) => {
                     const meta = filter.key === 'all'
                         ? { variant: 'primary', icon: 'layers' }
@@ -389,17 +391,18 @@ export const SenderIDManagement = () => {
                             key=${filter.key}
                             type="button"
                             onClick=${() => setStatusFilter(filter.key)}
-                            className=${`p-4 rounded-2xl border text-left transition-all ${
+                            title=${filter.label}
+                            className=${`min-w-0 flex flex-col items-center justify-center gap-0.5 px-0.5 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl border transition-all ${
                                 active
-                                    ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-200 dark:border-primary-800 shadow-sm'
-                                    : 'bg-white/70 dark:bg-midnight-950/50 border-gray-100 dark:border-midnight-800 hover:border-primary-200 dark:hover:border-primary-800'
+                                    ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-300 dark:border-primary-700 shadow-sm'
+                                    : 'bg-white/80 dark:bg-midnight-950/80 border-gray-100 dark:border-midnight-800'
                             }`}
                         >
-                            <div className="flex items-center justify-between gap-2 mb-2">
-                                <${Icon} name=${meta.icon || 'layers'} size=${16} className=${active ? 'text-primary-600' : 'text-gray-400'} />
-                                <span className="text-xl font-black text-gray-900 dark:text-white">${counts[filter.key]}</span>
-                            </div>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-midnight-400">${filter.label}</p>
+                            <span className="text-sm sm:text-lg font-black text-gray-900 dark:text-white leading-none">${counts[filter.key]}</span>
+                            <span className="text-[7px] sm:text-[9px] font-black uppercase tracking-tight text-center leading-tight text-gray-500 dark:text-midnight-400 w-full truncate px-0.5">
+                                <span className="sm:hidden">${filter.shortLabel}</span>
+                                <span className="hidden sm:inline">${filter.label}</span>
+                            </span>
                         </button>
                     `;
                 })}
@@ -433,23 +436,6 @@ export const SenderIDManagement = () => {
                 </div>
 
                 ${!loading && senderIds.length > 0 && renderStatusSummary(senderIds)}
-
-                <div className="flex flex-wrap gap-2 px-1">
-                    ${STATUS_FILTERS.map((filter) => html`
-                        <button
-                            key=${filter.key}
-                            type="button"
-                            onClick=${() => setStatusFilter(filter.key)}
-                            className=${`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border transition-colors ${
-                                statusFilter === filter.key
-                                    ? 'bg-primary-600 text-white border-primary-600'
-                                    : 'bg-white dark:bg-midnight-950 text-gray-600 dark:text-midnight-300 border-gray-200 dark:border-midnight-800'
-                            }`}
-                        >
-                            ${filter.label}
-                        </button>
-                    `)}
-                </div>
             </div>
 
             <${Card} className="overflow-hidden bg-white/50 dark:bg-midnight-950/50 backdrop-blur-sm border-gray-100 dark:border-midnight-800 transition-all">
@@ -576,44 +562,48 @@ export const SenderIDManagement = () => {
         const verificationLink = `#/sender-ids/verify/${detailRequest.id}`;
 
         const detailField = (label, value, wide = false) => html`
-            <div className=${`p-4 rounded-2xl bg-gray-50 dark:bg-midnight-900/50 border border-gray-100 dark:border-midnight-800 ${wide ? 'sm:col-span-2' : ''}`}>
-                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">${label}</p>
+            <div className=${`p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-gray-50 dark:bg-midnight-900/50 border border-gray-100 dark:border-midnight-800 ${wide ? 'col-span-1 sm:col-span-2' : ''}`}>
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5">${label}</p>
                 <p className="text-sm font-medium text-gray-900 dark:text-white whitespace-pre-wrap break-words">${value || 'Not provided'}</p>
             </div>
         `;
 
-        return html`
-            <div className="fixed inset-0 z-50 flex justify-end">
+        const drawerContent = html`
+            <div className="fixed inset-0 z-[150] flex flex-col justify-end sm:flex-row sm:justify-end sm:items-stretch" role="dialog" aria-modal="true" aria-label="Sender ID details">
                 <button
                     type="button"
-                    className="absolute inset-0 bg-slate-950/60 backdrop-blur-[2px]"
+                    className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"
                     onClick=${closeRequestDetails}
                     aria-label="Close sender ID details"
                 ></button>
 
-                <aside className="relative w-full max-w-xl h-full bg-white dark:bg-midnight-950 shadow-2xl border-l border-gray-100 dark:border-midnight-800 flex flex-col animate-in slide-in-from-right duration-300">
-                    <div className="p-5 sm:p-6 border-b border-gray-100 dark:border-midnight-800 flex items-start justify-between gap-4 shrink-0">
-                        <div className="space-y-2 min-w-0">
-                            <p className="text-[10px] font-black uppercase tracking-[0.35em] text-primary-600">Sender ID Details</p>
+                <aside className="relative z-10 flex flex-col w-full sm:max-w-md lg:max-w-lg max-h-[92dvh] sm:max-h-none sm:h-[100dvh] bg-white dark:bg-midnight-950 shadow-2xl border-t sm:border-t-0 sm:border-l border-gray-100 dark:border-midnight-800 rounded-t-2xl sm:rounded-none sm:rounded-l-2xl overflow-hidden">
+                    <div className="shrink-0 flex justify-center pt-2 pb-0 sm:hidden">
+                        <span className="w-10 h-1 rounded-full bg-gray-200 dark:bg-midnight-700" aria-hidden="true"></span>
+                    </div>
+
+                    <div className="shrink-0 px-4 py-3 sm:px-6 sm:py-5 border-b border-gray-100 dark:border-midnight-800 flex items-start justify-between gap-3 bg-white dark:bg-midnight-950">
+                        <div className="space-y-1.5 min-w-0 flex-1 pr-2">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-primary-600">Sender ID Details</p>
                             <div className="flex flex-wrap items-center gap-2">
-                                <h3 className="text-2xl font-black text-gray-900 dark:text-white tracking-widest uppercase truncate">${detailRequest.sender_id}</h3>
+                                <h3 className="text-lg sm:text-2xl font-black text-gray-900 dark:text-white tracking-wide uppercase break-all">${detailRequest.sender_id}</h3>
                                 <${Badge} variant=${meta.variant}>${meta.label}</${Badge}>
                             </div>
-                            <p className="text-sm text-gray-500 dark:text-midnight-400">
-                                Request #${detailRequest.id} · ${new Date(detailRequest.created_at).toLocaleString()}
+                            <p className="text-xs sm:text-sm text-gray-500 dark:text-midnight-400">
+                                #${detailRequest.id} · ${new Date(detailRequest.created_at).toLocaleDateString()}
                             </p>
                         </div>
                         <button
                             type="button"
                             onClick=${closeRequestDetails}
-                            className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 dark:border-midnight-800 text-gray-500 dark:text-midnight-300 hover:bg-gray-50 dark:hover:bg-midnight-900 transition-colors shrink-0"
+                            className="inline-flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-gray-200 dark:border-midnight-800 text-gray-500 dark:text-midnight-300 hover:bg-gray-50 dark:hover:bg-midnight-900 transition-colors shrink-0"
                             aria-label="Close details"
                         >
                             <${Icon} name="x" size=${18} />
                         </button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
+                    <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-6 space-y-4 sm:space-y-6 pb-8 sm:pb-6">
                         ${detailRequest.status === 'approved' && html`
                             <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/50 flex gap-3">
                                 <${Icon} name="check-circle" size=${18} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
@@ -689,7 +679,7 @@ export const SenderIDManagement = () => {
 
                         <div>
                             <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Application Details</p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                                 ${detailField('Company / Username', request.company_name || request.username)}
                                 ${detailField('Official Email', request.official_email)}
                                 ${detailField('Website / Social', request.website_or_social)}
@@ -745,6 +735,8 @@ export const SenderIDManagement = () => {
                 </aside>
             </div>
         `;
+
+        return createPortal(drawerContent, document.body);
     };
 
     return html`
@@ -764,7 +756,7 @@ export const SenderIDManagement = () => {
                 </div>
                 ${renderAdminQueues()}
             ` : renderUserRequests()}
-            ${renderDetailDrawer()}
+            ${detailRequest ? renderDetailDrawer() : null}
         </div>
     `;
 };
