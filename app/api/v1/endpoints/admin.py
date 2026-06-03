@@ -113,15 +113,27 @@ async def create_announcement(
     title: str,
     content: str,
     type: str = "info",
+    target_user_ids: Optional[str] = None,
     expires_at: Optional[datetime] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(deps.get_current_active_superadmin)
 ):
-    """Create a platform-wide announcement."""
+    """Create an announcement for all users or selected users."""
+    parsed_target_user_ids = None
+    if target_user_ids:
+        parsed_target_user_ids = [
+            int(user_id.strip())
+            for user_id in target_user_ids.split(",")
+            if user_id.strip().isdigit()
+        ]
+        if not parsed_target_user_ids:
+            parsed_target_user_ids = None
+
     announcement = SystemAnnouncement(
         title=title,
         content=content,
         type=type,
+        target_user_ids=parsed_target_user_ids,
         expires_at=expires_at,
         created_by=current_user.id
     )
@@ -160,7 +172,8 @@ async def toggle_gateway(
 
 @router.get("/announcements/active")
 async def get_active_announcements(
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
 ):
     """Public endpoint for users to see current announcements."""
     now = datetime.utcnow()
@@ -170,4 +183,10 @@ async def get_active_announcements(
     ).order_by(desc(SystemAnnouncement.created_at))
     
     result = await db.execute(query)
-    return result.scalars().all()
+    announcements = result.scalars().all()
+    visible = []
+    for announcement in announcements:
+        target_user_ids = announcement.target_user_ids or []
+        if not target_user_ids or current_user.id in target_user_ids:
+            visible.append(announcement)
+    return visible

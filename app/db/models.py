@@ -485,6 +485,7 @@ class SystemAnnouncement(Base):
     content: Mapped[str] = mapped_column(Text)
     type: Mapped[str] = mapped_column(String(50), default="info") # info, warning, success, emergency
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    target_user_ids: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
     expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     created_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)

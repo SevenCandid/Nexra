@@ -8,6 +8,16 @@ import apiClient from '../api/client.js';
 
 const AnnouncementsBanner = () => {
     const [announcements, setAnnouncements] = useState([]);
+    const [dismissedIds, setDismissedIds] = useState([]);
+
+    useEffect(() => {
+        try {
+            const saved = window.localStorage.getItem('nexra_dismissed_announcements');
+            if (saved) {
+                setDismissedIds(JSON.parse(saved));
+            }
+        } catch (_) {}
+    }, []);
 
     useEffect(() => {
         apiClient.get('/admin/announcements/active')
@@ -15,11 +25,23 @@ const AnnouncementsBanner = () => {
             .catch(() => {});
     }, []);
 
-    if (announcements.length === 0) return null;
+    const handleDismiss = (id) => {
+        setDismissedIds((prev) => {
+            const next = prev.includes(id) ? prev : [...prev, id];
+            try {
+                window.localStorage.setItem('nexra_dismissed_announcements', JSON.stringify(next));
+            } catch (_) {}
+            return next;
+        });
+    };
+
+    const visibleAnnouncements = announcements.filter((ann) => !dismissedIds.includes(ann.id));
+
+    if (visibleAnnouncements.length === 0) return null;
 
     return html`
         <div className="space-y-3 mb-6">
-            ${announcements.map(ann => html`
+            ${visibleAnnouncements.map(ann => html`
                 <div key=${ann.id} className="relative overflow-hidden p-4 rounded-2xl border flex gap-4 animate-slide-up shadow-sm transition-all hover:shadow-md
                     ${ann.type === 'warning' ? 'bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-950/20 dark:border-amber-900/30 dark:text-amber-400' : 
                       ann.type === 'emergency' ? 'bg-rose-50 border-rose-200 text-rose-800 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-400' : 
@@ -36,6 +58,14 @@ const AnnouncementsBanner = () => {
                         <h4 className="font-bold text-lg leading-tight mb-1">${ann.title}</h4>
                         <p className="text-sm opacity-90">${ann.content}</p>
                     </div>
+                    <button
+                        type="button"
+                        onClick=${() => handleDismiss(ann.id)}
+                        className="absolute top-3 right-3 p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                        aria-label="Dismiss announcement"
+                    >
+                        <${Icon} name="x" size=${16} className="opacity-70" />
+                    </button>
                 </div>
             `)}
         </div>

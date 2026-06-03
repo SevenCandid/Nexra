@@ -279,16 +279,16 @@ const Card = ({ children, className = '', ...props }) => {
 const Modal = ({ isOpen, onClose, title, children }) => {
     if (!isOpen) return null;
     return html`
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+        <div className="fixed inset-0 z-[100] flex items-start justify-center p-4 sm:p-6 pt-6 pb-6 overflow-x-hidden overflow-y-auto">
             <div className="absolute inset-0 bg-midnight-950/60 backdrop-blur-sm animate-fade-in" onClick=${onClose}></div>
-            <div className="relative bg-white dark:bg-midnight-900 w-full max-w-[95%] sm:max-w-md md:max-w-lg rounded-2xl shadow-2xl animate-pop-in overflow-hidden border border-white/10 dark:border-midnight-800">
+            <div className="relative bg-white dark:bg-midnight-900 w-full max-w-[95%] sm:max-w-md md:max-w-lg rounded-2xl shadow-2xl animate-pop-in overflow-hidden border border-white/10 dark:border-midnight-800 max-h-[calc(100vh-3rem)]">
                 <div className="p-5 sm:p-6 border-b border-gray-100 dark:border-midnight-800 flex items-center justify-between">
                     <h3 className="text-lg font-bold dark:text-white">${title}</h3>
                     <button onClick=${onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-midnight-800 rounded-xl transition-colors">
                         <${Icon} name="x" size=${20} className="text-gray-400" />
                     </button>
                 </div>
-                <div className="p-5 sm:p-6 max-h-[80vh] overflow-y-auto no-scrollbar">
+                <div className="p-5 sm:p-6 max-h-[calc(100vh-10rem)] overflow-y-auto no-scrollbar">
                     ${children}
                 </div>
             </div>
@@ -1934,11 +1934,22 @@ const AuditLogPage = () => {
 const AnnouncementsPage = () => {
     const { showToast } = useToast();
     const [list, setList] = useState([]);
+    const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [usersLoading, setUsersLoading] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
+    const [recipientMode, setRecipientMode] = useState('all');
+    const [selectedUserIds, setSelectedUserIds] = useState([]);
+    const [userSearch, setUserSearch] = useState('');
     const [form, setForm] = useState({ title: '', content: '', type: 'info' });
 
     useEffect(() => { fetchAnnouncements(); }, []);
+
+    useEffect(() => {
+        if (isCreating && users.length === 0 && !usersLoading) {
+            fetchUsers();
+        }
+    }, [isCreating]);
 
     const fetchAnnouncements = async () => {
         try {
@@ -1948,16 +1959,57 @@ const AnnouncementsPage = () => {
         } catch (error) { setLoading(false); }
     };
 
+    const fetchUsers = async () => {
+        setUsersLoading(true);
+        try {
+            const res = await apiClient.get('/platform/users?limit=200');
+            setUsers(res.data?.items || res.data || []);
+        } catch (error) {
+            showToast('Failed to load users', 'error');
+        } finally {
+            setUsersLoading(false);
+        }
+    };
+
+    const toggleUserId = (id) => {
+        setSelectedUserIds((prev) => (
+            prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+        ));
+    };
+
     const handleCreate = async (e) => {
         e.preventDefault();
+        if (recipientMode === 'selected' && selectedUserIds.length === 0) {
+            showToast('Pick at least one user or switch to All Users.', 'error');
+            return;
+        }
         try {
-            await apiClient.post('/admin/announcements', null, { params: form });
+            await apiClient.post('/admin/announcements', null, {
+                params: {
+                    ...form,
+                    target_user_ids: recipientMode === 'selected' ? selectedUserIds.join(',') : '',
+                },
+            });
             showToast('Announcement posted!', 'success');
             setIsCreating(false);
             setForm({ title: '', content: '', type: 'info' });
+            setRecipientMode('all');
+            setSelectedUserIds([]);
+            setUserSearch('');
             fetchAnnouncements();
         } catch (error) { showToast('Failed to post', 'error'); }
     };
+
+    const filteredUsers = users.filter((item) => {
+        const query = userSearch.trim().toLowerCase();
+        if (!query) return true;
+        return [
+            item.full_name,
+            item.email,
+            item.organization_name,
+            item.role,
+        ].some((value) => (value || '').toLowerCase().includes(query));
+    });
 
     return html`
         <div className="space-y-6 fade-in max-w-4xl mx-auto">
@@ -1971,6 +2023,66 @@ const AnnouncementsPage = () => {
             <${Modal} isOpen=${isCreating} onClose=${() => setIsCreating(false)} title="Create Announcement">
                 <form onSubmit=${handleCreate} className="space-y-4">
                     <${Input} label="Title" value=${form.title} onChange=${e => setForm({...form, title: e.target.value})} required />
+                    <div className="space-y-2 rounded-2xl border border-gray-200 dark:border-midnight-800 bg-gray-50/70 dark:bg-midnight-900/40 p-4">
+                        <div className="flex items-center justify-between gap-3">
+                            <div>
+                                <p className="text-xs font-black uppercase tracking-widest text-gray-500 dark:text-midnight-400">Audience</p>
+                                <p className="text-sm text-gray-500 dark:text-midnight-400">Choose all users or pick specific recipients.</p>
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                                {recipientMode === 'selected' ? `${selectedUserIds.length} selected` : 'All users'}
+                            </span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <button
+                                type="button"
+                                onClick=${() => setRecipientMode('all')}
+                                className=${`px-4 py-3 rounded-2xl border text-left transition-colors ${recipientMode === 'all' ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300' : 'border-gray-200 dark:border-midnight-800 text-gray-600 dark:text-midnight-300'}`}
+                            >
+                                <p className="font-bold">All users</p>
+                                <p className="text-xs opacity-80">Send the announcement to everyone.</p>
+                            </button>
+                            <button
+                                type="button"
+                                onClick=${() => setRecipientMode('selected')}
+                                className=${`px-4 py-3 rounded-2xl border text-left transition-colors ${recipientMode === 'selected' ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300' : 'border-gray-200 dark:border-midnight-800 text-gray-600 dark:text-midnight-300'}`}
+                            >
+                                <p className="font-bold">Selected users</p>
+                                <p className="text-xs opacity-80">Choose specific users below.</p>
+                            </button>
+                        </div>
+                        {recipientMode === 'selected' && html`
+                            <div className="space-y-3">
+                                <input
+                                    value=${userSearch}
+                                    onChange=${(e) => setUserSearch(e.target.value)}
+                                    placeholder="Search users by name, email, role, or organization"
+                                    className="w-full px-4 py-2.5 bg-white dark:bg-midnight-950 border border-gray-200 dark:border-midnight-800 rounded-xl outline-none text-sm"
+                                />
+                                <div className="max-h-60 overflow-y-auto rounded-2xl border border-gray-200 dark:border-midnight-800 bg-white dark:bg-midnight-950 divide-y divide-gray-100 dark:divide-midnight-800">
+                                    ${usersLoading ? html`
+                                        <div className="p-4 text-sm text-gray-500">Loading users...</div>
+                                    ` : filteredUsers.length === 0 ? html`
+                                        <div className="p-4 text-sm text-gray-500">No users found.</div>
+                                    ` : filteredUsers.map((user) => html`
+                                        <label key=${user.id} className="flex items-start gap-3 p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-midnight-900/60 transition-colors">
+                                            <input
+                                                type="checkbox"
+                                                checked=${selectedUserIds.includes(user.id)}
+                                                onChange=${() => toggleUserId(user.id)}
+                                                className="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                            />
+                                            <div className="min-w-0 flex-1">
+                                                <p className="font-semibold text-gray-900 dark:text-white truncate">${user.full_name || user.email}</p>
+                                                <p className="text-xs text-gray-500 dark:text-midnight-400 truncate">${user.email}</p>
+                                                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-1">${user.role || 'user'}${user.organization_name ? ` · ${user.organization_name}` : ''}</p>
+                                            </div>
+                                        </label>
+                                    `)}
+                                </div>
+                            </div>
+                        `}
+                    </div>
                     <div className="space-y-1.5">
                         <label className="block text-xs font-bold uppercase text-gray-500 ml-1">Content</label>
                         <textarea 
@@ -1997,6 +2109,7 @@ const AnnouncementsPage = () => {
                                 <div className="flex gap-3 mt-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                                     <span>Posted: ${new Date(item.created_at).toLocaleDateString()}</span>
                                     <span>Type: ${item.type}</span>
+                                    <span>${item.target_user_ids && item.target_user_ids.length ? `${item.target_user_ids.length} selected users` : 'All users'}</span>
                                 </div>
                             </div>
                         </div>
