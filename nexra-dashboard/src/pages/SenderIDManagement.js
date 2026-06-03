@@ -8,17 +8,31 @@ import { useToast } from '../contexts/ToastContext.js';
 import { useAuth } from '../contexts/AuthContext.js';
 import apiClient from '../api/client.js';
 
+const STATUS_FILTERS = [
+    { key: 'all', label: 'All' },
+    { key: 'approved', label: 'Approved' },
+    { key: 'pending', label: 'Pending' },
+    { key: 'need_verification', label: 'Need Verification' },
+    { key: 'rejected', label: 'Rejected' },
+];
+
 const statusMeta = (status) => {
     const normalized = (status || 'pending').toLowerCase();
-    if (normalized === 'approved') return { label: 'Approved ✅', variant: 'success' };
-    if (normalized === 'need_verification') return { label: 'Need Verification 🟡', variant: 'warning' };
-    if (normalized === 'rejected') return { label: 'Rejected ❌', variant: 'error' };
-    return { label: 'Pending', variant: 'default' };
+    if (normalized === 'approved') return { label: 'Approved', variant: 'success', icon: 'check-circle' };
+    if (normalized === 'need_verification') return { label: 'Need Verification', variant: 'warning', icon: 'file-search' };
+    if (normalized === 'rejected') return { label: 'Rejected', variant: 'error', icon: 'x-circle' };
+    return { label: 'Pending', variant: 'info', icon: 'clock' };
+};
+
+const getUseCasePreview = (item) => {
+    const snapshot = item.application_snapshot || {};
+    const request = snapshot.request || item;
+    const text = (request.use_case || '').trim();
+    if (!text) return 'No use case provided';
+    return text.length > 90 ? `${text.slice(0, 90)}…` : text;
 };
 
 const isAdminRole = (role) => ['staff', 'superadmin'].includes((role || '').toLowerCase());
-
-const valueNode = (value) => html`<span className="font-medium text-gray-900 dark:text-white">${value || 'Not provided'}</span>`;
 
 export const SenderIDManagement = () => {
     const { showToast } = useToast();
@@ -32,6 +46,7 @@ export const SenderIDManagement = () => {
     const [adminLoading, setAdminLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [activeTab, setActiveTab] = useState('my-requests');
+    const [statusFilter, setStatusFilter] = useState('all');
     const [reviewComments, setReviewComments] = useState({});
     const [detailRequest, setDetailRequest] = useState(null);
     const [requestForm, setRequestForm] = useState({
@@ -65,8 +80,13 @@ export const SenderIDManagement = () => {
             }
         };
 
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
         window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            window.removeEventListener('keydown', handleKeyDown);
+        };
     }, [detailRequest]);
 
     const fetchSenderIds = async () => {
@@ -176,143 +196,64 @@ export const SenderIDManagement = () => {
         }
     };
 
-    const renderSnapshot = (item) => {
+    const renderHistoryListItem = (item, isAdmin = false) => {
+        const meta = statusMeta(item.status);
         const snapshot = item.application_snapshot || {};
-        const requester = snapshot.requester || {};
-        const org = snapshot.organization || {};
         const request = snapshot.request || item;
 
         return html`
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                <div className="p-3 rounded-2xl bg-gray-50 dark:bg-midnight-900/40 border border-gray-100 dark:border-midnight-800">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Requester</p>
-                    <p className="font-semibold text-gray-900 dark:text-white">${requester.full_name || 'Unknown'}</p>
-                    <p className="text-xs text-gray-500 dark:text-midnight-500">${requester.email || 'No email'}${requester.phone_number ? ` • ${requester.phone_number}` : ''}</p>
-                    <p className="text-[10px] uppercase tracking-widest text-gray-400 mt-1">${requester.role || 'user'}</p>
+            <button
+                key=${item.id}
+                type="button"
+                onClick=${() => openRequestDetails(item)}
+                className="w-full text-left p-4 sm:p-5 flex items-start gap-4 hover:bg-gray-50 dark:hover:bg-midnight-900/60 transition-colors group"
+            >
+                <div className=${`shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center border ${
+                    meta.variant === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800/50 text-emerald-600 dark:text-emerald-400' :
+                    meta.variant === 'warning' ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-800/50 text-amber-600 dark:text-amber-400' :
+                    meta.variant === 'error' ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-100 dark:border-rose-800/50 text-rose-600 dark:text-rose-400' :
+                    meta.variant === 'info' ? 'bg-sky-50 dark:bg-sky-900/20 border-sky-100 dark:border-sky-800/50 text-sky-600 dark:text-sky-400' :
+                    'bg-gray-50 dark:bg-midnight-900 border-gray-100 dark:border-midnight-800 text-gray-500'
+                }`}>
+                    <${Icon} name=${meta.icon} size=${18} />
                 </div>
-                <div className="p-3 rounded-2xl bg-gray-50 dark:bg-midnight-900/40 border border-gray-100 dark:border-midnight-800">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Organization</p>
-                    <p className="font-semibold text-gray-900 dark:text-white">${org.name || 'Unknown org'}</p>
-                    <p className="text-xs text-gray-500 dark:text-midnight-500">${org.plan_name || 'No plan'}${org.slug ? ` • ${org.slug}` : ''}</p>
-                </div>
-                <div className="p-3 rounded-2xl bg-gray-50 dark:bg-midnight-900/40 border border-gray-100 dark:border-midnight-800">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Sender ID</p>
-                    <p className="font-black text-xl tracking-widest text-gray-900 dark:text-white uppercase">${request.sender_id || item.sender_id}</p>
-                    <p className="text-xs text-gray-500 dark:text-midnight-500">${statusMeta(item.status).label}</p>
-                </div>
-                <div className="p-3 rounded-2xl bg-gray-50 dark:bg-midnight-900/40 border border-gray-100 dark:border-midnight-800">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Official Email</p>
-                    ${valueNode(request.official_email)}
-                </div>
-                <div className="p-3 rounded-2xl bg-gray-50 dark:bg-midnight-900/40 border border-gray-100 dark:border-midnight-800">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Company / Username</p>
-                    ${valueNode(request.company_name || request.username)}
-                </div>
-                <div className="p-3 rounded-2xl bg-gray-50 dark:bg-midnight-900/40 border border-gray-100 dark:border-midnight-800">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Website / Social</p>
-                    ${valueNode(request.website_or_social)}
-                </div>
-                <div className="md:col-span-2 p-3 rounded-2xl bg-gray-50 dark:bg-midnight-900/40 border border-gray-100 dark:border-midnight-800">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Use Case</p>
-                    <p className="text-gray-900 dark:text-white font-medium whitespace-pre-wrap">${request.use_case || 'Not provided'}</p>
-                </div>
-                <div className="md:col-span-2 p-3 rounded-2xl bg-gray-50 dark:bg-midnight-900/40 border border-gray-100 dark:border-midnight-800">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Documents</p>
-                    <div className="flex flex-wrap gap-2 text-xs">
-                        <span className="px-2 py-1 rounded-full bg-white dark:bg-midnight-950 border border-gray-200 dark:border-midnight-800">Certificate: ${request.registration_certificate ? 'Provided' : 'Not provided'}</span>
-                        <span className="px-2 py-1 rounded-full bg-white dark:bg-midnight-950 border border-gray-200 dark:border-midnight-800">Authorization: ${request.authorization_letter ? 'Provided' : 'Not provided'}</span>
-                    </div>
-                </div>
-            </div>
-        `;
-    };
 
-    const renderRequestCard = (item, isAdmin = false) => {
-        const meta = statusMeta(item.status);
-        return html`
-            <div key=${item.id} className="p-5 flex flex-col gap-4 hover:bg-white dark:hover:bg-midnight-900 transition-colors">
-                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-                    <div className="space-y-2 flex-1">
-                        <div className="flex flex-wrap items-center gap-3">
-                            <p className="font-black text-xl text-gray-900 dark:text-white tracking-widest uppercase">${item.sender_id}</p>
-                            <${Badge} variant=${meta.variant}>${meta.label}</${Badge}>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2 text-[10px] sm:text-xs text-gray-500 dark:text-midnight-500 font-bold uppercase tracking-wider">
-                            <span>Requested ${new Date(item.created_at).toLocaleDateString()}</span>
+                <div className="flex-1 min-w-0 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-black text-lg text-gray-900 dark:text-white tracking-widest uppercase">${item.sender_id}</p>
+                        <${Badge} variant=${meta.variant}>${meta.label}</${Badge}>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-midnight-300 line-clamp-2">${getUseCasePreview(item)}</p>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] sm:text-xs text-gray-500 dark:text-midnight-500 font-bold uppercase tracking-wider">
+                        <span>Requested ${new Date(item.created_at).toLocaleDateString()}</span>
+                        <span className="opacity-30">•</span>
+                        <span>#${item.id}</span>
+                        ${request.company_name || request.username ? html`
                             <span className="opacity-30">•</span>
-                            <span>ID: #${item.id}</span>
-                            ${item.organization_name && html`
-                                <span>${item.organization_name}</span>
-                            `}
-                        </div>
-
-                        ${renderSnapshot(item)}
-
-                        ${item.admin_comment && html`
-                            <div className="p-3 bg-gray-50 dark:bg-midnight-800 rounded-xl text-xs text-gray-600 dark:text-midnight-300 border border-gray-100 dark:border-midnight-800 flex gap-2">
-                                <${Icon} name="message-square" size=${14} className="mt-0.5 shrink-0 text-primary-500" />
-                                <div>
-                                    <span className="font-bold text-gray-400 uppercase text-[10px] block mb-0.5">Admin Comment</span>
-                                    ${item.admin_comment}
-                                </div>
-                            </div>
-                        `}
-
-                        ${isAdmin && item.status === 'pending' && html`
-                            <div className="space-y-2 pt-1">
-                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Admin Note</label>
-                                <textarea
-                                    value=${reviewComments[item.id] || ''}
-                                    onChange=${(e) => handleReviewCommentChange(item.id, e.target.value)}
-                                    rows=${3}
-                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-midnight-900/50 text-gray-900 dark:text-white border border-gray-200 dark:border-midnight-800 rounded-2xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all text-sm"
-                                    placeholder="Add context, request changes, or ask for verification."
-                                />
-                            </div>
-                        `}
+                            <span>${request.company_name || request.username}</span>
+                        ` : ''}
+                        ${isAdmin && item.organization_name ? html`
+                            <span className="opacity-30">•</span>
+                            <span>${item.organization_name}</span>
+                        ` : ''}
                     </div>
-
-                    <div className="flex flex-col items-start lg:items-end gap-2">
-                        ${item.status === 'need_verification' && html`
-                            <a
-                                href=${`#/sender-ids/verify/${item.id}`}
-                                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500 text-white text-xs font-black uppercase tracking-widest hover:bg-amber-600 transition-colors"
-                            >
-                                <${Icon} name="file-search" size=${14} />
-                                Continue Verification
-                            </a>
-                        `}
-                        ${item.status === 'rejected' && html`
-                            <${Button}
-                                variant="outline"
-                                size="sm"
-                                onClick=${() => {
-                                    setRequestForm((prev) => ({ ...prev, sender_id: item.sender_id }));
-                                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                                }}
-                                className="text-[10px] font-bold uppercase py-1"
-                            >
-                                Retry Request
-                            </${Button}>
-                        `}
-                        ${isAdmin && html`
-                            <${Button}
-                                size="sm"
-                                variant="outline"
-                                onClick=${() => openRequestDetails(item)}
-                                className="text-[10px] uppercase border-gray-300 dark:border-midnight-700"
-                            >
-                                View Details
-                            </${Button}>
-                            <div className="flex flex-wrap gap-2">
-                                <${Button} size="sm" onClick=${() => updateSenderStatus(item.id, 'approved')} className="text-[10px] uppercase">Approve</${Button}>
-                                <${Button} size="sm" variant="outline" onClick=${() => updateSenderStatus(item.id, 'need_verification')} className="text-[10px] uppercase border-amber-300 text-amber-700 dark:text-amber-300">Need Verification</${Button}>
-                                <${Button} size="sm" variant="danger" onClick=${() => updateSenderStatus(item.id, 'rejected')} className="text-[10px] uppercase">Reject</${Button}>
-                            </div>
-                        `}
-                    </div>
+                    ${item.admin_comment && html`
+                        <p className="text-xs text-gray-500 dark:text-midnight-400 line-clamp-1 flex items-center gap-1.5">
+                            <${Icon} name="message-square" size=${12} className="shrink-0 text-primary-500" />
+                            ${item.admin_comment}
+                        </p>
+                    `}
                 </div>
-            </div>
+
+                <div className="shrink-0 flex flex-col items-end gap-2 pt-1">
+                    ${item.status === 'need_verification' && html`
+                        <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-300 text-[10px] font-black uppercase tracking-widest">
+                            Action needed
+                        </span>
+                    `}
+                    <${Icon} name="chevron-right" size=${18} className="text-gray-300 dark:text-midnight-600 group-hover:text-primary-500 transition-colors" />
+                </div>
+            </button>
         `;
     };
 
@@ -428,18 +369,87 @@ export const SenderIDManagement = () => {
         </${Card}>
     `;
 
+    const renderStatusSummary = (items) => {
+        const counts = STATUS_FILTERS.reduce((acc, filter) => {
+            acc[filter.key] = filter.key === 'all'
+                ? items.length
+                : items.filter((item) => (item.status || 'pending').toLowerCase() === filter.key).length;
+            return acc;
+        }, {});
+
+        return html`
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                ${STATUS_FILTERS.map((filter) => {
+                    const meta = filter.key === 'all'
+                        ? { variant: 'primary', icon: 'layers' }
+                        : statusMeta(filter.key);
+                    const active = statusFilter === filter.key;
+                    return html`
+                        <button
+                            key=${filter.key}
+                            type="button"
+                            onClick=${() => setStatusFilter(filter.key)}
+                            className=${`p-4 rounded-2xl border text-left transition-all ${
+                                active
+                                    ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-200 dark:border-primary-800 shadow-sm'
+                                    : 'bg-white/70 dark:bg-midnight-950/50 border-gray-100 dark:border-midnight-800 hover:border-primary-200 dark:hover:border-primary-800'
+                            }`}
+                        >
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                                <${Icon} name=${meta.icon || 'layers'} size=${16} className=${active ? 'text-primary-600' : 'text-gray-400'} />
+                                <span className="text-xl font-black text-gray-900 dark:text-white">${counts[filter.key]}</span>
+                            </div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-midnight-400">${filter.label}</p>
+                        </button>
+                    `;
+                })}
+            </div>
+        `;
+    };
+
+    const filteredSenderIds = statusFilter === 'all'
+        ? senderIds
+        : senderIds.filter((item) => (item.status || 'pending').toLowerCase() === statusFilter);
+
     const renderUserRequests = () => html`
         <div className="space-y-6">
             ${renderUserRequestForm()}
-            <div className="flex items-center justify-between px-2">
-                <h3 className="font-bold text-gray-900 dark:text-white uppercase tracking-wider text-sm flex items-center gap-2">
-                    <${Icon} name="history" size=${16} className="text-primary-600" />
-                    Request History
-                </h3>
-                <button onClick=${fetchSenderIds} className="text-xs font-bold text-primary-600 hover:text-primary-700 flex items-center gap-1 transition-colors">
-                    <${Icon} name="refresh-cw" size=${12} />
-                    Refresh
-                </button>
+
+            <div className="space-y-4">
+                <div className="flex items-center justify-between px-2">
+                    <div>
+                        <h3 className="font-bold text-gray-900 dark:text-white uppercase tracking-wider text-sm flex items-center gap-2">
+                            <${Icon} name="history" size=${16} className="text-primary-600" />
+                            Request History
+                        </h3>
+                        <p className="text-xs text-gray-500 dark:text-midnight-400 mt-1">
+                            All your sender IDs in one place — tap any row to open details.
+                        </p>
+                    </div>
+                    <button onClick=${fetchSenderIds} className="text-xs font-bold text-primary-600 hover:text-primary-700 flex items-center gap-1 transition-colors">
+                        <${Icon} name="refresh-cw" size=${12} />
+                        Refresh
+                    </button>
+                </div>
+
+                ${!loading && senderIds.length > 0 && renderStatusSummary(senderIds)}
+
+                <div className="flex flex-wrap gap-2 px-1">
+                    ${STATUS_FILTERS.map((filter) => html`
+                        <button
+                            key=${filter.key}
+                            type="button"
+                            onClick=${() => setStatusFilter(filter.key)}
+                            className=${`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border transition-colors ${
+                                statusFilter === filter.key
+                                    ? 'bg-primary-600 text-white border-primary-600'
+                                    : 'bg-white dark:bg-midnight-950 text-gray-600 dark:text-midnight-300 border-gray-200 dark:border-midnight-800'
+                            }`}
+                        >
+                            ${filter.label}
+                        </button>
+                    `)}
+                </div>
             </div>
 
             <${Card} className="overflow-hidden bg-white/50 dark:bg-midnight-950/50 backdrop-blur-sm border-gray-100 dark:border-midnight-800 transition-all">
@@ -456,9 +466,21 @@ export const SenderIDManagement = () => {
                         <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">No Sender IDs yet</h4>
                         <p className="text-sm">Requests you make will appear here.</p>
                     </div>
+                ` : filteredSenderIds.length === 0 ? html`
+                    <div className="p-12 text-center text-gray-500">
+                        <${Icon} name="filter" size=${28} className="mx-auto mb-3 text-gray-300 dark:text-midnight-700" />
+                        <p className="text-sm">No ${statusFilter.replace('_', ' ')} sender IDs found.</p>
+                        <button
+                            type="button"
+                            onClick=${() => setStatusFilter('all')}
+                            className="mt-3 text-xs font-bold text-primary-600 hover:text-primary-700"
+                        >
+                            Show all requests
+                        </button>
+                    </div>
                 ` : html`
                     <div className="divide-y divide-gray-100 dark:divide-midnight-800">
-                        ${senderIds.map((item) => renderRequestCard(item, false))}
+                        ${filteredSenderIds.map((item) => renderHistoryListItem(item, false))}
                     </div>
                 `}
             </${Card}>
@@ -504,7 +526,7 @@ export const SenderIDManagement = () => {
                             <div className="p-10 text-center text-gray-500">
                                 <p className="text-sm">No pending requests.</p>
                             </div>
-                        ` : pendingRequests.map((item) => renderRequestCard(item, true))}
+                        ` : pendingRequests.map((item) => renderHistoryListItem(item, true))}
                     </div>
                 </${Card}>
 
@@ -528,14 +550,19 @@ export const SenderIDManagement = () => {
                             <div className="p-10 text-center text-gray-500">
                                 <p className="text-sm">No history records.</p>
                             </div>
-                        ` : historyRequests.map((item) => renderRequestCard(item, true))}
+                        ` : historyRequests.map((item) => renderHistoryListItem(item, true))}
                     </div>
                 </${Card}>
             </div>
         </div>
     `;
 
-    const renderDetailModal = () => {
+    const handleDrawerStatusUpdate = async (id, status) => {
+        await updateSenderStatus(id, status);
+        setDetailRequest(null);
+    };
+
+    const renderDetailDrawer = () => {
         if (!detailRequest) {
             return null;
         }
@@ -549,122 +576,173 @@ export const SenderIDManagement = () => {
         const verificationLink = `#/sender-ids/verify/${detailRequest.id}`;
 
         const detailField = (label, value, wide = false) => html`
-            <div className=${`p-4 rounded-2xl bg-gray-50 dark:bg-midnight-900/50 border border-gray-100 dark:border-midnight-800 ${wide ? 'md:col-span-2' : ''}`}>
+            <div className=${`p-4 rounded-2xl bg-gray-50 dark:bg-midnight-900/50 border border-gray-100 dark:border-midnight-800 ${wide ? 'sm:col-span-2' : ''}`}>
                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">${label}</p>
                 <p className="text-sm font-medium text-gray-900 dark:text-white whitespace-pre-wrap break-words">${value || 'Not provided'}</p>
             </div>
         `;
 
         return html`
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+            <div className="fixed inset-0 z-50 flex justify-end">
                 <button
                     type="button"
-                    className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"
+                    className="absolute inset-0 bg-slate-950/60 backdrop-blur-[2px]"
                     onClick=${closeRequestDetails}
                     aria-label="Close sender ID details"
                 ></button>
 
-                <div className="relative w-full max-w-6xl max-h-[90vh] overflow-hidden rounded-3xl bg-white dark:bg-midnight-950 shadow-2xl border border-gray-100 dark:border-midnight-800">
-                    <div className="p-6 border-b border-gray-100 dark:border-midnight-800 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                        <div className="space-y-2">
-                            <p className="text-[10px] font-black uppercase tracking-[0.35em] text-primary-600">Sender ID Application Snapshot</p>
-                            <div className="flex flex-wrap items-center gap-3">
-                                <h3 className="text-2xl font-black text-gray-900 dark:text-white tracking-widest uppercase">${detailRequest.sender_id}</h3>
+                <aside className="relative w-full max-w-xl h-full bg-white dark:bg-midnight-950 shadow-2xl border-l border-gray-100 dark:border-midnight-800 flex flex-col animate-in slide-in-from-right duration-300">
+                    <div className="p-5 sm:p-6 border-b border-gray-100 dark:border-midnight-800 flex items-start justify-between gap-4 shrink-0">
+                        <div className="space-y-2 min-w-0">
+                            <p className="text-[10px] font-black uppercase tracking-[0.35em] text-primary-600">Sender ID Details</p>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <h3 className="text-2xl font-black text-gray-900 dark:text-white tracking-widest uppercase truncate">${detailRequest.sender_id}</h3>
                                 <${Badge} variant=${meta.variant}>${meta.label}</${Badge}>
                             </div>
                             <p className="text-sm text-gray-500 dark:text-midnight-400">
-                                Request #${detailRequest.id} · Submitted ${new Date(detailRequest.created_at).toLocaleString()}
+                                Request #${detailRequest.id} · ${new Date(detailRequest.created_at).toLocaleString()}
                             </p>
                         </div>
-
-                        <div className="flex flex-wrap items-center gap-2">
-                            ${detailRequest.status === 'need_verification' && html`
-                                <a
-                                    href=${verificationLink}
-                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500 text-white text-xs font-black uppercase tracking-widest hover:bg-amber-600 transition-colors"
-                                >
-                                    <${Icon} name="file-search" size=${14} />
-                                    Verification Page
-                                </a>
-                            `}
-                            <button
-                                type="button"
-                                onClick=${closeRequestDetails}
-                                className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 dark:border-midnight-800 text-gray-500 dark:text-midnight-300 hover:bg-gray-50 dark:hover:bg-midnight-900 transition-colors"
-                                aria-label="Close details"
-                            >
-                                <${Icon} name="x" size=${18} />
-                            </button>
-                        </div>
+                        <button
+                            type="button"
+                            onClick=${closeRequestDetails}
+                            className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 dark:border-midnight-800 text-gray-500 dark:text-midnight-300 hover:bg-gray-50 dark:hover:bg-midnight-900 transition-colors shrink-0"
+                            aria-label="Close details"
+                        >
+                            <${Icon} name="x" size=${18} />
+                        </button>
                     </div>
 
-                    <div className="max-h-[calc(90vh-110px)] overflow-y-auto p-6 space-y-6">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            ${detailField('Requester Name', requester.full_name)}
-                            ${detailField('Requester Email', requester.email)}
-                            ${detailField('Requester Phone', requester.phone_number)}
-                            ${detailField('Requester Role', requester.role)}
+                    <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
+                        ${detailRequest.status === 'approved' && html`
+                            <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/50 flex gap-3">
+                                <${Icon} name="check-circle" size=${18} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="text-sm font-bold text-emerald-800 dark:text-emerald-200">Ready to use</p>
+                                    <p className="text-xs text-emerald-700/80 dark:text-emerald-300/80 mt-1">This sender ID is approved and available when sending campaigns.</p>
+                                </div>
+                            </div>
+                        `}
+
+                        ${detailRequest.status === 'pending' && html`
+                            <div className="p-4 rounded-2xl bg-sky-50 dark:bg-sky-900/20 border border-sky-100 dark:border-sky-800/50 flex gap-3">
+                                <${Icon} name="clock" size=${18} className="text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="text-sm font-bold text-sky-800 dark:text-sky-200">Under review</p>
+                                    <p className="text-xs text-sky-700/80 dark:text-sky-300/80 mt-1">Your request is waiting for admin review. You will be notified when the status changes.</p>
+                                </div>
+                            </div>
+                        `}
+
+                        ${detailRequest.status === 'need_verification' && html`
+                            <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/50 flex gap-3">
+                                <${Icon} name="file-search" size=${18} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                                <div className="space-y-3">
+                                    <div>
+                                        <p className="text-sm font-bold text-amber-800 dark:text-amber-200">Verification required</p>
+                                        <p className="text-xs text-amber-700/80 dark:text-amber-300/80 mt-1">Upload supporting documents so the team can complete your review.</p>
+                                    </div>
+                                    <a
+                                        href=${verificationLink}
+                                        className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500 text-white text-xs font-black uppercase tracking-widest hover:bg-amber-600 transition-colors"
+                                    >
+                                        <${Icon} name="upload" size=${14} />
+                                        Continue Verification
+                                    </a>
+                                </div>
+                            </div>
+                        `}
+
+                        ${detailRequest.status === 'rejected' && html`
+                            <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800/50 flex gap-3">
+                                <${Icon} name="x-circle" size=${18} className="text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                                <div className="space-y-3">
+                                    <div>
+                                        <p className="text-sm font-bold text-rose-800 dark:text-rose-200">Request rejected</p>
+                                        <p className="text-xs text-rose-700/80 dark:text-rose-300/80 mt-1">Review the admin note below, update your details, and submit a new request if needed.</p>
+                                    </div>
+                                    <${Button}
+                                        variant="outline"
+                                        size="sm"
+                                        onClick=${() => {
+                                            setRequestForm((prev) => ({ ...prev, sender_id: detailRequest.sender_id }));
+                                            closeRequestDetails();
+                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                        }}
+                                        className="text-[10px] font-bold uppercase"
+                                    >
+                                        Retry Request
+                                    </${Button}>
+                                </div>
+                            </div>
+                        `}
+
+                        ${detailRequest.admin_comment && html`
+                            <div className="p-4 rounded-2xl bg-gray-50 dark:bg-midnight-900/50 border border-gray-100 dark:border-midnight-800">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 flex items-center gap-1.5">
+                                    <${Icon} name="message-square" size=${12} />
+                                    Admin Comment
+                                </p>
+                                <p className="text-sm text-gray-700 dark:text-midnight-200 whitespace-pre-wrap">${detailRequest.admin_comment}</p>
+                            </div>
+                        `}
+
+                        <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Application Details</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                ${detailField('Company / Username', request.company_name || request.username)}
+                                ${detailField('Official Email', request.official_email)}
+                                ${detailField('Website / Social', request.website_or_social)}
+                                ${detailField('Organization', organization.name)}
+                                ${detailField('Use Case', request.use_case, true)}
+                                ${detailField('Registration Certificate', request.registration_certificate ? 'Provided' : 'Not provided')}
+                                ${detailField('Authorization Letter', request.authorization_letter ? 'Provided' : 'Not provided')}
+                            </div>
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            ${detailField('Organization Name', organization.name)}
-                            ${detailField('Organization Username', request.username || organization.username)}
-                            ${detailField('Official Email', request.official_email)}
-                            ${detailField('Website / Social Page', request.website_or_social)}
-                        </div>
+                        ${adminMode && html`
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Requester</p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    ${detailField('Name', requester.full_name)}
+                                    ${detailField('Email', requester.email)}
+                                    ${detailField('Phone', requester.phone_number)}
+                                    ${detailField('Role', requester.role)}
+                                    ${detailField('Organization Plan', organization.plan_name)}
+                                    ${detailField('Verification Submitted', detailRequest.verification_submitted_at ? new Date(detailRequest.verification_submitted_at).toLocaleString() : 'Not yet submitted')}
+                                </div>
+                            </div>
+                        `}
 
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            ${detailField('Sender ID', request.sender_id || detailRequest.sender_id)}
-                            ${detailField('Use Case', request.use_case, true)}
-                            ${detailField('Registration Certificate', request.registration_certificate)}
-                            ${detailField('Authorization Letter', request.authorization_letter)}
-                        </div>
+                        ${adminMode && Object.keys(verification).length > 0 && html`
+                            <div className="p-4 rounded-2xl bg-gray-50 dark:bg-midnight-900/50 border border-gray-100 dark:border-midnight-800">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Verification Documents</p>
+                                <p className="text-sm text-gray-700 dark:text-midnight-200">Supporting documents were submitted for review.</p>
+                            </div>
+                        `}
 
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            ${detailField('Organization Plan', organization.plan_name)}
-                            ${detailField('Organization Slug', organization.slug)}
-                            ${detailField('Verification Submitted', detailRequest.verification_submitted_at ? new Date(detailRequest.verification_submitted_at).toLocaleString() : 'Not yet submitted')}
-                            ${detailField('Verification Link', detailRequest.status === 'need_verification' ? verificationLink : 'Only shown when verification is required')}
-                        </div>
-
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            ${detailField('Documents Received', verification && Object.keys(verification).length ? 'Yes' : 'No')}
-                            ${detailField('Admin Comment', detailRequest.admin_comment || 'No admin note yet')}
-                        </div>
-
-                        <div className="p-5 rounded-2xl bg-gray-50 dark:bg-midnight-900/50 border border-gray-100 dark:border-midnight-800">
-                            <div className="flex items-center justify-between gap-3 mb-4">
+                        ${adminMode && html`
+                            <div className="p-5 rounded-2xl bg-gray-50 dark:bg-midnight-900/50 border border-gray-100 dark:border-midnight-800 space-y-4">
                                 <div>
                                     <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Review Note</p>
-                                    <p className="text-sm text-gray-500 dark:text-midnight-400">Leave a note before changing the approval state.</p>
+                                    <p className="text-sm text-gray-500 dark:text-midnight-400 mt-1">Leave a note before changing the approval state.</p>
                                 </div>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Current review: ${meta.label}</span>
+                                <textarea
+                                    value=${reviewComments[detailRequest.id] || ''}
+                                    onChange=${(e) => handleReviewCommentChange(detailRequest.id, e.target.value)}
+                                    rows=${4}
+                                    className="w-full px-4 py-3 bg-white dark:bg-midnight-950 text-gray-900 dark:text-white border border-gray-200 dark:border-midnight-800 rounded-2xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all text-sm"
+                                    placeholder="Add review context, request changes, or explain verification requirements."
+                                />
+                                <div className="flex flex-wrap gap-2">
+                                    <${Button} size="sm" onClick=${() => handleDrawerStatusUpdate(detailRequest.id, 'approved')} className="text-[10px] uppercase">Approve</${Button}>
+                                    <${Button} size="sm" variant="outline" onClick=${() => handleDrawerStatusUpdate(detailRequest.id, 'need_verification')} className="text-[10px] uppercase border-amber-300 text-amber-700 dark:text-amber-300">Need Verification</${Button}>
+                                    <${Button} size="sm" variant="danger" onClick=${() => handleDrawerStatusUpdate(detailRequest.id, 'rejected')} className="text-[10px] uppercase">Reject</${Button}>
+                                </div>
                             </div>
-                            <textarea
-                                value=${reviewComments[detailRequest.id] || ''}
-                                onChange=${(e) => handleReviewCommentChange(detailRequest.id, e.target.value)}
-                                rows=${4}
-                                className="w-full px-4 py-3 bg-white dark:bg-midnight-950 text-gray-900 dark:text-white border border-gray-200 dark:border-midnight-800 rounded-2xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all text-sm"
-                                placeholder="Add review context, request changes, or explain verification requirements."
-                            />
-                        </div>
-
-                        <div className="flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center">
-                            <div className="flex flex-wrap gap-2">
-                                <${Button} size="sm" onClick=${() => updateSenderStatus(detailRequest.id, 'approved')} className="text-[10px] uppercase">Approve</${Button}>
-                                <${Button} size="sm" variant="outline" onClick=${() => updateSenderStatus(detailRequest.id, 'need_verification')} className="text-[10px] uppercase border-amber-300 text-amber-700 dark:text-amber-300">Need Verification</${Button}>
-                                <${Button} size="sm" variant="danger" onClick=${() => updateSenderStatus(detailRequest.id, 'rejected')} className="text-[10px] uppercase">Reject</${Button}>
-                            </div>
-                            <button
-                                type="button"
-                                onClick=${closeRequestDetails}
-                                className="text-sm font-bold text-gray-500 dark:text-midnight-400 hover:text-gray-700 dark:hover:text-white transition-colors"
-                            >
-                                Close details
-                            </button>
-                        </div>
+                        `}
                     </div>
-                </div>
+                </aside>
             </div>
         `;
     };
@@ -686,7 +764,7 @@ export const SenderIDManagement = () => {
                 </div>
                 ${renderAdminQueues()}
             ` : renderUserRequests()}
-            ${renderDetailModal()}
+            ${renderDetailDrawer()}
         </div>
     `;
 };
