@@ -130,9 +130,13 @@ async def delete_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
+    email = user.email
     await log_action(db, admin, action="delete_user", target_type="user",
-                     target_id=user_id, details={"email": user.email})
-    await db.delete(user)
+                     target_id=user_id, details={"email": email})
+
+    from app.services.user_deletion import delete_user_and_dependencies
+
+    await delete_user_and_dependencies(db, user_id)
     await db.commit()
     return {"status": "success", "message": "User deleted"}
 

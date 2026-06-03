@@ -139,7 +139,7 @@ class APIKey(Base):
     last_used_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     organization_id: Mapped[int] = mapped_column(Integer, ForeignKey("organizations.id"))
 
     user = relationship("User", back_populates="api_keys")
@@ -206,7 +206,7 @@ class Campaign(Base):
     group_ids: Mapped[Optional[List[int]]] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     organization_id: Mapped[int] = mapped_column(Integer, ForeignKey("organizations.id"))
     
     organization = relationship("Organization", back_populates="campaigns")
@@ -222,7 +222,7 @@ class MessageTemplate(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     organization_id: Mapped[int] = mapped_column(Integer, ForeignKey("organizations.id"))
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
 
     organization = relationship("Organization")
     user = relationship("User")
@@ -273,9 +273,9 @@ class SMSMessage(Base):
     next_retry_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # Context
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     organization_id: Mapped[int] = mapped_column(Integer, ForeignKey("organizations.id"), index=True)
-    campaign_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("campaigns.id"), nullable=True)
+    campaign_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("campaigns.id", ondelete="SET NULL"), nullable=True)
 
     user = relationship("User", back_populates="messages")
     organization = relationship("Organization", back_populates="messages")
@@ -334,7 +334,7 @@ class BillingLedger(Base):
     extra_data: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    created_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
+    created_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     organization_id: Mapped[int] = mapped_column(Integer, ForeignKey("organizations.id"), index=True)
 
@@ -400,7 +400,7 @@ class StaffInvite(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     
     # Track who used it
-    used_by_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
+    used_by_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     used_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
 # --- AUDIT LOG ---
@@ -410,7 +410,7 @@ class AdminAuditLog(Base):
     __tablename__ = "admin_audit_logs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    admin_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), index=True)
+    admin_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     admin_email: Mapped[str] = mapped_column(String(255))  # Denormalized for historical accuracy
     action: Mapped[str] = mapped_column(String(100), index=True)  # e.g. approve_sender_id, delegate_permission
     target_type: Mapped[str] = mapped_column(String(50))  # e.g. sender_id, user
@@ -435,7 +435,7 @@ class Notification(Base):
     
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True)
     organization_id: Mapped[int] = mapped_column(Integer, ForeignKey("organizations.id"), index=True)
 
     user = relationship("User")
@@ -468,7 +468,7 @@ class WebhookSubscription(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     
     organization_id: Mapped[int] = mapped_column(Integer, ForeignKey("organizations.id"), index=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     organization = relationship("Organization")
@@ -487,14 +487,14 @@ class SystemAnnouncement(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    created_by: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+    created_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
 class BugReport(Base):
     """Bug reports and issues submitted by users."""
     __tablename__ = "bug_reports"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True)
     organization_id: Mapped[int] = mapped_column(Integer, ForeignKey("organizations.id"), index=True)
     
     subject: Mapped[str] = mapped_column(String(255))
