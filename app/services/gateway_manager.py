@@ -8,6 +8,7 @@ from app.services.adapters.airteltigo import AirtelTigoAdapter
 from app.services.sms.factory import get_sms_provider
 from app.db.models import MessageStatus, SMPPAccount
 from app.core.phone_utils import detect_network, Network
+from app.core.config import settings
 from sqlalchemy.future import select
 from app.db.database import SessionLocal
 
@@ -33,6 +34,11 @@ class GatewayManager:
 
     async def initialize_from_db(self):
         """Fetch active SMPP accounts and initialize their respective adapters."""
+        if settings.SMS_PROVIDER.lower() == "arkesel":
+            self._is_initialized = True
+            logger.info("SMS_PROVIDER is Arkesel; skipping SMPP adapter initialization.")
+            return
+
         async with SessionLocal() as session:
             result = await session.execute(select(SMPPAccount).where(SMPPAccount.is_active == True))
             accounts = result.scalars().all()
@@ -80,6 +86,9 @@ class GatewayManager:
         Routing logic to determine which MNO gateway to use.
         Uses the phone_utils to detect the network based on prefix.
         """
+        if settings.SMS_PROVIDER.lower() == "arkesel":
+            return "Arkesel"
+
         network, _ = detect_network(recipient)
         
         if network == Network.UNKNOWN:
@@ -91,6 +100,10 @@ class GatewayManager:
         """
         Send SMS using the active provider or a specific routed adapter.
         """
+        if settings.SMS_PROVIDER.lower() == "arkesel":
+            provider = get_sms_provider()
+            return await provider.send(recipient, sender, content)
+
         # 1. Try to use a routed adapter if provider_name is specified
         if provider_name and provider_name in self.adapters:
             adapter = self.adapters[provider_name]
@@ -115,10 +128,14 @@ class GatewayManager:
         provider = get_sms_provider()
         return await provider.send(recipient, sender, content)
 
-    def is_provider_ready(self, provider_name: str) -> bool:
+    def is_provider_ready(self, provider_name: Optional[str] = None) -> bool:
         """
         Check if the routed provider is available.
         """
+        if settings.SMS_PROVIDER.lower() == "arkesel":
+            provider = get_sms_provider()
+            return bool(getattr(provider, "api_key", None))
+
         if provider_name in self.adapters:
             adapter = self.adapters[provider_name]
             if adapter.is_connected():

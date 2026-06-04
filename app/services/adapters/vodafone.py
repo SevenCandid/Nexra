@@ -1,3 +1,4 @@
+import os
 import logging
 from typing import Optional
 from app.services.adapters.base import BaseMNOAdapter
@@ -20,7 +21,7 @@ class VodafoneAdapter(BaseMNOAdapter):
 
     async def send_sms(self, recipient: str, sender: str, message: str) -> Optional[str]:
         logger.info(f"MOCK SEND [Vodafone]: {sender} -> {recipient}: {message}")
-        return f"vod_{os.urandom(8).hex()}" if '_connected' in self.__dict__ else None
+        return f"vod_{os.urandom(8).hex()}" if self._connected else None
 
     def is_connected(self) -> bool:
         return self._connected
