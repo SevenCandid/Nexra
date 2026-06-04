@@ -11,6 +11,16 @@ from app.core.queue import enqueue_sms
 
 logger = logging.getLogger(__name__)
 
+async def _refund_failed_message(db, msg: SMSMessage) -> None:
+    """Refund a message that has reached a terminal failed state."""
+    from app.services.billing_service import billing_service
+
+    refunded = await billing_service.refund_failed_sms(db, msg.id)
+    if refunded:
+        logger.info(f"Refunded failed SMS msg_id={msg.id}")
+    else:
+        logger.info(f"No refund applied for failed SMS msg_id={msg.id}")
+
 def process_sms_job(sms_id: int):
     """Entry point for RQ worker."""
     asyncio.run(_async_process_sms(sms_id))
@@ -84,6 +94,7 @@ async def _async_process_sms(sms_id: int):
             else:
                 msg.status = MessageStatus.FAILED
                 msg.error_message = result.get("message", "Provider rejected message")
+                await _refund_failed_message(db, msg)
             
             await db.commit()
             
@@ -107,6 +118,7 @@ async def _async_process_sms(sms_id: int):
         except Exception as e:
             logger.error(f"Gateway error for msg_id={msg.id}: {str(e)}")
             msg.status = MessageStatus.FAILED
+            await _refund_failed_message(db, msg)
             await db.commit()
             
             # Dispatch Webhook for error

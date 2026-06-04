@@ -349,7 +349,7 @@ class BillingService:
                 extra_data={
                     "sms_id": sms_message_id,
                     "original_cost": str(sms.cost),
-                    "failure_reason": sms.status.value
+                    "failure_reason": getattr(sms.status, "value", str(sms.status))
                 }
             )
             db.add(ledger)
