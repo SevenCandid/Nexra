@@ -13,15 +13,15 @@ async def simulate_sync(email, full_name):
             
             if not user:
                 print(f"User not found, starting registration for {email}")
-                result = await db.execute(select(SubscriptionPlan).where(SubscriptionPlan.slug == "starter"))
+                result = await db.execute(select(SubscriptionPlan).where(SubscriptionPlan.slug == "payg"))
                 plan = result.scalar_one_or_none()
                 
                 if not plan:
-                    print("Creating starter plan")
+                    print("Creating payg plan")
                     plan = SubscriptionPlan(
-                        name="Starter", slug="starter", monthly_price=50.0, sms_rate=0.05,
-                        max_users=5, monthly_credits=1000.0, bonus_credits_on_signup=100.0,
-                        pricing_model="hybrid", payg_rate_multiplier=1.2, features={"tps_limit": 5}
+                        name="Pay As You Go", slug="payg", monthly_price=0.0, sms_rate=0.08,
+                        max_users=3, monthly_credits=0.0, bonus_credits_on_signup=50.0,
+                        pricing_model="payg", payg_rate_multiplier=1.0, features={"tps_limit": 3}
                     )
                     db.add(plan)
                     await db.flush()

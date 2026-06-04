@@ -14,24 +14,24 @@ async def create_superadmin():
     async with AsyncSessionLocal() as session:
         # 1. Create Default Plan if not exists
         from sqlalchemy import select
-        result = await session.execute(select(SubscriptionPlan).where(SubscriptionPlan.slug == "enterprise"))
+        result = await session.execute(select(SubscriptionPlan).where(SubscriptionPlan.slug == "pro"))
         plan = result.scalar_one_or_none()
         
         if not plan:
             plan = SubscriptionPlan(
-                name="Enterprise",
-                slug="enterprise",
-                monthly_price=0.0,
-                sms_rate=0.04,
+                name="Pro",
+                slug="pro",
+                monthly_price=50.0,
+                sms_rate=0.06,
                 max_users=100,
                 features={"all": True},
-                monthly_credits=1000.0,
-                bonus_credits_on_signup=100.0,
+                monthly_credits=1250.0,
+                bonus_credits_on_signup=250.0,
                 pricing_model="hybrid"
             )
             session.add(plan)
             await session.flush()
-            print("Created Enterprise plan.")
+            print("Created Pro plan.")
 
         # 2. Create Default Organization if not exists
         result = await session.execute(select(Organization).where(Organization.slug == "nexra-admin"))

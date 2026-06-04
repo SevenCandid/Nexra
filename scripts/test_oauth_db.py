@@ -8,14 +8,14 @@ async def test_creation():
     async with SessionLocal() as db:
         print("Starting test creation...")
         # 1. Get Plan
-        result = await db.execute(select(SubscriptionPlan).where(SubscriptionPlan.slug == "starter"))
+        result = await db.execute(select(SubscriptionPlan).where(SubscriptionPlan.slug == "payg"))
         plan = result.scalar_one_or_none()
         if not plan:
-            print("Starter plan missing, creating...")
+            print("PayG plan missing, creating...")
             plan = SubscriptionPlan(
-                name="Starter", slug="starter", monthly_price=50.0, sms_rate=0.05,
-                max_users=5, monthly_credits=1000.0, bonus_credits_on_signup=100.0,
-                pricing_model="hybrid", payg_rate_multiplier=1.2, features={"tps_limit": 5}
+                name="Pay As You Go", slug="payg", monthly_price=0.0, sms_rate=0.08,
+                max_users=3, monthly_credits=0.0, bonus_credits_on_signup=50.0,
+                pricing_model="payg", payg_rate_multiplier=1.0, features={"tps_limit": 3}
             )
             db.add(plan)
             await db.flush()

@@ -42,39 +42,39 @@ const AnnouncementsBanner = () => {
     return html`
         <div className="space-y-3 mb-6">
             ${visibleAnnouncements.map(ann => html`
-                <div key=${ann.id} className="relative overflow-hidden p-4 sm:p-5 rounded-2xl border flex gap-4 animate-slide-up shadow-md transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5
+                <div key=${ann.id} className="relative overflow-hidden p-3 sm:p-5 rounded-2xl border flex flex-col sm:flex-row gap-3 sm:gap-4 animate-slide-up shadow-md transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5
                     ${ann.type === 'warning' ? 'bg-gradient-to-br from-amber-50 via-white to-amber-50 border-amber-200 text-amber-900 dark:from-amber-950/30 dark:via-midnight-950 dark:to-amber-950/20 dark:border-amber-900/30 dark:text-amber-300' : 
                       ann.type === 'emergency' ? 'bg-gradient-to-br from-rose-50 via-white to-rose-50 border-rose-200 text-rose-900 dark:from-rose-950/30 dark:via-midnight-950 dark:to-rose-950/20 dark:border-rose-900/30 dark:text-rose-300' : 
                       'bg-gradient-to-br from-primary-50 via-white to-primary-50 border-primary-100 text-primary-900 dark:from-primary-900/20 dark:via-midnight-950 dark:to-primary-900/10 dark:border-primary-900/30 dark:text-primary-300'}">
                     <div className="absolute inset-y-0 left-0 w-1 bg-current opacity-40 animate-pulse"></div>
-                    <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-current/10 blur-3xl animate-pulse"></div>
-                    <div className="flex-shrink-0 relative">
+                    <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-current/10 blur-3xl animate-pulse hidden sm:block"></div>
+                    <div className="flex-shrink-0 relative self-start">
                         <div className="absolute -inset-1 rounded-2xl bg-current/10 blur-md animate-pulse"></div>
-                        <div className="relative w-11 h-11 rounded-2xl flex items-center justify-center bg-white/80 dark:bg-midnight-950/60 border border-current/15 shadow-sm">
+                        <div className="relative w-9 h-9 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center bg-white/80 dark:bg-midnight-950/60 border border-current/15 shadow-sm">
                             <${Icon} 
                                 name=${ann.type === 'warning' ? 'alert-triangle' : ann.type === 'emergency' ? 'flame' : 'megaphone'} 
-                                size=${22} 
-                                className="opacity-90" 
+                                size=${18} 
+                                className="sm:opacity-90 opacity-80" 
                             />
                         </div>
                     </div>
-                    <div className="flex-1 relative z-10">
-                        <div className="flex flex-wrap items-center gap-2 mb-2">
-                            <p className="text-[10px] font-black uppercase tracking-[0.35em] leading-none opacity-70">Platform Broadcast</p>
-                            <span className="px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/70 dark:bg-midnight-950/70 border border-current/15 animate-pulse">
+                    <div className="flex-1 relative z-10 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-1 sm:mb-2">
+                            <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.3em] sm:tracking-[0.35em] leading-none opacity-70">Platform Broadcast</p>
+                            <span className="px-2 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-widest bg-white/70 dark:bg-midnight-950/70 border border-current/15 animate-pulse">
                                 ${ann.type === 'emergency' ? 'Urgent' : ann.type === 'warning' ? 'Heads Up' : 'Notice'}
                             </span>
                         </div>
-                        <h4 className="font-extrabold text-lg sm:text-xl leading-tight mb-2">${ann.title}</h4>
-                        <p className="text-sm leading-relaxed opacity-95">${ann.content}</p>
+                        <h4 className="font-extrabold text-base sm:text-xl leading-tight mb-1 sm:mb-2 truncate sm:whitespace-normal">${ann.title}</h4>
+                        <p className="text-xs sm:text-sm leading-relaxed opacity-95 line-clamp-3 sm:line-clamp-none">${ann.content}</p>
                     </div>
                     <button
                         type="button"
                         onClick=${() => handleDismiss(ann.id)}
-                        className="absolute top-3 right-3 p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors z-20"
+                        className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 p-1.5 sm:p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors z-20"
                         aria-label="Dismiss announcement"
                     >
-                        <${Icon} name="x" size=${16} className="opacity-70" />
+                        <${Icon} name="x" size=${14} className="sm:opacity-70 opacity-60" />
                     </button>
                 </div>
             `)}

@@ -96,7 +96,18 @@ class GatewayManager:
             adapter = self.adapters[provider_name]
             if adapter.is_connected():
                 logger.info(f"Using routed adapter for {provider_name}")
-                return await adapter.send(recipient, sender, content)
+                try:
+                    provider_msg_id = await adapter.send_sms(recipient, sender, content)
+                    if provider_msg_id:
+                        return {
+                            "status": "success",
+                            "provider_msg_id": provider_msg_id,
+                            "raw_response": {"provider": provider_name},
+                        }
+                    return {"status": "error", "message": f"{provider_name} adapter returned no message id"}
+                except Exception as e:
+                    logger.error(f"Adapter send failed for {provider_name}: {e}")
+                    return {"status": "error", "message": str(e)}
             else:
                 logger.warning(f"Routed adapter for {provider_name} is offline, falling back to default.")
 
@@ -106,12 +117,23 @@ class GatewayManager:
 
     def is_provider_ready(self, provider_name: str) -> bool:
         """
-        Check if the provider is configured.
+        Check if the routed provider is available.
         """
+        if provider_name in self.adapters:
+            adapter = self.adapters[provider_name]
+            if adapter.is_connected():
+                return True
+            logger.warning(f"Routed adapter for {provider_name} is not connected; checking fallback provider.")
+
         provider = get_sms_provider()
         # For Arkesel, check API Key
         if hasattr(provider, 'api_key'):
             return bool(provider.api_key)
+
+        # Hubtel and MTN SMPP providers are still placeholders in this codebase.
+        if provider.__class__.__name__ in {"HubtelProvider", "MTNSMPPProvider"}:
+            return False
+
         return True
 
 # Global Manager Instance

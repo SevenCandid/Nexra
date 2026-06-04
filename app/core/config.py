@@ -15,8 +15,9 @@ class Settings(BaseSettings):
     WEBHOOK_BASE_URL: Optional[str] = None
 
     # Redis
-    REDIS_HOST: str = "localhost"
-    REDIS_PORT: int = 6379
+    REDIS_URL: Optional[str] = None
+    REDIS_HOST: Optional[str] = None
+    REDIS_PORT: Optional[int] = 6379
 
 
 

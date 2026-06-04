@@ -65,20 +65,23 @@ class RetryWorker:
             # Re-determine route (in case a gateway became active)
             provider_name = await gateway_manager.route_message(msg.recipient)
             
-            provider_msg_id = await gateway_manager.send_sms(
+            result = await gateway_manager.send_sms(
                 recipient=msg.recipient,
                 sender=msg.sender,
-                message=msg.content
+                content=msg.content,
+                provider_name=provider_name
             )
 
-            if provider_msg_id:
+            if result.get("status") == "success":
                 msg.status = MessageStatus.SENT
-                msg.provider_msg_id = provider_msg_id
+                msg.provider_msg_id = result.get("provider_msg_id")
                 msg.provider_name = provider_name
                 msg.sent_at = datetime.utcnow()
                 msg.next_retry_at = None
                 logger.info(f"Successfully resent msg_id={msg.id}")
             else:
+                msg.status = MessageStatus.FAILED
+                msg.error_message = result.get("message", "Provider rejected message")
                 self.schedule_next_retry(msg)
                 
         except Exception as e:

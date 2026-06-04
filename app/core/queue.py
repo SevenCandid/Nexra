@@ -32,11 +32,9 @@ async def enqueue_batch(campaign_id: int):
 
 async def enqueue_dlr(dlr_data: dict):
     """Mock Enqueue a delivery report for processing."""
-    # from app.workers.dlr_worker import process_delivery_report
-    # dlr_queue.enqueue(
-    #     process_delivery_report,
-    #     args=(dlr_data,),
-    #     retry=default_retry
-    # )
-    logger.info(f"[MOCK QUEUE] Enqueued DLR {dlr_data}")
+    from app.workers.dlr_worker import process_delivery_report
+    import asyncio
+
+    logger.info(f"[MOCK QUEUE] Processing DLR {dlr_data} in background task...")
+    asyncio.create_task(asyncio.to_thread(process_delivery_report, dlr_data))
 

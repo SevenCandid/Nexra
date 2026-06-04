@@ -1,6 +1,9 @@
 import asyncio
 import time
 from app.core.redis import redis_client
+import logging
+
+logger = logging.getLogger(__name__)
 
 class RateLimiter:
     """
@@ -17,6 +20,9 @@ class RateLimiter:
         - period: Time window in seconds
         """
         now = time.time()
+        if redis_client is None:
+            logger.warning("RateLimiter: Redis is not configured, bypassing limit check.")
+            return True
         try:
             pipeline = redis_client.pipeline()
             
@@ -35,8 +41,7 @@ class RateLimiter:
             return current_count < limit
         except Exception as e:
             # Fallback: If Redis is down, allow the action but log a warning
-            import logging
-            logging.getLogger(__name__).warning(f"RateLimiter: Redis failed, bypassing limit check: {e}")
+            logger.warning(f"RateLimiter: Redis failed, bypassing limit check: {e}")
             return True
 
     @staticmethod

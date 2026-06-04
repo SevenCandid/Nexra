@@ -13,6 +13,7 @@ from app.schemas.schemas import Token, User as UserSchema, UserRegister, UserPro
 import httpx
 import urllib.parse
 from app.core.config import settings
+from app.services.billing_service import BillingService
 import logging
 import traceback
 import uuid
@@ -70,26 +71,9 @@ async def register(
             detail="Email already registered"
         )
     
-    # Get default subscription plan (or create one if none exists)
-    result = await db.execute(select(SubscriptionPlan).where(SubscriptionPlan.slug == "custom"))
-    plan = result.scalar_one_or_none()
-    
-    if not plan:
-        # Create a default plan if none exists
-        plan = SubscriptionPlan(
-            name="Custom",
-            slug="custom",
-            monthly_price=0.0,
-            sms_rate=0.05,
-            max_users=5,
-            monthly_credits=1000.0,
-            bonus_credits_on_signup=0.0,
-            pricing_model="hybrid",
-            payg_rate_multiplier=1.2,
-            features={"tps_limit": 5, "api_access": True}
-        )
-        db.add(plan)
-        await db.flush()
+    # Ensure the canonical pricing catalog exists and default new orgs to PAYG.
+    plans = await BillingService.ensure_pricing_catalog(db)
+    plan = plans["payg"]
     
     # Get or create organization
     org_slug = user_data.organization_name.lower().replace(" ", "-")
@@ -331,18 +315,8 @@ async def google_callback(
         if not user:
             logger.info(f"OAuth: Creating new account for {email}")
             # Get or create default plan
-            result = await db.execute(select(SubscriptionPlan).where(SubscriptionPlan.slug == "custom"))
-            plan = result.scalar_one_or_none()
-            
-            if not plan:
-                logger.info("OAuth: Initializing default subscription plan")
-                plan = SubscriptionPlan(
-                    name="Custom", slug="custom", monthly_price=0.0, sms_rate=0.05,
-                    max_users=5, monthly_credits=0.0, bonus_credits_on_signup=0.0,
-                    pricing_model="hybrid", payg_rate_multiplier=1.2, features={"tps_limit": 5}
-                )
-                db.add(plan)
-                await db.flush()
+            plans = await BillingService.ensure_pricing_catalog(db)
+            plan = plans["payg"]
                 
             # Create organization with a unique slug to avoid collisions
             org_name = f"{full_name}'s Org" if full_name else f"{email.split('@')[0]}'s Org"

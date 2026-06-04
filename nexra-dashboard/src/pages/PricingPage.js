@@ -22,7 +22,7 @@ const PricingComparison = ({ userPlan, onBuyPlan, onTopup }) => {
             subtitle: 'No commitment',
             price: 'Custom',
             unit: '',
-            rate: '0.0600',
+            rate: '0.0800',
             features: [
                 'Instant Activation',
                 'Standard Delivery Speed',
@@ -36,7 +36,7 @@ const PricingComparison = ({ userPlan, onBuyPlan, onTopup }) => {
             subtitle: 'For growing businesses',
             price: '25.00',
             unit: '500 Messages',
-            rate: '0.0500',
+            rate: '0.0700',
             features: [
                 'Priority Delivery Speed',
                 'Advanced Campaign Reports',
@@ -45,12 +45,12 @@ const PricingComparison = ({ userPlan, onBuyPlan, onTopup }) => {
             ]
         },
         {
-            slug: 'enterprise',
-            name: 'Enterprise',
+            slug: 'pro',
+            name: 'Pro',
             subtitle: 'Maximum performance',
             price: '50.00',
             unit: '1,250 Messages',
-            rate: '0.0400',
+            rate: '0.0600',
             features: [
                 'Ultra-Fast Delivery (High TPS)',
                 'Dedicated Account Manager',
@@ -317,21 +317,21 @@ export const PricingPage = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <${Card} className="p-0 overflow-hidden">
                     <div className="p-4 border-b border-gray-100 dark:border-midnight-800 bg-gray-50 dark:bg-midnight-900/80">
-                        <h3 className="font-semibold text-gray-900 dark:text-white">SMS Rates</h3>
+                        <h3 className="font-semibold text-gray-900 dark:text-white">Plan SMS Rates</h3>
                     </div>
                     <table className="w-full">
                         <thead className="bg-gray-50 dark:bg-midnight-900/50 text-gray-600 dark:text-midnight-400 text-xs uppercase">
                             <tr>
-                                <th className="px-4 py-3 text-left">Network</th>
+                                <th className="px-4 py-3 text-left">Plan</th>
                                 <th className="px-4 py-3 text-right">Cost per SMS</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             ${pricing.map((rate, idx) => html`
                                 <tr key=${idx} className="hover:bg-gray-50 dark:hover:bg-midnight-900/50">
-                                    <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">${rate.network_name}</td>
+                                    <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">${rate.name}</td>
                                     <td className="px-4 py-3 text-right text-gray-600 dark:text-midnight-400">
-                                        ${rate.cost_per_sms.toFixed(4)} ${rate.currency}
+                                        ${rate.sms_rate.toFixed(4)} GHS
                                     </td>
                                 </tr>
                             `)}

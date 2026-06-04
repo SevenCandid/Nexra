@@ -1,20 +1,158 @@
 import logging
 from decimal import Decimal
 from datetime import datetime
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List, Dict
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy import update
 from sqlalchemy.orm import selectinload
 from app.db.models import (
     Organization, Wallet, BillingLedger, SMSMessage, NetworkPricing,
-    LedgerType, MessageStatus
+    SubscriptionPlan, LedgerType, MessageStatus
 )
-from app.core.phone_utils import detect_network
 
 logger = logging.getLogger(__name__)
 
 class BillingService:
     """Core billing service for credit-based SMS charging."""
+
+    PRICING_CATALOG: List[Dict] = [
+        {
+            "slug": "payg",
+            "legacy_slugs": ["custom"],
+            "name": "Pay As You Go",
+            "monthly_price": Decimal("0.00"),
+            "sms_rate": Decimal("0.08"),
+            "max_users": 3,
+            "monthly_credits": Decimal("0.00"),
+            "bonus_credits_on_signup": Decimal("50.00"),
+            "pricing_model": "payg",
+            "payg_rate_multiplier": Decimal("1.0"),
+            "features": {
+                "tps_limit": 3,
+                "api_access": True,
+                "webhook_support": False
+            }
+        },
+        {
+            "slug": "starter",
+            "legacy_slugs": [],
+            "name": "Starter",
+            "monthly_price": Decimal("25.00"),
+            "sms_rate": Decimal("0.07"),
+            "max_users": 5,
+            "monthly_credits": Decimal("500.00"),
+            "bonus_credits_on_signup": Decimal("100.00"),
+            "pricing_model": "hybrid",
+            "payg_rate_multiplier": Decimal("1.0"),
+            "features": {
+                "tps_limit": 5,
+                "api_access": True,
+                "webhook_support": False
+            }
+        },
+        {
+            "slug": "pro",
+            "legacy_slugs": ["enterprise"],
+            "name": "Pro",
+            "monthly_price": Decimal("50.00"),
+            "sms_rate": Decimal("0.06"),
+            "max_users": 100,
+            "monthly_credits": Decimal("1250.00"),
+            "bonus_credits_on_signup": Decimal("250.00"),
+            "pricing_model": "hybrid",
+            "payg_rate_multiplier": Decimal("1.0"),
+            "features": {
+                "tps_limit": 100,
+                "api_access": True,
+                "webhook_support": True,
+                "priority_support": True,
+                "dedicated_account_manager": True,
+                "custom_integrations": True
+            }
+        }
+    ]
+
+    @staticmethod
+    async def ensure_pricing_catalog(db: AsyncSession) -> Dict[str, SubscriptionPlan]:
+        """
+        Ensure the canonical pricing plans exist and legacy aliases are migrated.
+        """
+        plans_by_slug: Dict[str, SubscriptionPlan] = {}
+
+        for plan_def in BillingService.PRICING_CATALOG:
+            canonical_slug = plan_def["slug"]
+            legacy_slugs = plan_def.get("legacy_slugs", [])
+
+            stmt = select(SubscriptionPlan).where(SubscriptionPlan.slug == canonical_slug)
+            result = await db.execute(stmt)
+            plan = result.scalar_one_or_none()
+
+            if not plan:
+                for legacy_slug in legacy_slugs:
+                    legacy_stmt = select(SubscriptionPlan).where(SubscriptionPlan.slug == legacy_slug)
+                    legacy_result = await db.execute(legacy_stmt)
+                    legacy_plan = legacy_result.scalar_one_or_none()
+                    if legacy_plan:
+                        plan = legacy_plan
+                        plan.slug = canonical_slug
+                        break
+
+            if not plan:
+                plan = SubscriptionPlan(
+                    name=plan_def["name"],
+                    slug=canonical_slug,
+                    monthly_price=plan_def["monthly_price"],
+                    sms_rate=plan_def["sms_rate"],
+                    max_users=plan_def["max_users"],
+                    monthly_credits=plan_def["monthly_credits"],
+                    bonus_credits_on_signup=plan_def["bonus_credits_on_signup"],
+                    pricing_model=plan_def["pricing_model"],
+                    payg_rate_multiplier=plan_def["payg_rate_multiplier"],
+                    features=plan_def["features"],
+                )
+                db.add(plan)
+                await db.flush()
+            else:
+                plan.name = plan_def["name"]
+                plan.monthly_price = plan_def["monthly_price"]
+                plan.sms_rate = plan_def["sms_rate"]
+                plan.max_users = plan_def["max_users"]
+                plan.monthly_credits = plan_def["monthly_credits"]
+                plan.bonus_credits_on_signup = plan_def["bonus_credits_on_signup"]
+                plan.pricing_model = plan_def["pricing_model"]
+                plan.payg_rate_multiplier = plan_def["payg_rate_multiplier"]
+                plan.features = plan_def["features"]
+
+            plans_by_slug[canonical_slug] = plan
+
+        # Migrate organizations off legacy plan aliases where we now have canonical plans.
+        for plan_def in BillingService.PRICING_CATALOG:
+            canonical_slug = plan_def["slug"]
+            canonical_plan = plans_by_slug.get(canonical_slug)
+            if not canonical_plan:
+                continue
+
+            for legacy_slug in plan_def.get("legacy_slugs", []):
+                legacy_stmt = select(SubscriptionPlan).where(SubscriptionPlan.slug == legacy_slug)
+                legacy_result = await db.execute(legacy_stmt)
+                legacy_plan = legacy_result.scalar_one_or_none()
+                if legacy_plan and legacy_plan.id != canonical_plan.id:
+                    # Reassign any organizations still on the legacy plan to the canonical plan.
+                    await db.execute(
+                        update(Organization)
+                        .where(Organization.plan_id == legacy_plan.id)
+                        .values(plan_id=canonical_plan.id)
+                    )
+
+        await db.commit()
+        return plans_by_slug
+
+    @staticmethod
+    async def get_pricing_catalog(db: AsyncSession) -> List[SubscriptionPlan]:
+        plans_by_slug = await BillingService.ensure_pricing_catalog(db)
+        ordered_slugs = [plan_def["slug"] for plan_def in BillingService.PRICING_CATALOG]
+        return [plans_by_slug[slug] for slug in ordered_slugs if slug in plans_by_slug]
     
     @staticmethod
     async def get_network_pricing(db: AsyncSession, network_name: str) -> Optional[NetworkPricing]:
@@ -36,30 +174,17 @@ class BillingService:
         organization: Organization
     ) -> Decimal:
         """
-        Calculate SMS cost based on network and organization plan.
+        Calculate SMS cost based on the organization's active plan.
         
         Steps:
-        1. Detect network from recipient number
-        2. Get network pricing
-        3. Apply plan multiplier (PAYG customers may pay more)
-        4. Return final cost
+        1. Resolve the organization's active plan
+        2. Use that plan's SMS rate as the billable cost
         """
-        # Detect network
-        network, _ = detect_network(recipient)
-        network_name = network.value
-        
-        # Get network pricing
-        pricing = await BillingService.get_network_pricing(db, network_name)
-        if not pricing:
-            # Fallback to plan's default rate
-            logger.warning(f"No pricing found for network {network_name}, using plan default")
-            return Decimal(str(organization.plan.sms_rate))
-        
-        # Apply plan multiplier
-        multiplier = Decimal(str(organization.plan.payg_rate_multiplier))
-        final_cost = Decimal(str(pricing.cost_per_sms)) * multiplier
-        
-        return final_cost
+        if not organization.plan:
+            logger.warning("Organization %s has no active plan; falling back to PAYG rate", organization.id)
+            return Decimal("0.08")
+
+        return Decimal(str(organization.plan.sms_rate))
     
     @staticmethod
     async def deduct_credits_for_sms(

@@ -2,12 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api import deps
 from app.db.database import get_db
-from app.db.models import User, SMSMessage, MessageStatus, Wallet
+from app.db.models import User, SMSMessage, MessageStatus, Wallet, Organization
 from app.schemas.schemas import SMSCreate, SMSResponse
 from app.services.gateway_manager import gateway_manager
+from app.services.billing_service import billing_service
 from app.core.phone_utils import normalize_phone_number, validate_ghana_number
 from app.core.queue import enqueue_sms
 from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
 from datetime import datetime, timedelta
 import logging
 
@@ -36,11 +38,22 @@ async def send_sms(
             detail=f"Invalid Ghana phone number: {sms_in.recipient}"
         )
     
-    # 1. Check Wallet Balance (Basic assumption: 1 credit per SMS)
+    # 1. Load org plan and wallet, then calculate the true billable SMS cost.
+    org_result = await db.execute(
+        select(Organization)
+        .options(selectinload(Organization.plan))
+        .where(Organization.id == current_user.organization_id)
+    )
+    organization = org_result.scalar_one_or_none()
     result = await db.execute(select(Wallet).where(Wallet.organization_id == current_user.organization_id))
     wallet = result.scalar_one_or_none()
-    
-    if not wallet or wallet.balance < 1:
+
+    if not organization or not wallet:
+        raise HTTPException(status_code=404, detail="Organization wallet not found.")
+
+    cost = await billing_service.calculate_sms_cost(db, normalized_recipient, organization)
+
+    if wallet.balance < cost:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail="Insufficient credits. Please top up your wallet."
@@ -72,9 +85,6 @@ async def send_sms(
     # 4. Enqueue for Async Processing
     try:
         await enqueue_sms(db_obj.id)
-        # We don't deduct balance here yet, or we could do it as 'reserved' 
-        # In this implementation, let's deduct immediately to prevent overspending
-        wallet.balance -= 1
         logger.info(f"Enqueued msg_id={db_obj.id} for processing")
     except Exception as e:
         db_obj.status = MessageStatus.FAILED
@@ -115,11 +125,22 @@ async def quick_send_sms(
     if not validate_ghana_number(normalized_recipient):
         raise HTTPException(status_code=400, detail=f"Invalid number: {sms_in.recipient}")
     
-    # Check balance
+    # Check balance against the actual SMS rate for the current plan
+    org_result = await db.execute(
+        select(Organization)
+        .options(selectinload(Organization.plan))
+        .where(Organization.id == current_user.organization_id)
+    )
+    organization = org_result.scalar_one_or_none()
     result = await db.execute(select(Wallet).where(Wallet.organization_id == current_user.organization_id))
     wallet = result.scalar_one_or_none()
-    
-    if not wallet or wallet.balance < 1:
+
+    if not organization or not wallet:
+        raise HTTPException(status_code=404, detail="Organization wallet not found.")
+
+    cost = await billing_service.calculate_sms_cost(db, normalized_recipient, organization)
+
+    if wallet.balance < cost:
         raise HTTPException(status_code=402, detail="Insufficient credits.")
 
     # Determine Provider
@@ -162,7 +183,6 @@ async def quick_send_sms(
     # Enqueue and deduct
     try:
         await enqueue_sms(db_obj.id)
-        wallet.balance -= 1
     except Exception as e:
         db_obj.status = MessageStatus.FAILED
         logger.error(f"QuickSend failed: {str(e)}")

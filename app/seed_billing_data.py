@@ -57,15 +57,31 @@ async def seed_subscription_plans():
         
         plans_data = [
             {
+                "name": "Pay As You Go",
+                "slug": "payg",
+                "monthly_price": Decimal("0.00"),
+                "sms_rate": Decimal("0.08"),
+                "max_users": 3,
+                "monthly_credits": Decimal("0.00"),
+                "bonus_credits_on_signup": Decimal("50.00"),
+                "pricing_model": "payg",
+                "payg_rate_multiplier": Decimal("1.0"),
+                "features": {
+                    "tps_limit": 3,
+                    "api_access": True,
+                    "webhook_support": False
+                }
+            },
+            {
                 "name": "Starter",
                 "slug": "starter",
-                "monthly_price": Decimal("50.00"),
-                "sms_rate": Decimal("0.05"),  # Deprecated
+                "monthly_price": Decimal("25.00"),
+                "sms_rate": Decimal("0.07"),
                 "max_users": 5,
-                "monthly_credits": Decimal("1000.00"),
+                "monthly_credits": Decimal("500.00"),
                 "bonus_credits_on_signup": Decimal("100.00"),
                 "pricing_model": "hybrid",
-                "payg_rate_multiplier": Decimal("1.2"),  # 20% markup
+                "payg_rate_multiplier": Decimal("1.0"),
                 "features": {
                     "tps_limit": 5,
                     "api_access": True,
@@ -73,32 +89,15 @@ async def seed_subscription_plans():
                 }
             },
             {
-                "name": "Business",
-                "slug": "business",
-                "monthly_price": Decimal("200.00"),
-                "sms_rate": Decimal("0.05"),
-                "max_users": 20,
-                "monthly_credits": Decimal("5000.00"),
-                "bonus_credits_on_signup": Decimal("500.00"),
-                "pricing_model": "hybrid",
-                "payg_rate_multiplier": Decimal("1.1"),  # 10% markup
-                "features": {
-                    "tps_limit": 20,
-                    "api_access": True,
-                    "webhook_support": True,
-                    "priority_support": True
-                }
-            },
-            {
-                "name": "Enterprise",
-                "slug": "enterprise",
-                "monthly_price": Decimal("1000.00"),
-                "sms_rate": Decimal("0.05"),
+                "name": "Pro",
+                "slug": "pro",
+                "monthly_price": Decimal("50.00"),
+                "sms_rate": Decimal("0.06"),
                 "max_users": 100,
-                "monthly_credits": Decimal("30000.00"),
-                "bonus_credits_on_signup": Decimal("3000.00"),
+                "monthly_credits": Decimal("1250.00"),
+                "bonus_credits_on_signup": Decimal("250.00"),
                 "pricing_model": "hybrid",
-                "payg_rate_multiplier": Decimal("1.0"),  # No markup
+                "payg_rate_multiplier": Decimal("1.0"),
                 "features": {
                     "tps_limit": 100,
                     "api_access": True,
@@ -106,22 +105,6 @@ async def seed_subscription_plans():
                     "priority_support": True,
                     "dedicated_account_manager": True,
                     "custom_integrations": True
-                }
-            },
-            {
-                "name": "Pay As You Go",
-                "slug": "payg",
-                "monthly_price": Decimal("0.00"),
-                "sms_rate": Decimal("0.05"),
-                "max_users": 3,
-                "monthly_credits": Decimal("0.00"),
-                "bonus_credits_on_signup": Decimal("50.00"),  # Welcome bonus
-                "pricing_model": "payg",
-                "payg_rate_multiplier": Decimal("1.5"),  # 50% markup
-                "features": {
-                    "tps_limit": 3,
-                    "api_access": True,
-                    "webhook_support": False
                 }
             }
         ]

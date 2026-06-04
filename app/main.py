@@ -20,9 +20,13 @@ limiter = Limiter(key_func=get_remote_address)
 async def lifespan(app: FastAPI):
     # Startup: Initialize database tables and workers
     from app.db.models import Base
-    from app.db.database import engine
+    from app.db.database import engine, AsyncSessionLocal
+    from app.services.billing_service import BillingService
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    async with AsyncSessionLocal() as db:
+        await BillingService.ensure_pricing_catalog(db)
         
     await gateway_manager.initialize_from_db()
     asyncio.create_task(retry_worker.start())
