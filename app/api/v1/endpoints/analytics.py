@@ -328,6 +328,7 @@ async def get_admin_overview(
             "total_messages": total_messages,
             "delivered": msg_stats.get(MessageStatus.DELIVERED, 0),
             "failed": msg_stats.get(MessageStatus.FAILED, 0),
+            "refunded": refunded_count,
             "pending": msg_stats.get(MessageStatus.PENDING, 0) + msg_stats.get(MessageStatus.PROCESSING, 0),
         },
         "recent_topups": recent_topups,

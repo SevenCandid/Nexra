@@ -111,6 +111,7 @@ export const AdminOverviewSection = () => {
                         <${PlatformRow} label="Total Messages" value=${platform.total_messages} icon="send" />
                         <${PlatformRow} label="Delivered" value=${platform.delivered} icon="check-circle" />
                         <${PlatformRow} label="Failed" value=${platform.failed} icon="x-circle" />
+                        <${PlatformRow} label="Refunded" value=${platform.refunded || 0} icon="refresh-cw" />
                         <${PlatformRow} label="Pending / In-Flight" value=${platform.pending} icon="loader" />
                         <div className="mt-3 pt-3 border-t border-gray-100 dark:border-midnight-800">
                             <div className="flex justify-between text-xs font-medium text-gray-500 mb-1.5">
