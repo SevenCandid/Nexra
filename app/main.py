@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -15,6 +16,47 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 limiter = Limiter(key_func=get_remote_address)
+logger = logging.getLogger(__name__)
+
+
+def log_redis_configuration() -> None:
+    """
+    Emit a startup warning when Redis is missing or still points at localhost.
+
+    This makes Render misconfiguration obvious in the boot logs instead of only
+    surfacing later as a rate-limiter fallback.
+    """
+    if settings.REDIS_URL:
+        if any(host in settings.REDIS_URL for host in ("localhost", "127.0.0.1", "::1")):
+            logger.warning(
+                "Redis is configured to a local address via REDIS_URL=%s. "
+                "On Render this will fail unless Redis is running on the same host.",
+                settings.REDIS_URL,
+            )
+        else:
+            logger.info("Redis is configured via REDIS_URL.")
+        return
+
+    if settings.REDIS_HOST:
+        if settings.REDIS_HOST in {"localhost", "127.0.0.1", "::1"}:
+            logger.warning(
+                "Redis is configured to %s:%s. On Render this will fail unless Redis is local; "
+                "set REDIS_URL to your managed Redis instance or clear REDIS_HOST/REDIS_PORT.",
+                settings.REDIS_HOST,
+                settings.REDIS_PORT,
+            )
+        else:
+            logger.info(
+                "Redis is configured via REDIS_HOST/REDIS_PORT (%s:%s).",
+                settings.REDIS_HOST,
+                settings.REDIS_PORT,
+            )
+        return
+
+    logger.warning(
+        "Redis is not configured. Rate limiting will bypass checks, and worker startup may "
+        "need Redis if background queues are enabled."
+    )
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -27,7 +69,8 @@ async def lifespan(app: FastAPI):
 
     async with AsyncSessionLocal() as db:
         await BillingService.ensure_pricing_catalog(db)
-        
+
+    log_redis_configuration()
     await gateway_manager.initialize_from_db()
     asyncio.create_task(retry_worker.start())
     asyncio.create_task(campaign_worker.start())
