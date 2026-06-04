@@ -4,6 +4,7 @@ from datetime import datetime
 from app.db.session import SessionLocal
 from app.db.models import SMSMessage, MessageStatus, DeliveryReportLog
 from sqlalchemy.future import select
+from app.services.campaign_status import refresh_campaign_delivery_status
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,7 @@ async def _async_process_dlr(dlr_data: dict):
     3. Log raw delivery report for auditing.
     """
     provider_msg_id = dlr_data.get("id")
-    stat = dlr_data.get("stat")
+    stat = str(dlr_data.get("stat") or "").strip().replace(" ", "_").replace("-", "_").upper()
     
     if not provider_msg_id:
         logger.error("DLR data missing provider_msg_id")
@@ -31,22 +32,29 @@ async def _async_process_dlr(dlr_data: dict):
             stmt = select(SMSMessage).where(SMSMessage.provider_msg_id == provider_msg_id)
             result = await db.execute(stmt)
             msg = result.scalar_one_or_none()
+            previous_status = msg.status if msg else None
             
-            # Map SMPP status to internal MessageStatus
-            # Standard SMPP stats: DELIVRD, EXPIRED, DELETED, UNDELIV, ACCEPTD, UNKNOWN, REJECTD
+            # Map Arkesel / SMPP delivery states to internal MessageStatus.
+            # Arkesel webhook values documented by the provider:
+            # DELIVERED, SUBMITTED, PROHIBITED, QUEUED, NOT_DELIVERED, EXPIRED
             status_map = {
                 # Standard SMPP stats
                 "DELIVRD": MessageStatus.DELIVERED,
                 "EXPIRED": MessageStatus.EXPIRED,
                 "UNDELIV": MessageStatus.UNDELIVERABLE,
-                "REJECTD": MessageStatus.FAILED,
-                "DELETED": MessageStatus.FAILED,
+                "ACCEPTD": MessageStatus.SENT,
+                "REJECTD": MessageStatus.UNDELIVERABLE,
+                "DELETED": MessageStatus.UNDELIVERABLE,
                 
                 # Arkesel & Webhook string stats
                 "DELIVERED": MessageStatus.DELIVERED,
-                "FAILED": MessageStatus.FAILED,
+                "SUBMITTED": MessageStatus.SENT,
+                "QUEUED": MessageStatus.SENT,
+                "PROHIBITED": MessageStatus.UNDELIVERABLE,
+                "NOT_DELIVERED": MessageStatus.UNDELIVERABLE,
                 "UNDELIVERED": MessageStatus.UNDELIVERABLE,
-                "REJECTED": MessageStatus.FAILED,
+                "FAILED": MessageStatus.UNDELIVERABLE,
+                "REJECTED": MessageStatus.UNDELIVERABLE,
             }
             
             new_status = status_map.get(stat, MessageStatus.SENT)
@@ -77,6 +85,9 @@ async def _async_process_dlr(dlr_data: dict):
                 if new_status in [MessageStatus.FAILED, MessageStatus.EXPIRED, MessageStatus.UNDELIVERABLE]:
                     from app.services.billing_service import billing_service
                     await billing_service.refund_failed_sms(db, msg.id)
+
+                if msg.campaign_id:
+                    await refresh_campaign_delivery_status(db, msg.campaign_id)
                 
                 # BROADCAST UPDATE (WebSocket & Webhook)
                 try:
@@ -93,8 +104,16 @@ async def _async_process_dlr(dlr_data: dict):
                     })
 
                     # Dispatch Webhook
-                    event = "message.delivered" if msg.status == MessageStatus.DELIVERED else "message.failed"
-                    asyncio.create_task(webhook_service.dispatch_message_event(msg.id, event))
+                    event = None
+                    if msg.status == MessageStatus.DELIVERED:
+                        event = "message.delivered"
+                    elif msg.status == MessageStatus.SENT and previous_status != MessageStatus.SENT:
+                        event = "message.sent"
+                    elif msg.status in [MessageStatus.FAILED, MessageStatus.EXPIRED, MessageStatus.UNDELIVERABLE]:
+                        event = "message.failed"
+
+                    if event:
+                        asyncio.create_task(webhook_service.dispatch_message_event(msg.id, event))
 
                 except Exception as e:
                     logger.error(f"Broadcasting failed for DLR: {str(e)}")

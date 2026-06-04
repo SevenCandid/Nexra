@@ -142,7 +142,7 @@ async def create_campaign(
             user_id=current_user.id,
             organization_id=current_user.organization_id,
             campaign_id=db_obj.id,
-            provider_name="MTN Ghana" # Resolved by worker later
+            provider_name="Arkesel"
         )
         db.add(msg)
     
@@ -207,7 +207,7 @@ async def broadcast_campaign(
 
     # 2. Check Gateway Availability (Pre-flight)
     # For now, we check the default route for a sample or just general readiness
-    ready = gateway_manager.is_provider_ready("MTN Ghana") # Default provider for testing
+    ready = gateway_manager.is_provider_ready("Arkesel")
     if not ready:
         # 1. Mark Campaign as FAILED
         campaign.status = CampaignStatus.FAILED
@@ -348,5 +348,9 @@ async def get_campaign_stats(
         sent=await get_count(MessageStatus.SENT),
         delivered=await get_count(MessageStatus.DELIVERED),
         pending=await get_count(MessageStatus.PENDING),
-        failed=await get_count(MessageStatus.FAILED)
+        failed=(
+            await get_count(MessageStatus.FAILED)
+            + await get_count(MessageStatus.EXPIRED)
+            + await get_count(MessageStatus.UNDELIVERABLE)
+        )
     )

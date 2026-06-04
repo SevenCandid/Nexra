@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import select
 from app.db.database import SessionLocal
 from app.db.models import SMSMessage, MessageStatus
-from app.services.gateway_manager import gateway_manager
+from app.core.queue import enqueue_sms
 
 logger = logging.getLogger(__name__)
 
@@ -62,28 +62,12 @@ class RetryWorker:
             msg.retry_count += 1
             logger.info(f"Retry attempt {msg.retry_count} for msg_id={msg.id}")
 
-            # Re-determine route (in case a gateway became active)
-            provider_name = await gateway_manager.route_message(msg.recipient)
-            
-            result = await gateway_manager.send_sms(
-                recipient=msg.recipient,
-                sender=msg.sender,
-                content=msg.content,
-                provider_name=provider_name
-            )
-
-            if result.get("status") == "success":
-                msg.status = MessageStatus.SENT
-                msg.provider_msg_id = result.get("provider_msg_id")
-                msg.provider_name = provider_name
-                msg.sent_at = datetime.utcnow()
-                msg.next_retry_at = None
-                logger.info(f"Successfully resent msg_id={msg.id}")
-            else:
-                msg.status = MessageStatus.FAILED
-                msg.error_message = result.get("message", "Provider rejected message")
-                self.schedule_next_retry(msg)
-                
+            # Schedule the next retry before handing the message back to the normal
+            # SMS worker. That worker handles billing, provider submission, and DLR refunds.
+            self.schedule_next_retry(msg)
+            await db.commit()
+            await enqueue_sms(msg.id)
+            logger.info(f"Re-enqueued msg_id={msg.id} for resend")
         except Exception as e:
             logger.error(f"Failed to retry msg_id={msg.id}: {str(e)}")
             self.schedule_next_retry(msg)

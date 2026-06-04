@@ -224,7 +224,7 @@ async def retry_sms(
     
     return sms
 
-@router.post("/webhook/arkesel")
+@router.api_route("/webhook/arkesel", methods=["GET", "POST"])
 async def arkesel_webhook(
     request: Request
 ):
@@ -234,28 +234,41 @@ async def arkesel_webhook(
     https://<your-domain>/api/v1/sms/webhook/arkesel
     """
     try:
-        payload = await request.json()
-        logger.info(f"Received Arkesel Webhook: {payload}")
-        
-        # Arkesel v2 Webhook format is usually inside the request body
-        # E.g., {"id": "12345", "status": "Delivered", ...} or {"data": {"id": ...}}
-        
-        # We enqueue the raw payload to our DLR worker to process asynchronously
-        from app.core.queue import enqueue_dlr
-        
-        # Determine the correct data payload
-        dlr_data = payload.get("data", payload)
-        
-        # To match our dlr_worker's expected format (which currently expects SMPP-like dict keys `id`, `stat`, `err`, `raw`), 
-        # we can pass it directly and handle the mapping in the worker, or map it here.
-        # Let's map it to the expected DLR dict format for the worker.
-        
-        mapped_dlr = {
-            "id": str(dlr_data.get("id") or dlr_data.get("message_id")),
-            "stat": str(dlr_data.get("status", "")).upper(),
-            "err": str(dlr_data.get("error_code") or dlr_data.get("reason") or ""),
-            "raw": str(payload)
-        }
+        def normalize_status(value: str) -> str:
+            return str(value or "").strip().replace(" ", "_").replace("-", "_").upper()
+
+        payload = {}
+        mapped_dlr = {}
+
+        if request.method == "GET":
+            params = request.query_params
+            logger.info(f"Received Arkesel Webhook query params: {dict(params)}")
+            mapped_dlr = {
+                "id": str(params.get("sms_id") or params.get("id") or params.get("message_id") or ""),
+                "stat": normalize_status(params.get("status")),
+                "err": str(params.get("err") or params.get("error") or params.get("reason") or ""),
+                "raw": str(dict(params)),
+            }
+        else:
+            payload = await request.json()
+            logger.info(f"Received Arkesel Webhook: {payload}")
+            
+            # Arkesel may POST JSON or wrap the delivery data in a `data` envelope.
+            dlr_data = payload.get("data", payload)
+            mapped_dlr = {
+                "id": str(
+                    dlr_data.get("sms_id")
+                    or dlr_data.get("ID")
+                    or dlr_data.get("id")
+                    or dlr_data.get("message_id")
+                    or payload.get("sms_id")
+                    or payload.get("ID")
+                    or ""
+                ),
+                "stat": normalize_status(dlr_data.get("status", "")),
+                "err": str(dlr_data.get("error_code") or dlr_data.get("reason") or ""),
+                "raw": str(payload)
+            }
         
         if not mapped_dlr["id"]:
             logger.warning("Arkesel Webhook payload missing message 'id'")

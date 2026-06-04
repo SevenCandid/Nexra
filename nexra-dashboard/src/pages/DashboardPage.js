@@ -40,41 +40,41 @@ const AnnouncementsBanner = () => {
     if (visibleAnnouncements.length === 0) return null;
 
     return html`
-        <div className="space-y-3 mb-6">
+        <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
             ${visibleAnnouncements.map(ann => html`
-                <div key=${ann.id} className="relative overflow-hidden p-3 sm:p-5 rounded-2xl border flex flex-col sm:flex-row gap-3 sm:gap-4 animate-slide-up shadow-md transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5
+                <div key=${ann.id} className="relative overflow-hidden p-2.5 sm:p-5 rounded-xl sm:rounded-2xl border flex flex-col sm:flex-row gap-2.5 sm:gap-4 animate-slide-up shadow-md transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5
                     ${ann.type === 'warning' ? 'bg-gradient-to-br from-amber-50 via-white to-amber-50 border-amber-200 text-amber-900 dark:from-amber-950/30 dark:via-midnight-950 dark:to-amber-950/20 dark:border-amber-900/30 dark:text-amber-300' : 
                       ann.type === 'emergency' ? 'bg-gradient-to-br from-rose-50 via-white to-rose-50 border-rose-200 text-rose-900 dark:from-rose-950/30 dark:via-midnight-950 dark:to-rose-950/20 dark:border-rose-900/30 dark:text-rose-300' : 
                       'bg-gradient-to-br from-primary-50 via-white to-primary-50 border-primary-100 text-primary-900 dark:from-primary-900/20 dark:via-midnight-950 dark:to-primary-900/10 dark:border-primary-900/30 dark:text-primary-300'}">
-                    <div className="absolute inset-y-0 left-0 w-1 bg-current opacity-40 animate-pulse"></div>
+                    <div className="absolute inset-y-0 left-0 w-0.5 sm:w-1 bg-current opacity-40 animate-pulse"></div>
                     <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-current/10 blur-3xl animate-pulse hidden sm:block"></div>
                     <div className="flex-shrink-0 relative self-start">
                         <div className="absolute -inset-1 rounded-2xl bg-current/10 blur-md animate-pulse"></div>
-                        <div className="relative w-9 h-9 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center bg-white/80 dark:bg-midnight-950/60 border border-current/15 shadow-sm">
+                        <div className="relative w-8 h-8 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center bg-white/80 dark:bg-midnight-950/60 border border-current/15 shadow-sm">
                             <${Icon} 
                                 name=${ann.type === 'warning' ? 'alert-triangle' : ann.type === 'emergency' ? 'flame' : 'megaphone'} 
-                                size=${18} 
+                                size=${16} 
                                 className="sm:opacity-90 opacity-80" 
                             />
                         </div>
                     </div>
                     <div className="flex-1 relative z-10 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2 mb-1 sm:mb-2">
-                            <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.3em] sm:tracking-[0.35em] leading-none opacity-70">Platform Broadcast</p>
-                            <span className="px-2 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-widest bg-white/70 dark:bg-midnight-950/70 border border-current/15 animate-pulse">
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
+                            <p className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.25em] sm:tracking-[0.35em] leading-none opacity-70">Platform Broadcast</p>
+                            <span className="px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full text-[8px] sm:text-[10px] font-black uppercase tracking-widest bg-white/70 dark:bg-midnight-950/70 border border-current/15 animate-pulse">
                                 ${ann.type === 'emergency' ? 'Urgent' : ann.type === 'warning' ? 'Heads Up' : 'Notice'}
                             </span>
                         </div>
-                        <h4 className="font-extrabold text-base sm:text-xl leading-tight mb-1 sm:mb-2 truncate sm:whitespace-normal">${ann.title}</h4>
-                        <p className="text-xs sm:text-sm leading-relaxed opacity-95 line-clamp-3 sm:line-clamp-none">${ann.content}</p>
+                        <h4 className="font-extrabold text-sm sm:text-xl leading-tight mb-1 sm:mb-2 truncate sm:whitespace-normal">${ann.title}</h4>
+                        <p className="text-[11px] sm:text-sm leading-relaxed opacity-95 line-clamp-2 sm:line-clamp-none">${ann.content}</p>
                     </div>
                     <button
                         type="button"
                         onClick=${() => handleDismiss(ann.id)}
-                        className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 p-1.5 sm:p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors z-20"
+                        className="absolute top-2 right-2 sm:top-3 sm:right-3 p-1.5 sm:p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors z-20"
                         aria-label="Dismiss announcement"
                     >
-                        <${Icon} name="x" size=${14} className="sm:opacity-70 opacity-60" />
+                        <${Icon} name="x" size=${13} className="sm:opacity-70 opacity-60" />
                     </button>
                 </div>
             `)}
@@ -178,10 +178,10 @@ export const DashboardPage = () => {
         // Success Rate Chart (Doughnut)
         const successCtx = successChartRef.current.getContext('2d');
         const s = analytics.success_rate;
-        const labels_doughnut = ['Delivered', 'Completed', 'Delivering', 'Failed'];
+        const labels_doughnut = ['Delivered', 'Submitted', 'Delivering', 'Failed'];
         const data_doughnut = [
             s.delivered || 0, 
-            s.completed || 0, 
+            s.submitted || s.completed || 0, 
             s.delivering || 0, 
             s.failed || 0
         ];
@@ -225,7 +225,7 @@ export const DashboardPage = () => {
     }
 
     const totalMessages = (analytics.success_rate.delivered || 0) + 
-                          (analytics.success_rate.completed || 0) + 
+                          (analytics.success_rate.submitted || analytics.success_rate.completed || 0) + 
                           (analytics.success_rate.delivering || 0) + 
                           (analytics.success_rate.failed || 0);
 
@@ -291,9 +291,9 @@ export const DashboardPage = () => {
                             <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50/50 dark:bg-midnight-900/50 border border-gray-100 dark:border-midnight-800">
                                 <div className="flex items-center gap-2">
                                     <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                                    <span className="text-[10px] font-bold text-gray-500 uppercase">Completed</span>
+                                    <span className="text-[10px] font-bold text-gray-500 uppercase">Submitted</span>
                                 </div>
-                                <span className="text-xs font-black text-gray-900 dark:text-white">${analytics.success_rate.completed || 0}</span>
+                                <span className="text-xs font-black text-gray-900 dark:text-white">${analytics.success_rate.submitted || analytics.success_rate.completed || 0}</span>
                             </div>
                             <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50/50 dark:bg-midnight-900/50 border border-gray-100 dark:border-midnight-800">
                                 <div className="flex items-center gap-2">
@@ -336,7 +336,7 @@ export const DashboardPage = () => {
                                     campaign.status === 'sending' || campaign.status === 'delivering' ? 'info' :
                                     campaign.status === 'scheduled' ? 'warning' : 'info'
                                 }>
-                                    ${campaign.status === 'completed' ? 'Delivered' : 
+                                    ${campaign.status === 'completed' ? 'Completed' : 
                                       campaign.status === 'delivering' ? 'Delivering' : 
                                       campaign.status === 'sending' ? 'Sending' :
                                       campaign.status === 'failed' ? 'Failed' :

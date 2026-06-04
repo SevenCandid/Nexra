@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from app.db.database import SessionLocal
@@ -8,6 +8,7 @@ from app.db.models import SMSMessage, MessageStatus, Organization, Campaign, Cam
 from app.services.gateway_manager import gateway_manager
 from app.services.rate_limiter import RateLimiter
 from app.core.queue import enqueue_sms
+from app.services.campaign_status import refresh_campaign_delivery_status
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,7 @@ async def _async_process_sms(sms_id: int):
         )
         result = await db.execute(stmt)
         msg = result.scalar_one_or_none()
-        
+
         if not msg or msg.status in [MessageStatus.SENT, MessageStatus.DELIVERED]:
             return
 
@@ -50,24 +51,40 @@ async def _async_process_sms(sms_id: int):
         try:
             from app.services.billing_service import billing_service
             cost = await billing_service.calculate_sms_cost(db, msg.recipient, org)
-            
+
+            # Check Rate Limit (TPS)
+            tps_limit = org.plan.features.get("tps_limit", 5) if org.plan else 5
+            if not await RateLimiter.is_allowed(f"org:{org.id}", limit=tps_limit):
+                # Throttled messages should retry later without charging credits yet.
+                msg.status = MessageStatus.FAILED
+                msg.error_message = "Rate limit exceeded for organization"
+                msg.next_retry_at = datetime.utcnow() + timedelta(minutes=1)
+                await db.commit()
+                logger.info(f"Rate limited msg_id={msg.id}; scheduled retry at {msg.next_retry_at}")
+
+                from app.core.websocket import manager
+                from app.services.webhook_service import webhook_service
+
+                await manager.broadcast_to_org(msg.organization_id, {
+                    "type": "message_updated",
+                    "data": {
+                        "id": msg.id,
+                        "status": msg.status,
+                        "recipient": msg.recipient
+                    }
+                })
+                asyncio.create_task(webhook_service.dispatch_message_event(msg.id, "message.failed"))
+                return
+
             success, error = await billing_service.deduct_credits_for_sms(
                 db, org.id, msg.id, cost, msg.user_id
             )
-            
+
             if not success:
                 msg.status = MessageStatus.FAILED
                 msg.error_message = error
                 await db.commit()
                 return
-
-            # Check Rate Limit (TPS)
-            tps_limit = org.plan.features.get("tps_limit", 5) if org.plan else 5
-            if not await RateLimiter.is_allowed(f"org:{org.id}", limit=tps_limit):
-                # If throttled, move back to PENDING to be retried
-                msg.status = MessageStatus.PENDING
-                await db.commit()
-                raise Exception(f"Rate limit exceeded for organization {org.id}")
 
         except Exception as e:
             logger.error(f"Pre-send error for msg_id={msg.id}: {str(e)}")
@@ -95,6 +112,9 @@ async def _async_process_sms(sms_id: int):
                 msg.status = MessageStatus.FAILED
                 msg.error_message = result.get("message", "Provider rejected message")
                 await _refund_failed_message(db, msg)
+
+            if msg.campaign_id:
+                await refresh_campaign_delivery_status(db, msg.campaign_id)
             
             await db.commit()
             
@@ -119,6 +139,8 @@ async def _async_process_sms(sms_id: int):
             logger.error(f"Gateway error for msg_id={msg.id}: {str(e)}")
             msg.status = MessageStatus.FAILED
             await _refund_failed_message(db, msg)
+            if msg.campaign_id:
+                await refresh_campaign_delivery_status(db, msg.campaign_id)
             await db.commit()
             
             # Dispatch Webhook for error

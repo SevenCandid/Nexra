@@ -104,9 +104,14 @@ async def get_analytics_stats(
         "success_rate": {
             "delivering": (success_stats.get(MessageStatus.PENDING, 0) + 
                            success_stats.get(MessageStatus.PROCESSING, 0)),
+            "submitted": success_stats.get(MessageStatus.SENT, 0),
             "completed": success_stats.get(MessageStatus.SENT, 0),
             "delivered": success_stats.get(MessageStatus.DELIVERED, 0),
-            "failed": success_stats.get(MessageStatus.FAILED, 0)
+            "failed": (
+                success_stats.get(MessageStatus.FAILED, 0)
+                + success_stats.get(MessageStatus.EXPIRED, 0)
+                + success_stats.get(MessageStatus.UNDELIVERABLE, 0)
+            )
         },
         "networks": network_data,
         "avg_delivery_time": round(float(avg_speed), 2)
