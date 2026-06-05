@@ -132,7 +132,7 @@ const AnnouncementBanner = () => {
                 <div className="relative px-3 py-2.5 sm:px-4 sm:py-3.5 flex items-center gap-2.5 sm:gap-3 min-h-[64px] sm:min-h-[76px]">
                     <div className="relative shrink-0 self-start sm:self-center">
                         <div className="absolute -inset-1 rounded-2xl bg-current/10 blur-md animate-pulse"></div>
-                        <div className={`relative w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center ${typeTheme.iconBg} shadow-sm`}>
+                        <div className=${`relative w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center ${typeTheme.iconBg} shadow-sm`}>
                             <${Icon}
                                 name=${activeAnnouncement.type === 'warning' ? 'alert-triangle' : activeAnnouncement.type === 'emergency' ? 'flame' : 'megaphone'}
                                 size=${16}
@@ -144,7 +144,7 @@ const AnnouncementBanner = () => {
                     <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
                             <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.28em] sm:tracking-[0.35em] opacity-70">${typeLabel}</span>
-                            <span className={`px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full text-[8px] sm:text-[10px] font-black uppercase tracking-widest ${priorityMeta.className}`}>
+                            <span className=${`px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full text-[8px] sm:text-[10px] font-black uppercase tracking-widest ${priorityMeta.className}`}>
                                 ${priorityMeta.label}
                             </span>
                         </div>
