@@ -174,7 +174,7 @@ const AnnouncementBanner = () => {
                                                 ? 'w-5 sm:w-6 bg-current shadow-sm'
                                                 : 'w-1.5 sm:w-2 bg-current/30 hover:bg-current/50'
                                         }`}
-                                        aria-label={`Show announcement ${index + 1}`}
+                                        aria-label=${`Show announcement ${index + 1}`}
                                         aria-pressed=${activeIndex === index}
                                     ></button>
                                 `)}
