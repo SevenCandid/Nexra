@@ -139,7 +139,7 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
                     onMarkAllRead=${handleMarkAllRead}
                 />
                 
-                <main className="flex-1 p-4 lg:p-6 pb-28 lg:pb-6 pt-28 lg:pt-6 overflow-y-auto custom-scrollbar">
+                <main className="flex-1 p-4 lg:p-6 pb-28 lg:pb-6 pt-40 lg:pt-6 overflow-y-auto custom-scrollbar">
                     <div className="mb-4 lg:hidden">
                         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">${title}</h1>
                         ${subtitle && html`<p className="text-gray-600 dark:text-midnight-400 mt-0.5 text-sm">${subtitle}</p>`}

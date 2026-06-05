@@ -12,6 +12,29 @@ from typing import List, Optional
 
 router = APIRouter()
 
+PRIORITY_ORDER = {
+    "critical": 4,
+    "high": 3,
+    "normal": 2,
+    "low": 1,
+}
+
+
+def _normalize_priority(value: Optional[str]) -> str:
+    normalized = (value or "normal").strip().lower()
+    return normalized if normalized in PRIORITY_ORDER else "normal"
+
+
+def _sort_announcements(announcements):
+    return sorted(
+        announcements,
+        key=lambda ann: (
+            PRIORITY_ORDER.get(_normalize_priority(getattr(ann, "priority", None)), 2),
+            getattr(ann, "created_at", datetime.utcnow()),
+        ),
+        reverse=True,
+    )
+
 # --- AUDIT LOGS ---
 
 @router.get("/audit-logs")
@@ -106,19 +129,21 @@ async def get_announcements(
     """List all announcements for admin management."""
     query = select(SystemAnnouncement).order_by(desc(SystemAnnouncement.created_at))
     result = await db.execute(query)
-    return result.scalars().all()
+    return _sort_announcements(result.scalars().all())
 
 @router.post("/announcements")
 async def create_announcement(
     title: str,
     content: str,
     type: str = "info",
+    priority: str = "normal",
     target_user_ids: Optional[str] = None,
     expires_at: Optional[datetime] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(deps.get_current_active_superadmin)
 ):
     """Create an announcement for all users or selected users."""
+    normalized_priority = _normalize_priority(priority)
     parsed_target_user_ids = None
     if target_user_ids:
         parsed_target_user_ids = [
@@ -133,6 +158,7 @@ async def create_announcement(
         title=title,
         content=content,
         type=type,
+        priority=normalized_priority,
         target_user_ids=parsed_target_user_ids,
         expires_at=expires_at,
         created_by=current_user.id
@@ -140,7 +166,7 @@ async def create_announcement(
     db.add(announcement)
     await deps.log_admin_action(
         db, current_user, "create_announcement", "announcement", 
-        title, {"type": type}
+        title, {"type": type, "priority": normalized_priority}
     )
     await db.commit()
     return announcement
@@ -183,7 +209,7 @@ async def get_active_announcements(
     ).order_by(desc(SystemAnnouncement.created_at))
     
     result = await db.execute(query)
-    announcements = result.scalars().all()
+    announcements = _sort_announcements(result.scalars().all())
     visible = []
     for announcement in announcements:
         target_user_ids = announcement.target_user_ids or []

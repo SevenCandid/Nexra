@@ -1942,7 +1942,7 @@ const AnnouncementsPage = () => {
     const [recipientMode, setRecipientMode] = useState('all');
     const [selectedUserIds, setSelectedUserIds] = useState([]);
     const [userSearch, setUserSearch] = useState('');
-    const [form, setForm] = useState({ title: '', content: '', type: 'info' });
+    const [form, setForm] = useState({ title: '', content: '', type: 'info', priority: 'normal' });
 
     useEffect(() => { fetchAnnouncements(); }, []);
 
@@ -1993,7 +1993,7 @@ const AnnouncementsPage = () => {
             });
             showToast('Announcement posted!', 'success');
             setIsCreating(false);
-            setForm({ title: '', content: '', type: 'info' });
+            setForm({ title: '', content: '', type: 'info', priority: 'normal' });
             setRecipientMode('all');
             setSelectedUserIds([]);
             setUserSearch('');
@@ -2024,6 +2024,34 @@ const AnnouncementsPage = () => {
             <${Modal} isOpen=${isCreating} onClose=${() => setIsCreating(false)} title="Create Announcement">
                 <form onSubmit=${handleCreate} className="space-y-4">
                     <${Input} label="Title" value=${form.title} onChange=${e => setForm({...form, title: e.target.value})} required />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                            <label className="block text-xs font-bold uppercase text-gray-500 ml-1">Priority</label>
+                            <select
+                                value=${form.priority}
+                                onChange=${(e) => setForm({ ...form, priority: e.target.value })}
+                                className="w-full px-4 py-2.5 bg-gray-50 dark:bg-midnight-900 border border-gray-200 dark:border-midnight-800 rounded-xl outline-none text-sm"
+                            >
+                                <option value="low">Low</option>
+                                <option value="normal">Normal</option>
+                                <option value="high">High</option>
+                                <option value="critical">Critical</option>
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="block text-xs font-bold uppercase text-gray-500 ml-1">Type</label>
+                            <select
+                                value=${form.type}
+                                onChange=${(e) => setForm({ ...form, type: e.target.value })}
+                                className="w-full px-4 py-2.5 bg-gray-50 dark:bg-midnight-900 border border-gray-200 dark:border-midnight-800 rounded-xl outline-none text-sm"
+                            >
+                                <option value="info">Info</option>
+                                <option value="warning">Warning</option>
+                                <option value="success">Success</option>
+                                <option value="emergency">Emergency</option>
+                            </select>
+                        </div>
+                    </div>
                     <div className="space-y-2 rounded-2xl border border-gray-200 dark:border-midnight-800 bg-gray-50/70 dark:bg-midnight-900/40 p-4">
                         <div className="flex items-center justify-between gap-3">
                             <div>
@@ -2110,6 +2138,7 @@ const AnnouncementsPage = () => {
                                 <div className="flex gap-3 mt-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                                     <span>Posted: ${new Date(item.created_at).toLocaleDateString()}</span>
                                     <span>Type: ${item.type}</span>
+                                    <span>Priority: ${(item.priority || 'normal').toUpperCase()}</span>
                                     <span>${item.target_user_ids && item.target_user_ids.length ? `${item.target_user_ids.length} selected users` : 'All users'}</span>
                                 </div>
                             </div>

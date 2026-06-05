@@ -231,8 +231,6 @@ export const DashboardPage = () => {
 
     return html`
         <div className="space-y-6 fade-in">
-            <${AnnouncementsBanner} />
-            
             <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white">Pulse Overview</h2>
                 <div className="flex items-center gap-1 bg-gray-100 dark:bg-midnight-900 p-1 rounded-lg">
