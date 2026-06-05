@@ -122,48 +122,51 @@ const AnnouncementBanner = () => {
 
     return html`
         <div className="w-full pointer-events-auto">
-            <div className="relative overflow-hidden rounded-2xl sm:rounded-[1.4rem] border shadow-lg sm:shadow-xl transition-all duration-300 ${typeTheme.shell} bg-gradient-to-r"
+            <div className="relative overflow-hidden rounded-xl sm:rounded-2xl border shadow-md sm:shadow-lg transition-all duration-300 ${typeTheme.shell} bg-gradient-to-r"
                  onMouseEnter=${() => {}}
                  onMouseLeave=${() => {}}>
-                <div className=${`absolute inset-y-0 left-0 w-1 sm:w-1.5 ${typeTheme.accent} opacity-70 animate-pulse`}></div>
-                <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-current/10 blur-3xl animate-pulse hidden sm:block"></div>
+                <div className=${`absolute inset-y-0 left-0 w-1 ${typeTheme.accent} opacity-70 animate-pulse`}></div>
+                <div className="absolute -right-8 -top-8 h-20 w-20 rounded-full bg-current/10 blur-3xl animate-pulse hidden sm:block"></div>
                 <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 dark:from-white/0 dark:via-white/5 dark:to-white/0 animate-pulse"></div>
 
-                <div className="relative px-3 py-2.5 sm:px-4 sm:py-3.5 flex items-center gap-2.5 sm:gap-3 min-h-[64px] sm:min-h-[76px]">
-                    <div className="relative shrink-0 self-start sm:self-center">
-                        <div className="absolute -inset-1 rounded-2xl bg-current/10 blur-md animate-pulse"></div>
-                        <div className=${`relative w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center ${typeTheme.iconBg} shadow-sm`}>
-                            <${Icon}
-                                name=${activeAnnouncement.type === 'warning' ? 'alert-triangle' : activeAnnouncement.type === 'emergency' ? 'flame' : 'megaphone'}
-                                size=${16}
-                                className="sm:opacity-95 opacity-90"
-                            />
+                <div className="relative px-3 py-2 sm:px-3.5 sm:py-2.5 flex flex-col gap-2">
+                    <div className="flex items-start gap-2 sm:gap-2.5 min-w-0">
+                        <div className="relative shrink-0 self-start">
+                            <div className="absolute -inset-1 rounded-xl bg-current/10 blur-md animate-pulse"></div>
+                            <div className=${`relative w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl flex items-center justify-center ${typeTheme.iconBg} shadow-sm`}>
+                                <${Icon}
+                                    name=${activeAnnouncement.type === 'warning' ? 'alert-triangle' : activeAnnouncement.type === 'emergency' ? 'flame' : 'megaphone'}
+                                    size=${14}
+                                    className="sm:opacity-95 opacity-90"
+                                />
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
-                            <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.28em] sm:tracking-[0.35em] opacity-70">${typeLabel}</span>
-                            <span className=${`px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full text-[8px] sm:text-[10px] font-black uppercase tracking-widest ${priorityMeta.className}`}>
-                                ${priorityMeta.label}
-                            </span>
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 sm:gap-2 mb-0.5">
+                                <span className="text-[7px] sm:text-[9px] font-black uppercase tracking-[0.28em] opacity-70 whitespace-nowrap">${typeLabel}</span>
+                                <span className=${`px-1.5 py-0.5 rounded-full text-[7px] sm:text-[9px] font-black uppercase tracking-widest ${priorityMeta.className}`}>
+                                    ${priorityMeta.label}
+                                </span>
+                            </div>
+                            <h4 className="font-black text-[11px] sm:text-[12px] leading-tight truncate">${activeAnnouncement.title}</h4>
                         </div>
-                        <h4 className="font-black text-[12px] sm:text-sm lg:text-[15px] leading-tight mb-0.5 sm:mb-1 truncate">${activeAnnouncement.title}</h4>
-                        <p className="text-[11px] sm:text-[12px] leading-snug opacity-90 line-clamp-1 sm:line-clamp-2">${activeAnnouncement.content}</p>
-                    </div>
 
-                    <div className="shrink-0 flex flex-col items-end gap-2 sm:gap-2.5 self-stretch justify-between">
                         <button
                             type="button"
                             onClick=${() => handleDismiss(activeAnnouncement.id)}
-                            className="p-1.5 sm:p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                            className="shrink-0 p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
                             aria-label="Dismiss announcement"
                         >
-                            <${Icon} name="x" size=${12} className="sm:opacity-80 opacity-70" />
+                            <${Icon} name="x" size=${11} className="sm:opacity-80 opacity-70" />
                         </button>
+                    </div>
+
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <p className="min-w-0 flex-1 text-[10px] sm:text-[11px] leading-snug opacity-90 truncate">${activeAnnouncement.content}</p>
 
                         ${visibleAnnouncements.length > 1 && html`
-                            <div className="flex items-center gap-1.5 sm:gap-1">
+                            <div className="shrink-0 flex items-center gap-1">
                                 ${visibleAnnouncements.map((announcement, index) => html`
                                     <button
                                         key=${announcement.id}
@@ -171,7 +174,7 @@ const AnnouncementBanner = () => {
                                         onClick=${() => setActiveIndex(index)}
                                         className=${`h-1.5 rounded-full transition-all duration-300 ${
                                             activeIndex === index
-                                                ? 'w-5 sm:w-6 bg-current shadow-sm'
+                                                ? 'w-4 sm:w-5 bg-current shadow-sm'
                                                 : 'w-1.5 sm:w-2 bg-current/30 hover:bg-current/50'
                                         }`}
                                         aria-label=${`Show announcement ${index + 1}`}

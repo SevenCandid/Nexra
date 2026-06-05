@@ -21,7 +21,7 @@ export const Header = ({ user, balance, onLogout, title, subtitle, onQuickSend, 
 
     return html`
         <header className="fixed top-2 left-1/2 -translate-x-1/2 w-[94%] max-w-lg glass rounded-2xl lg:hidden z-30 shadow-xl transition-all">
-            <div className="px-2 pt-2 space-y-2">
+            <div className="px-2 pt-1.5 space-y-1.5">
                 <${AnnouncementBanner} />
                 <div className="px-2 pb-2 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-2">
@@ -95,7 +95,7 @@ export const Header = ({ user, balance, onLogout, title, subtitle, onQuickSend, 
         </header>
 
         <header className="hidden lg:block bg-white/80 dark:bg-midnight-950/80 backdrop-blur-lg border-b border-gray-200 dark:border-midnight-800 sticky top-0 z-30 transition-colors">
-            <div className="px-8 pt-3 pb-4 space-y-3">
+            <div className="px-8 pt-2.5 pb-3 space-y-2">
                 <${AnnouncementBanner} />
                 <div className="flex items-center justify-between gap-4">
                     <div className="min-w-0 flex flex-col">
