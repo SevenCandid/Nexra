@@ -4,6 +4,7 @@ import { Card } from '../components/ui/Card.js';
 import { Button } from '../components/ui/Button.js';
 import { Icon } from '../components/ui/Icon.js';
 import { Badge } from '../components/ui/Badge.js';
+import { TourModal } from '../components/TourModal.js';
 import apiClient from '../api/client.js';
 
 const AnnouncementsBanner = () => {
@@ -366,6 +367,7 @@ export const DashboardPage = () => {
                 </${Button}>
             </div>
 
+            <${TourModal} />
         </div>
     `;
 };

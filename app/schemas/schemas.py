@@ -113,6 +113,7 @@ class CampaignResponse(BaseModel):
     sender: str
     template: str
     status: str
+    total_recipients: int = 0
     created_at: datetime
     scheduled_at: Optional[datetime] = None
 
@@ -136,7 +137,7 @@ class WalletResponse(BaseModel):
 # Stats Schema
 class MessageStats(BaseModel):
     total: int
-    sent: int
+    submitted: int
     delivered: int
     pending: int
     failed: int

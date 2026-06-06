@@ -38,17 +38,26 @@ class ArkeselProvider(SMSProvider):
                 
                 # Arkesel success is usually status 201
                 if response.status_code in [200, 201]:
-                    data_block = data.get("data", {}) if isinstance(data.get("data", {}), dict) else {}
+                    raw_data = data.get("data")
+                    data_block = {}
+                    if isinstance(raw_data, list) and len(raw_data) > 0:
+                        data_block = raw_data[0]
+                    elif isinstance(raw_data, dict):
+                        data_block = raw_data
+                        
+                    provider_msg_id = str(
+                        data_block.get("id")
+                        or data_block.get("ID")
+                        or data_block.get("sms_id")
+                        or data.get("id")
+                        or data.get("ID")
+                        or data.get("sms_id")
+                        or ""
+                    )
+                    
                     return {
                         "status": "success", 
-                        "provider_msg_id": (
-                            data_block.get("ID")
-                            or data_block.get("id")
-                            or data_block.get("sms_id")
-                            or data.get("ID")
-                            or data.get("id")
-                            or data.get("sms_id")
-                        ),
+                        "provider_msg_id": provider_msg_id,
                         "raw_response": data
                     }
                 return {"status": "error", "message": data.get("message", "Unknown Arkesel error"), "raw_response": data}

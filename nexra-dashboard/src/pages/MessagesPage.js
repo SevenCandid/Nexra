@@ -197,12 +197,11 @@ export const MessagesPage = () => {
                 <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 no-scrollbar">
                     ${[
                         { key: 'all', label: 'All' },
-                        { key: 'submitted', label: 'Submitted' },
+                        { key: 'draft', label: 'Draft' },
                         { key: 'delivering', label: 'Delivering' },
                         { key: 'completed', label: 'Completed' },
-                        { key: 'delivered', label: 'Delivered' },
-                        { key: 'not_delivered', label: 'Not Delivered' },
                         { key: 'failed', label: 'Failed' },
+                        { key: 'cancelled', label: 'Cancelled' },
                     ].map(({ key, label }) => html`
                         <button
                             key=${key}
@@ -333,7 +332,7 @@ export const MessagesPage = () => {
                                                                             <div className="grid grid-cols-2 gap-3 pt-2">
                                                                                 <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/20">
                                                                                 <p className="text-[9px] text-blue-400 font-bold uppercase">Submitted</p>
-                                                                                <p className="text-sm font-black text-blue-600">${stats.sent}</p>
+                                                                                <p className="text-sm font-black text-blue-600">${stats.submitted}</p>
                                                                             </div>
                                                                                 <div className="p-2 rounded-xl bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-900/20">
                                                                                     <p className="text-[9px] text-rose-400 font-bold uppercase">Failed</p>

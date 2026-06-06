@@ -363,12 +363,11 @@ async def get_campaign_stats(
 
     return MessageStats(
         total=await get_count(),
-        sent=await get_count(MessageStatus.SENT),
+        submitted=await get_count(MessageStatus.SUBMITTED),
         delivered=await get_count(MessageStatus.DELIVERED),
-        pending=await get_count(MessageStatus.PENDING),
+        pending=(await get_count(MessageStatus.PENDING)) + (await get_count(MessageStatus.PROCESSING)),
         failed=(
             await get_count(MessageStatus.FAILED)
-            + await get_count(MessageStatus.EXPIRED)
-            + await get_count(MessageStatus.UNDELIVERABLE)
+            + await get_count(MessageStatus.NOT_DELIVERED)
         )
     )
