@@ -150,6 +150,24 @@ async def create_campaign(
     await db.refresh(db_obj)
     return db_obj
 
+@router.get("/{campaign_id}", response_model=CampaignResponse)
+async def get_campaign(
+    campaign_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """
+    Get a specific campaign by ID.
+    """
+    stmt = select(Campaign).where(Campaign.id == campaign_id, Campaign.organization_id == current_user.organization_id)
+    result = await db.execute(stmt)
+    campaign = result.scalar_one_or_none()
+    
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+        
+    return campaign
+
 @router.put("/{campaign_id}", response_model=CampaignResponse)
 async def update_campaign(
     campaign_id: int,
