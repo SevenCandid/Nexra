@@ -19,11 +19,10 @@ class UserRole(str, Enum):
 class MessageStatus(str, Enum):
     PENDING = "pending"
     PROCESSING = "processing"
-    SENT = "sent"
+    SUBMITTED = "submitted"
     DELIVERED = "delivered"
     FAILED = "failed"
-    EXPIRED = "expired"
-    UNDELIVERABLE = "undeliverable"
+    NOT_DELIVERED = "not_delivered"
 
 class CampaignStatus(str, Enum):
     DRAFT = "draft"

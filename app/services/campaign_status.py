@@ -34,18 +34,17 @@ async def refresh_campaign_delivery_status(db: AsyncSession, campaign_id: int) -
     counts = {row[0]: row[1] for row in counts_result.all()}
 
     delivered = int(counts.get(MessageStatus.DELIVERED, 0))
-    sent = int(counts.get(MessageStatus.SENT, 0))
+    submitted = int(counts.get(MessageStatus.SUBMITTED, 0))
     pending = int(counts.get(MessageStatus.PENDING, 0))
     processing = int(counts.get(MessageStatus.PROCESSING, 0))
     failed = int(counts.get(MessageStatus.FAILED, 0))
-    expired = int(counts.get(MessageStatus.EXPIRED, 0))
-    undeliverable = int(counts.get(MessageStatus.UNDELIVERABLE, 0))
+    not_delivered = int(counts.get(MessageStatus.NOT_DELIVERED, 0))
 
-    in_flight = pending + processing + sent
-    terminal_total = delivered + failed + expired + undeliverable
+    in_flight = pending + processing + submitted
+    terminal_total = delivered + failed + not_delivered
 
     campaign.delivered_count = delivered
-    campaign.failed_count = failed + expired + undeliverable
+    campaign.failed_count = failed + not_delivered
 
     if in_flight > 0:
         campaign.status = CampaignStatus.DELIVERING.value

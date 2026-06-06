@@ -102,16 +102,14 @@ async def get_analytics_stats(
     return {
         "activity": activity_data,
         "success_rate": {
-            "delivering": (success_stats.get(MessageStatus.PENDING, 0) + 
-                           success_stats.get(MessageStatus.PROCESSING, 0)),
-            "submitted": success_stats.get(MessageStatus.SENT, 0),
-            "completed": success_stats.get(MessageStatus.SENT, 0),
+            "delivering": (
+                success_stats.get(MessageStatus.PENDING, 0)
+                + success_stats.get(MessageStatus.PROCESSING, 0)
+            ),
+            "submitted": success_stats.get(MessageStatus.SUBMITTED, 0),
             "delivered": success_stats.get(MessageStatus.DELIVERED, 0),
-            "failed": (
-                success_stats.get(MessageStatus.FAILED, 0)
-                + success_stats.get(MessageStatus.EXPIRED, 0)
-                + success_stats.get(MessageStatus.UNDELIVERABLE, 0)
-            )
+            "not_delivered": success_stats.get(MessageStatus.NOT_DELIVERED, 0),
+            "failed": success_stats.get(MessageStatus.FAILED, 0),
         },
         "networks": network_data,
         "avg_delivery_time": round(float(avg_speed), 2)
@@ -332,6 +330,8 @@ async def get_admin_overview(
             "total_organizations": total_orgs,
             "total_messages": total_messages,
             "delivered": msg_stats.get(MessageStatus.DELIVERED, 0),
+            "submitted": msg_stats.get(MessageStatus.SUBMITTED, 0),
+            "not_delivered": msg_stats.get(MessageStatus.NOT_DELIVERED, 0),
             "failed": msg_stats.get(MessageStatus.FAILED, 0),
             "refunded": refunded_count,
             "pending": msg_stats.get(MessageStatus.PENDING, 0) + msg_stats.get(MessageStatus.PROCESSING, 0),

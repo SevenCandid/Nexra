@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXRA - MoMo Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #f8fafc; font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+    <div class="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 border border-gray-100">
+        <div class="text-center mb-8">
+            <div class="w-16 h-16 bg-primary-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-900">MoMo Approval Simulation</h1>
+            <p class="text-gray-500 text-sm mt-2">Enter your transaction reference to simulate user approval on their phone.</p>
+        </div>
+
+        <div class="space-y-4">
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2 ml-1">Transaction Reference</label>
+                <input id="reference" type="text" placeholder="NEX-PAY-XXXX" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none transition-all" />
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 pt-4">
+                <button onclick="simulate(true)" class="py-3 px-4 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20">
+                    Approve (Success)
+                </button>
+                <button onclick="simulate(false)" class="py-3 px-4 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 transition-all shadow-lg shadow-rose-600/20">
+                    Reject (Fail)
+                </button>
+            </div>
+
+            <div id="status" class="mt-6 p-4 rounded-xl text-sm hidden"></div>
+        </div>
+
+        <div class="mt-8 pt-6 border-t border-gray-100">
+            <p class="text-[10px] text-gray-400 text-center uppercase tracking-widest font-bold">NEXRA Payment Integration Test Utility</p>
+        </div>
+    </div>
+
+    <script>
+        async function simulate(success) {
+            const ref = document.getElementById('reference').value.trim();
+            const statusDiv = document.getElementById('status');
+            
+            if (!ref) {
+                alert('Please enter a reference');
+                return;
+            }
+
+            statusDiv.className = 'mt-6 p-4 rounded-xl text-sm bg-blue-50 text-blue-700';
+            statusDiv.innerText = 'Processing...';
+            statusDiv.classList.remove('hidden');
+
+            try {
+                const response = await fetch(`https://nexra-api.onrender.com/api/v1/payments/simulate-complete/${ref}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ success })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    statusDiv.className = success ? 'mt-6 p-4 rounded-xl text-sm bg-emerald-50 text-emerald-700' : 'mt-6 p-4 rounded-xl text-sm bg-rose-50 text-rose-700';
+                    statusDiv.innerText = success ? 'SUCCESS: Transaction ' + ref + ' has been approved.' : 'REJECTED: Transaction ' + ref + ' has been failed.';
+                } else {
+                    statusDiv.className = 'mt-6 p-4 rounded-xl text-sm bg-amber-50 text-amber-700';
+                    statusDiv.innerText = 'ERROR: ' + (data.detail || 'Something went wrong');
+                }
+            } catch (error) {
+                statusDiv.className = 'mt-6 p-4 rounded-xl text-sm bg-rose-50 text-rose-700';
+                statusDiv.innerText = 'NETWORK ERROR: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -178,14 +178,15 @@ export const DashboardPage = () => {
         // Success Rate Chart (Doughnut)
         const successCtx = successChartRef.current.getContext('2d');
         const s = analytics.success_rate;
-        const labels_doughnut = ['Delivered', 'Submitted', 'Delivering', 'Failed'];
+        const labels_doughnut = ['Delivered', 'Submitted', 'Delivering', 'Not Delivered', 'Failed'];
         const data_doughnut = [
-            s.delivered || 0, 
-            s.submitted || s.completed || 0, 
-            s.delivering || 0, 
+            s.delivered || 0,
+            s.submitted || 0,
+            s.delivering || 0,
+            s.not_delivered || 0,
             s.failed || 0
         ];
-        const colors = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444'];
+        const colors = ['#22c55e', '#3b82f6', '#f59e0b', '#f97316', '#ef4444'];
         
         chartsInitialized.current.success = new window.Chart(successCtx, {
             type: 'doughnut',
@@ -224,10 +225,8 @@ export const DashboardPage = () => {
         `;
     }
 
-    const totalMessages = (analytics.success_rate.delivered || 0) + 
-                          (analytics.success_rate.submitted || analytics.success_rate.completed || 0) + 
-                          (analytics.success_rate.delivering || 0) + 
-                          (analytics.success_rate.failed || 0);
+    const s = analytics.success_rate;
+    const totalMessages = (s.delivered || 0) + (s.submitted || 0) + (s.delivering || 0) + (s.not_delivered || 0) + (s.failed || 0);
 
     return html`
         <div className="space-y-6 fade-in">
@@ -284,21 +283,35 @@ export const DashboardPage = () => {
                                     <span className="w-2 h-2 rounded-full bg-amber-500"></span>
                                     <span className="text-[10px] font-bold text-gray-500 uppercase">Delivering</span>
                                 </div>
-                                <span className="text-xs font-black text-gray-900 dark:text-white">${analytics.success_rate.delivering || 0}</span>
+                                <span className="text-xs font-black text-gray-900 dark:text-white">${s.delivering || 0}</span>
                             </div>
                             <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50/50 dark:bg-midnight-900/50 border border-gray-100 dark:border-midnight-800">
                                 <div className="flex items-center gap-2">
                                     <span className="w-2 h-2 rounded-full bg-blue-500"></span>
                                     <span className="text-[10px] font-bold text-gray-500 uppercase">Submitted</span>
                                 </div>
-                                <span className="text-xs font-black text-gray-900 dark:text-white">${analytics.success_rate.submitted || analytics.success_rate.completed || 0}</span>
+                                <span className="text-xs font-black text-gray-900 dark:text-white">${s.submitted || 0}</span>
                             </div>
                             <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50/50 dark:bg-midnight-900/50 border border-gray-100 dark:border-midnight-800">
                                 <div className="flex items-center gap-2">
                                     <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                                     <span className="text-[10px] font-bold text-gray-500 uppercase">Delivered</span>
                                 </div>
-                                <span className="text-xs font-black text-emerald-500">${analytics.success_rate.delivered || 0}</span>
+                                <span className="text-xs font-black text-emerald-500">${s.delivered || 0}</span>
+                            </div>
+                            <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50/50 dark:bg-midnight-900/50 border border-gray-100 dark:border-midnight-800">
+                                <div className="flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-orange-500"></span>
+                                    <span className="text-[10px] font-bold text-gray-500 uppercase">Not Delivered</span>
+                                </div>
+                                <span className="text-xs font-black text-orange-500">${s.not_delivered || 0}</span>
+                            </div>
+                            <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50/50 dark:bg-midnight-900/50 border border-gray-100 dark:border-midnight-800">
+                                <div className="flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                                    <span className="text-[10px] font-bold text-gray-500 uppercase">Failed</span>
+                                </div>
+                                <span className="text-xs font-black text-red-500">${s.failed || 0}</span>
                             </div>
                         </div>
                     </div>
@@ -328,17 +341,13 @@ export const DashboardPage = () => {
                                         ${new Date(campaign.created_at).toLocaleDateString()}
                                     </p>
                                 </div>
-                                <${Badge} variant=${
-                                    campaign.status === 'completed' || campaign.status === 'delivered' ? 'success' : 
+<${Badge} variant=${
+                                    campaign.status === 'completed' ? 'success' :
                                     campaign.status === 'failed' ? 'danger' :
-                                    campaign.status === 'sending' || campaign.status === 'delivering' ? 'info' :
-                                    campaign.status === 'scheduled' ? 'warning' : 'info'
+                                    campaign.status === 'delivering' || campaign.status === 'sending' ? 'info' :
+                                    campaign.status === 'scheduled' ? 'warning' : 'default'
                                 }>
-                                    ${campaign.status === 'completed' ? 'Completed' : 
-                                      campaign.status === 'delivering' ? 'Delivering' : 
-                                      campaign.status === 'sending' ? 'Sending' :
-                                      campaign.status === 'failed' ? 'Failed' :
-                                      campaign.status}
+                                    ${{ completed: 'Completed', delivering: 'Delivering', sending: 'Sending', failed: 'Failed', draft: 'Draft', scheduled: 'Scheduled' }[campaign.status] || campaign.status}
                                 </${Badge}>
                             </div>
                         `)}

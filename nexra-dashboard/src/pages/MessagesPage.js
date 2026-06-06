@@ -35,6 +35,23 @@ export const MessagesPage = () => {
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
+    // Real-time delivery status updates via WebSocket broadcast
+    useEffect(() => {
+        const handleRealtimeUpdate = (e) => {
+            const { data } = e.detail || {};
+            // Refresh campaign list to pick up status changes
+            fetchCampaigns();
+            // If a campaign is expanded, force-refresh its stats
+            if (expandedId && data) {
+                apiClient.get(`/campaigns/${expandedId}/stats`)
+                    .then(res => setCampaignStats(prev => ({ ...prev, [expandedId]: res.data })))
+                    .catch(() => {});
+            }
+        };
+        window.addEventListener('nexra:update', handleRealtimeUpdate);
+        return () => window.removeEventListener('nexra:update', handleRealtimeUpdate);
+    }, [expandedId]);
+
     const fetchCampaigns = async () => {
         setLoading(true);
         try {
@@ -57,8 +74,8 @@ export const MessagesPage = () => {
     
     const totalPages = Math.ceil(total / PAGE_SIZE);
 
-    const fetchCampaignStats = async (campaignId) => {
-        if (campaignStats[campaignId]) return;
+    const fetchCampaignStats = async (campaignId, forceRefresh = false) => {
+        if (campaignStats[campaignId] && !forceRefresh) return;
         try {
             const response = await apiClient.get(`/campaigns/${campaignId}/stats`);
             setCampaignStats(prev => ({ ...prev, [campaignId]: response.data }));
@@ -97,34 +114,40 @@ export const MessagesPage = () => {
 
     const getStatusBadge = (status) => {
         const variants = {
-            delivering: 'info',
+            draft: 'default',
+            pending: 'warning',
             processing: 'warning',
-            sent: 'info',
+            sending: 'info',
+            delivering: 'info',
             submitted: 'info',
-            completed: 'success',
             delivered: 'success',
-            undeliverable: 'danger',
-            expired: 'warning',
+            completed: 'success',
             failed: 'danger',
+            not_delivered: 'danger',
         };
-        
-        let label = status;
-        if (status === 'sent' || status === 'submitted') label = 'Submitted';
-        if (status === 'completed') label = 'Completed';
-        if (status === 'delivering') label = 'Delivering';
-        if (status === 'processing' || status === 'pending') label = 'Preparing';
-        if (status === 'undeliverable') label = 'Not Delivered';
-        if (status === 'expired') label = 'Expired';
-        if (status === 'delivered') label = 'Delivered';
-        
-        return html`<${Badge} variant=${variants[status] || 'default'}>${label.charAt(0).toUpperCase() + label.slice(1)}</${Badge}>`;
+
+        const labels = {
+            draft: 'Draft',
+            pending: 'Pending',
+            processing: 'Processing',
+            sending: 'Sending',
+            delivering: 'Delivering',
+            submitted: 'Submitted',
+            delivered: 'Delivered',
+            completed: 'Completed',
+            failed: 'Failed',
+            not_delivered: 'Not Delivered',
+        };
+
+        const label = labels[status] || (status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Unknown');
+        return html`<${Badge} variant=${variants[status] || 'default'}>${label}</${Badge}>`;
     };
 
     const handleExport = async () => {
         try {
             // Use window.open for direct download if no complex auth headers needed, 
             // but since we use token in headers, we must use axios + blob
-            const token = localStorage.getItem('nexra_token');
+            const token = localStorage.getItem('access_token');
             const apiBase = window.__NEXRA_API_URL__ || 'https://nexra-api.onrender.com/api/v1';
             
             const response = await fetch(`${apiBase}/analytics/export/messages`, {
@@ -172,13 +195,21 @@ export const MessagesPage = () => {
                 </div>
 
                 <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 no-scrollbar">
-                    ${['all', 'delivering', 'delivered', 'failed'].map((f) => html`
+                    ${[
+                        { key: 'all', label: 'All' },
+                        { key: 'submitted', label: 'Submitted' },
+                        { key: 'delivering', label: 'Delivering' },
+                        { key: 'completed', label: 'Completed' },
+                        { key: 'delivered', label: 'Delivered' },
+                        { key: 'not_delivered', label: 'Not Delivered' },
+                        { key: 'failed', label: 'Failed' },
+                    ].map(({ key, label }) => html`
                         <button
-                            key=${f}
-                            onClick=${() => { setFilter(f); setPage(0); }}
-                            className="px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${filter === f ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/20' : 'bg-white dark:bg-midnight-900 text-gray-500 hover:bg-gray-50 border border-gray-100 dark:border-midnight-800'}"
+                            key=${key}
+                            onClick=${() => { setFilter(key); setPage(0); }}
+                            className="px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${filter === key ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/20' : 'bg-white dark:bg-midnight-900 text-gray-500 hover:bg-gray-50 border border-gray-100 dark:border-midnight-800'}"
                         >
-                            ${f === 'delivering' ? 'Delivering' : f.charAt(0).toUpperCase() + f.slice(1)}
+                            ${label}
                         </button>
                     `)}
                 </div>

@@ -32,12 +32,13 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
         const interval = setInterval(fetchUserData, 60000); // Slower fallback refresh (1m)
         
         // WebSocket Connection for Real-time Updates
-        const token = localStorage.getItem('nexra_token');
+        const token = localStorage.getItem('access_token');
         if (token) {
             const apiBase = window.__NEXRA_API_URL__ || 'https://nexra-api.onrender.com';
-            const wsBase = apiBase.replace('http', 'ws');
+            const wsBase = apiBase.replace(/^https/, 'wss').replace(/^http/, 'ws');
             const socket = new WebSocket(`${wsBase}/ws/${token}`);
 
+            socket.onopen = () => console.log('NEXRA Pulse Connected');
             socket.onmessage = (event) => {
                 try {
                     const msg = JSON.parse(event.data);
@@ -52,7 +53,8 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
                 }
             };
 
-            socket.onclose = () => console.log('NEXRA Pulse Disconnected');
+            socket.onclose = (e) => console.log('NEXRA Pulse Disconnected', e.code, e.reason);
+            socket.onerror = (e) => console.error('NEXRA Pulse Error:', e);
             return () => {
                 clearInterval(interval);
                 socket.close();

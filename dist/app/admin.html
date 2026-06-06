@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXRA - Admin Control Center</title>
+    <link rel="icon" href="assets/NEXRA_IconAbove.png" type="image/png">
+
+    <!-- Fonts (System Fallback) -->
+    <style>
+        @font-face {
+            font-family: 'Inter';
+            src: local('Inter'), local('Segoe UI'), local('Roboto'), local('Helvetica Neue'), Arial, sans-serif;
+            font-weight: 400 700;
+        }
+    </style>
+
+    <!-- Tailwind CSS (Local) -->
+    <script src="vendor/tailwind.min.js" defer></script>
+
+    <!-- Tailwind Config -->
+    <script>
+        window.addEventListener('load', () => {
+            tailwind.config = {
+                darkMode: 'class',
+                theme: {
+                    extend: {
+                        screens: {
+                            'xs': '400px',
+                        },
+                        colors: {
+                            primary: {
+                                50: '#f0f9ff',
+                                100: '#e0f2fe',
+                                500: '#3b82f6',
+                                600: '#2563eb',
+                                700: '#1d4ed8',
+                            },
+                            midnight: {
+                                950: '#020617',
+                                900: '#0f172a',
+                                800: '#1e293b',
+                                700: '#334155',
+                                600: '#475569',
+                                500: '#64748b',
+                                400: '#94a3b8',
+                                300: '#cbd5e1',
+                                200: '#e2e8f0',
+                                100: '#f1f5f9',
+                                50: '#f8fafc',
+                            }
+                        },
+                        boxShadow: {
+                            'premium': '0 10px 30px -5px rgba(0, 0, 0, 0.3), 0 4px 15px -5px rgba(0, 0, 0, 0.2)',
+                            'glow': '0 0 20px -5px rgba(59, 130, 246, 0.5)',
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+
+    <!-- Configurable API URL -->
+    <script>
+        window.__NEXRA_API_URL__ = 'https://nexra-api.onrender.com/api/v1';
+    </script>
+
+    <!-- Core Libraries (Local) -->
+    <script src="vendor/react.production.min.js" defer></script>
+    <script src="vendor/react-dom.production.min.js" defer></script>
+    <script src="vendor/htm.js" defer></script>
+    <script src="vendor/axios.min.js" defer></script>
+    <script src="vendor/lucide.min.js" defer></script>
+
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        .dark body {
+            background-color: #020617;
+            background-image: 
+                radial-gradient(circle at 0% 0%, rgba(30, 58, 138, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 100% 100%, rgba(30, 58, 138, 0.05) 0%, transparent 40%);
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .dark ::webkit-scrollbar-thumb {
+            background: #334155;
+        }
+
+        /* Smooth transitions */
+        * {
+            transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Loading animation */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .animate-spin { animation: spin 1s linear infinite; }
+
+        /* Fade in animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in { animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+
+        /* Glassmorphism utility */
+        .glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .dark .glass {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Premium card */
+        .premium-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .dark .premium-card {
+            background: rgba(30, 41, 59, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+        }
+
+        .premium-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .dark .premium-card:hover {
+            background: rgba(30, 41, 59, 0.6);
+            border-color: rgba(59, 130, 246, 0.2);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 0 20px -5px rgba(59, 130, 246, 0.1);
+        }
+
+        .app-ready #splash-screen {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        /* Fixed Splash Screen to prevent layout shift */
+        #splash-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.5s ease;
+        }
+
+        /* Hide scrollbar utility */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Safe areas for mobile */
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 dark:bg-gray-900 dark:text-white transition-colors duration-300">
+    <!-- Instant Splash Screen -->
+    <div id="splash-screen" class="bg-gray-50 dark:bg-gray-900">
+        <div class="text-center flex flex-col items-center justify-center fade-in">
+            <img src="assets/NEXRA_IconAbove.png" alt="NEXRA Logo" 
+                 class="h-12 sm:h-14 mb-5 object-contain drop-shadow-md dark:contrast-125" 
+                 style="height: 48px; width: auto;" />
+            <div class="w-8 h-8 border-[3px] border-primary-100 dark:border-primary-900/30 border-t-primary-600 dark:border-t-primary-500 rounded-full animate-spin shadow-sm"></div>
+            <p class="text-xs font-bold text-gray-400 mt-4 uppercase tracking-[0.2em]">Staff Entry</p>
+        </div>
+    </div>
+
+    <div id="root"></div>
+
+    <!-- Admin App Script (Dedicated) -->
+    <script type="module" src="admin.js"></script>
+</body>
+
+</html>

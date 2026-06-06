@@ -303,8 +303,7 @@ class BillingService:
             # Check if refundable
             refundable_statuses = [
                 MessageStatus.FAILED,
-                MessageStatus.EXPIRED,
-                MessageStatus.UNDELIVERABLE
+                MessageStatus.NOT_DELIVERED
             ]
             if sms.status not in refundable_statuses:
                 logger.info(f"SMS {sms_message_id} status {sms.status} not refundable")

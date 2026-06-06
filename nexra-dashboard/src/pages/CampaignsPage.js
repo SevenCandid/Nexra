@@ -63,6 +63,27 @@ export const CampaignsPage = () => {
         }
     };
 
+    const getStatusBadge = (status) => {
+        const variants = {
+            draft: 'default',
+            scheduled: 'warning',
+            sending: 'info',
+            delivering: 'info',
+            completed: 'success',
+            failed: 'danger',
+        };
+        const labels = {
+            draft: 'Draft',
+            scheduled: 'Scheduled',
+            sending: 'Sending',
+            delivering: 'Delivering',
+            completed: 'Completed',
+            failed: 'Failed',
+        };
+        const label = labels[status] || (status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Unknown');
+        return html`<${Badge} variant=${variants[status] || 'default'}>${label}</${Badge}>`;
+    };
+
     if (loading) {
         return html`<div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
@@ -93,18 +114,7 @@ export const CampaignsPage = () => {
                         <${Card} key=${campaign.id} className="p-5 hover:shadow-lg transition-all group">
                             <div className="flex items-start justify-between mb-4">
                                 <h3 className="font-bold text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">${campaign.name}</h3>
-                                <${Badge} variant=${
-                                    campaign.status === 'completed' || campaign.status === 'delivered' ? 'success' : 
-                                    campaign.status === 'failed' ? 'danger' :
-                                    campaign.status === 'sending' || campaign.status === 'delivering' ? 'info' :
-                                    campaign.status === 'scheduled' ? 'warning' : 'info'
-                                }>
-                                    ${campaign.status === 'completed' ? 'Completed' : 
-                                      campaign.status === 'delivering' ? 'Delivering' : 
-                                      campaign.status === 'sending' ? 'Sending' :
-                                      campaign.status === 'failed' ? 'Failed' :
-                                      campaign.status}
-                                </${Badge}>
+                                ${getStatusBadge(campaign.status)}
                             </div>
                             <p className="text-sm text-gray-600 mb-4 line-clamp-2">${campaign.template}</p>
                             <div className="flex items-center justify-between text-sm">

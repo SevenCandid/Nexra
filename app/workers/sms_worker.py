@@ -38,7 +38,7 @@ async def _async_process_sms(sms_id: int):
         result = await db.execute(stmt)
         msg = result.scalar_one_or_none()
 
-        if not msg or msg.status in [MessageStatus.SENT, MessageStatus.DELIVERED]:
+        if not msg or msg.status in [MessageStatus.SUBMITTED, MessageStatus.DELIVERED]:
             return
 
         org = msg.organization
@@ -104,7 +104,7 @@ async def _async_process_sms(sms_id: int):
 
             if result.get("status") == "success":
                 # Arkesel accepted it. In your flow, this is "SENT" (Waiting for DLR)
-                msg.status = MessageStatus.SENT
+                msg.status = MessageStatus.SUBMITTED
                 msg.provider_msg_id = result.get("provider_msg_id")
                 msg.sent_at = datetime.utcnow()
                 logger.info(f"Message {msg.id} sent to provider successfully")
@@ -132,12 +132,13 @@ async def _async_process_sms(sms_id: int):
             })
             
             # Dispatch Webhook
-            event = "message.sent" if msg.status == MessageStatus.SENT else "message.failed"
+            event = "message.sent" if msg.status == MessageStatus.SUBMITTED else "message.failed"
             asyncio.create_task(webhook_service.dispatch_message_event(msg.id, event))
 
         except Exception as e:
             logger.error(f"Gateway error for msg_id={msg.id}: {str(e)}")
             msg.status = MessageStatus.FAILED
+            msg.error_message = f"Gateway Error: {str(e)}"
             await _refund_failed_message(db, msg)
             if msg.campaign_id:
                 await refresh_campaign_delivery_status(db, msg.campaign_id)

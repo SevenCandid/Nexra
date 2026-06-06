@@ -31,10 +31,14 @@ async def enqueue_batch(campaign_id: int):
     asyncio.ensure_future(process_campaign_batch(campaign_id))
 
 async def enqueue_dlr(dlr_data: dict):
-    """Mock Enqueue a delivery report for processing."""
-    from app.workers.dlr_worker import process_delivery_report
+    """Enqueue a delivery report for async processing.
+    
+    IMPORTANT: We call _async_process_dlr directly (not the sync wrapper)
+    because we're already inside the async event loop. Using asyncio.to_thread
+    with the sync wrapper (which calls asyncio.run) would deadlock.
+    """
+    from app.workers.dlr_worker import _async_process_dlr
     import asyncio
 
     logger.info(f"[MOCK QUEUE] Processing DLR {dlr_data} in background task...")
-    asyncio.create_task(asyncio.to_thread(process_delivery_report, dlr_data))
-
+    asyncio.create_task(_async_process_dlr(dlr_data))

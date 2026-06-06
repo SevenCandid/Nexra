@@ -40,24 +40,24 @@ async def _async_process_dlr(dlr_data: dict):
             status_map = {
                 # Standard SMPP stats
                 "DELIVRD": MessageStatus.DELIVERED,
-                "EXPIRED": MessageStatus.EXPIRED,
-                "UNDELIV": MessageStatus.UNDELIVERABLE,
-                "ACCEPTD": MessageStatus.SENT,
-                "REJECTD": MessageStatus.UNDELIVERABLE,
-                "DELETED": MessageStatus.UNDELIVERABLE,
+                "EXPIRED": MessageStatus.NOT_DELIVERED,
+                "UNDELIV": MessageStatus.NOT_DELIVERED,
+                "ACCEPTD": MessageStatus.SUBMITTED,
+                "REJECTD": MessageStatus.NOT_DELIVERED,
+                "DELETED": MessageStatus.NOT_DELIVERED,
                 
                 # Arkesel & Webhook string stats
                 "DELIVERED": MessageStatus.DELIVERED,
-                "SUBMITTED": MessageStatus.SENT,
-                "QUEUED": MessageStatus.SENT,
-                "PROHIBITED": MessageStatus.UNDELIVERABLE,
-                "NOT_DELIVERED": MessageStatus.UNDELIVERABLE,
-                "UNDELIVERED": MessageStatus.UNDELIVERABLE,
-                "FAILED": MessageStatus.UNDELIVERABLE,
-                "REJECTED": MessageStatus.UNDELIVERABLE,
+                "SUBMITTED": MessageStatus.SUBMITTED,
+                "QUEUED": MessageStatus.SUBMITTED,
+                "PROHIBITED": MessageStatus.NOT_DELIVERED,
+                "NOT_DELIVERED": MessageStatus.NOT_DELIVERED,
+                "UNDELIVERED": MessageStatus.NOT_DELIVERED,
+                "FAILED": MessageStatus.NOT_DELIVERED,
+                "REJECTED": MessageStatus.NOT_DELIVERED,
             }
             
-            new_status = status_map.get(stat, MessageStatus.SENT)
+            new_status = status_map.get(stat, MessageStatus.SUBMITTED)
             
             # 2. Create the raw audit log
             log_entry = DeliveryReportLog(
@@ -70,19 +70,20 @@ async def _async_process_dlr(dlr_data: dict):
                 sms_message_id=msg.id if msg else None
             )
             db.add(log_entry)
+            
 
             # 3. Update SMSMessage if found
             if msg:
                 msg.status = new_status
                 if new_status == MessageStatus.DELIVERED:
                     msg.delivered_at = datetime.utcnow()
-                elif new_status in [MessageStatus.FAILED, MessageStatus.EXPIRED, MessageStatus.UNDELIVERABLE]:
+                elif new_status in [MessageStatus.FAILED, MessageStatus.NOT_DELIVERED]:
                     if dlr_data.get("err"):
                         msg.error_message = str(dlr_data.get("err"))
                 logger.info(f"Updated msg_id={msg.id} to status={new_status} via DLR")
 
                 # Check if refund is needed for failed deliveries
-                if new_status in [MessageStatus.FAILED, MessageStatus.EXPIRED, MessageStatus.UNDELIVERABLE]:
+                if new_status in [MessageStatus.FAILED, MessageStatus.NOT_DELIVERED]:
                     from app.services.billing_service import billing_service
                     await billing_service.refund_failed_sms(db, msg.id)
 
@@ -107,9 +108,9 @@ async def _async_process_dlr(dlr_data: dict):
                     event = None
                     if msg.status == MessageStatus.DELIVERED:
                         event = "message.delivered"
-                    elif msg.status == MessageStatus.SENT and previous_status != MessageStatus.SENT:
-                        event = "message.sent"
-                    elif msg.status in [MessageStatus.FAILED, MessageStatus.EXPIRED, MessageStatus.UNDELIVERABLE]:
+                    elif msg.status == MessageStatus.SUBMITTED and previous_status != MessageStatus.SUBMITTED:
+                        event = "message.submitted"
+                    elif msg.status in [MessageStatus.FAILED, MessageStatus.NOT_DELIVERED]:
                         event = "message.failed"
 
                     if event:

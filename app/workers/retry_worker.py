@@ -39,7 +39,7 @@ class RetryWorker:
         async with SessionLocal() as db:
             now = datetime.utcnow()
             stmt = select(SMSMessage).where(
-                SMSMessage.status == MessageStatus.FAILED,
+                SMSMessage.status.in_([MessageStatus.FAILED, MessageStatus.NOT_DELIVERED]),
                 SMSMessage.retry_count < self.max_retries,
                 SMSMessage.next_retry_at <= now
             )
