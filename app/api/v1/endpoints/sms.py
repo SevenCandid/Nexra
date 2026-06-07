@@ -405,7 +405,7 @@ async def arkesel_webhook(
             return {"status": "ignored", "reason": "missing id"}
 
         import asyncio
-        from app.workers.dlr_worker import enqueue_dlr
+        from app.core.queue import enqueue_dlr
         asyncio.create_task(enqueue_dlr(mapped_dlr))
 
         return {"status": "success"}
