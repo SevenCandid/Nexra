@@ -224,6 +224,89 @@ async def retry_sms(
     
     return sms
 
+@router.post("/admin/resolve-stuck-messages")
+async def resolve_stuck_messages(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """
+    One-shot recovery tool. 
+    Finds all messages stuck in SUBMITTED status that were sent more than 10 minutes ago
+    and polls Arkesel directly to update their real delivery status.
+    """
+    from app.core.config import settings
+    import httpx
+    from datetime import datetime, timedelta
+
+    cutoff = datetime.utcnow() - timedelta(minutes=10)
+    stmt = select(SMSMessage).where(
+        SMSMessage.organization_id == current_user.organization_id,
+        SMSMessage.status == MessageStatus.SUBMITTED,
+        SMSMessage.provider_msg_id != None,
+        SMSMessage.sent_at != None,
+        SMSMessage.sent_at < cutoff
+    ).limit(50)
+    result = await db.execute(stmt)
+    stuck_msgs = result.scalars().all()
+
+    if not stuck_msgs:
+        return {"message": "No stuck messages found.", "resolved": 0}
+
+    resolved = 0
+    errors = []
+
+    for msg in stuck_msgs:
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.get(
+                    "https://sms.arkesel.com/api/v2/sms",
+                    params={"id": msg.provider_msg_id},
+                    headers={"api-key": settings.ARKESEL_API_KEY}
+                )
+                data = resp.json()
+                logger.info(f"[RESOLVE] Arkesel status for msg_id={msg.id}, provider_id={msg.provider_msg_id}: {data}")
+
+                raw_data = data.get("data", data)
+                if isinstance(raw_data, list) and raw_data:
+                    raw_data = raw_data[0]
+                elif isinstance(raw_data, dict):
+                    raw_data = raw_data
+                else:
+                    raw_data = {}
+
+                raw_status = str(raw_data.get("status") or data.get("status") or "").strip().upper()
+
+                status_map = {
+                    "DELIVERED": MessageStatus.DELIVERED,
+                    "DELIVRD": MessageStatus.DELIVERED,
+                    "NOT_DELIVERED": MessageStatus.NOT_DELIVERED,
+                    "UNDELIV": MessageStatus.NOT_DELIVERED,
+                    "FAILED": MessageStatus.NOT_DELIVERED,
+                    "EXPIRED": MessageStatus.NOT_DELIVERED,
+                    "REJECTED": MessageStatus.NOT_DELIVERED,
+                }
+
+                if raw_status in status_map:
+                    msg.status = status_map[raw_status]
+                    if msg.status == MessageStatus.DELIVERED:
+                        msg.delivered_at = datetime.utcnow()
+                    resolved += 1
+                    if msg.campaign_id:
+                        from app.services.campaign_status import refresh_campaign_delivery_status
+                        await refresh_campaign_delivery_status(db, msg.campaign_id)
+
+        except Exception as e:
+            errors.append(f"msg_id={msg.id}: {str(e)}")
+            logger.error(f"[RESOLVE] Failed to check msg_id={msg.id}: {e}")
+
+    await db.commit()
+    return {
+        "message": f"Resolved {resolved} of {len(stuck_msgs)} stuck messages.",
+        "resolved": resolved,
+        "total_checked": len(stuck_msgs),
+        "errors": errors
+    }
+
 @router.get("/webhook/arkesel/debug")
 async def arkesel_webhook_debug(
     db: AsyncSession = Depends(get_db),
