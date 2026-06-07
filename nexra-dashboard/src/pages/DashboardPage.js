@@ -150,7 +150,7 @@ export const DashboardPage = () => {
 
         // Activity Chart (Bar)
         const activityCtx = activityChartRef.current.getContext('2d');
-        const labels = analytics.activity.map(d => d.date);
+        const labels = analytics.activity.map(d => d.day || d.date);
         const data = analytics.activity.map(d => d.count);
 
         chartsInitialized.current.activity = new window.Chart(activityCtx, {
@@ -254,7 +254,7 @@ export const DashboardPage = () => {
                             <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/30">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                                 <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-tight">
-                                    ${analytics.avg_delivery_time}s Avg
+                                    ${analytics.avg_delivery_time > 60 ? Math.round(analytics.avg_delivery_time / 60) + 'm' : (analytics.avg_delivery_time || 0) + 's'} Avg
                                 </span>
                             </div>
                         </div>
