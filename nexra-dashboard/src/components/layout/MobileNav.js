@@ -8,6 +8,7 @@ export const MobileNav = ({ currentPage, onNavigate, onReportIssue }) => {
         { id: 'contacts', label: 'Contacts', icon: 'users' },
         { id: 'messages', label: 'Messages', icon: 'message-square' },
         { id: 'api-docs', label: 'API', icon: 'code' },
+        { id: 'settings', label: 'Settings', icon: 'settings' },
     ];
 
     return html`
