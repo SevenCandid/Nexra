@@ -231,20 +231,17 @@ async def resolve_stuck_messages(
 ):
     """
     One-shot recovery tool. 
-    Finds all messages stuck in SUBMITTED status that were sent more than 10 minutes ago
-    and polls Arkesel directly to update their real delivery status.
+    Finds all messages stuck in SUBMITTED status and polls Arkesel 
+    directly to update their real delivery status.
     """
     from app.core.config import settings
     import httpx
-    from datetime import datetime, timedelta
+    from datetime import datetime
 
-    cutoff = datetime.utcnow() - timedelta(minutes=10)
     stmt = select(SMSMessage).where(
         SMSMessage.organization_id == current_user.organization_id,
         SMSMessage.status == MessageStatus.SUBMITTED,
-        SMSMessage.provider_msg_id != None,
-        SMSMessage.sent_at != None,
-        SMSMessage.sent_at < cutoff
+        SMSMessage.provider_msg_id != None
     ).limit(50)
     result = await db.execute(stmt)
     stuck_msgs = result.scalars().all()
