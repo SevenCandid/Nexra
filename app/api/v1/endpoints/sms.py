@@ -255,8 +255,7 @@ async def resolve_stuck_messages(
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
                 resp = await client.get(
-                    "https://sms.arkesel.com/api/v2/sms",
-                    params={"id": msg.provider_msg_id},
+                    f"https://sms.arkesel.com/api/v2/sms/{msg.provider_msg_id}",
                     headers={"api-key": settings.ARKESEL_API_KEY}
                 )
                 data = resp.json()
