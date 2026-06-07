@@ -239,7 +239,6 @@ async def resolve_stuck_messages(
     from datetime import datetime
 
     stmt = select(SMSMessage).where(
-        SMSMessage.organization_id == current_user.organization_id,
         SMSMessage.status == MessageStatus.SUBMITTED,
         SMSMessage.provider_msg_id != None
     ).limit(50)
