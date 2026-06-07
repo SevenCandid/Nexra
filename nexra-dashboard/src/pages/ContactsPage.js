@@ -511,10 +511,10 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
                                     </li>
                                     <li className="flex gap-3">
                                         <span className="font-bold text-gray-400">2.</span>
-                                        <span>Create exactly three columns with these exact headers in the first row:<br/>
-                                        <code className="inline-block mt-1 bg-white dark:bg-midnight-950 px-2 py-0.5 rounded border border-gray-200 dark:border-midnight-800 text-xs font-bold text-primary-600 dark:text-primary-400">first_name</code>
+                                        <span>Create at least a name and a phone number column. The system is flexible! You can use:<br/>
+                                        <code className="inline-block mt-1 bg-white dark:bg-midnight-950 px-2 py-0.5 rounded border border-gray-200 dark:border-midnight-800 text-xs font-bold text-primary-600 dark:text-primary-400">name</code> or <code className="inline-block mt-1 bg-white dark:bg-midnight-950 px-2 py-0.5 rounded border border-gray-200 dark:border-midnight-800 text-xs font-bold text-primary-600 dark:text-primary-400">first_name</code>
                                         <code className="inline-block mt-1 bg-white dark:bg-midnight-950 px-2 py-0.5 rounded border border-gray-200 dark:border-midnight-800 text-xs font-bold text-primary-600 dark:text-primary-400 ml-1">last_name</code>
-                                        <code className="inline-block mt-1 bg-white dark:bg-midnight-950 px-2 py-0.5 rounded border border-gray-200 dark:border-midnight-800 text-xs font-bold text-primary-600 dark:text-primary-400 ml-1">phone_number</code></span>
+                                        <code className="inline-block mt-1 bg-white dark:bg-midnight-950 px-2 py-0.5 rounded border border-gray-200 dark:border-midnight-800 text-xs font-bold text-primary-600 dark:text-primary-400 ml-1">number</code> or <code className="inline-block mt-1 bg-white dark:bg-midnight-950 px-2 py-0.5 rounded border border-gray-200 dark:border-midnight-800 text-xs font-bold text-primary-600 dark:text-primary-400">phone</code></span>
                                     </li>
                                     <li className="flex gap-3">
                                         <span className="font-bold text-gray-400">3.</span>
@@ -528,9 +528,9 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
                                 
                                 <div className="mt-4 p-3 bg-white dark:bg-midnight-950 rounded-xl border border-gray-200 dark:border-midnight-800 overflow-x-auto">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Example</p>
-                                    <pre className="text-xs text-gray-600 dark:text-midnight-300 font-mono leading-relaxed">first_name,last_name,phone_number
-John,Doe,233541234567
-Jane,Smith,233501234567</pre>
+                                    <pre className="text-xs text-gray-600 dark:text-midnight-300 font-mono leading-relaxed">name,number
+John Doe,233541234567
+Jane Smith,233501234567</pre>
                                 </div>
                             </div>
                             
