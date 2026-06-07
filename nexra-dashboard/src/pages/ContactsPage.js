@@ -489,22 +489,59 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
                 `}
 
                 ${activeTab === 'upload' && html`
-                    <div className="max-w-md mx-auto fade-in">
-                        <${Card} className="p-6 text-center">
-                            <div className="w-16 h-16 rounded-full bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center mx-auto mb-4">
-                                <${Icon} name="upload-cloud" size=${28} className="text-primary-600" />
+                    <div className="max-w-xl mx-auto fade-in">
+                        <${Card} className="p-6 sm:p-8">
+                            <div className="text-center mb-8">
+                                <div className="w-16 h-16 rounded-full bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center mx-auto mb-4">
+                                    <${Icon} name="upload-cloud" size=${28} className="text-primary-600" />
+                                </div>
+                                <h3 className="font-black text-xl mb-2">Upload CSV</h3>
+                                <p className="text-sm text-gray-500">Bulk import contacts into this segment from a spreadsheet.</p>
                             </div>
-                            <h3 className="font-bold text-lg mb-2">Upload CSV</h3>
-                            <p className="text-sm text-gray-500 mb-6">File must contain headers: <code className="bg-gray-100 dark:bg-midnight-900 px-1 py-0.5 rounded">first_name, last_name, phone_number</code></p>
+                            
+                            <div className="bg-gray-50 dark:bg-midnight-900/50 p-4 sm:p-6 rounded-2xl mb-8 border border-gray-100 dark:border-midnight-800">
+                                <h4 className="font-bold text-sm mb-3 flex items-center gap-2 text-gray-900 dark:text-white">
+                                    <${Icon} name="help-circle" size=${16} className="text-primary-500" />
+                                    How to format your CSV file
+                                </h4>
+                                <ol className="text-sm text-gray-600 dark:text-midnight-300 space-y-3 pl-2">
+                                    <li className="flex gap-3">
+                                        <span className="font-bold text-gray-400">1.</span>
+                                        <span>Create a new spreadsheet in Excel or Google Sheets.</span>
+                                    </li>
+                                    <li className="flex gap-3">
+                                        <span className="font-bold text-gray-400">2.</span>
+                                        <span>Create exactly three columns with these exact headers in the first row:<br/>
+                                        <code className="inline-block mt-1 bg-white dark:bg-midnight-950 px-2 py-0.5 rounded border border-gray-200 dark:border-midnight-800 text-xs font-bold text-primary-600 dark:text-primary-400">first_name</code>
+                                        <code className="inline-block mt-1 bg-white dark:bg-midnight-950 px-2 py-0.5 rounded border border-gray-200 dark:border-midnight-800 text-xs font-bold text-primary-600 dark:text-primary-400 ml-1">last_name</code>
+                                        <code className="inline-block mt-1 bg-white dark:bg-midnight-950 px-2 py-0.5 rounded border border-gray-200 dark:border-midnight-800 text-xs font-bold text-primary-600 dark:text-primary-400 ml-1">phone_number</code></span>
+                                    </li>
+                                    <li className="flex gap-3">
+                                        <span className="font-bold text-gray-400">3.</span>
+                                        <span>Add your contacts row by row. Ensure phone numbers include the country code (e.g. 233).</span>
+                                    </li>
+                                    <li className="flex gap-3">
+                                        <span className="font-bold text-gray-400">4.</span>
+                                        <span>Save or Download the file as <strong>.csv</strong> (Comma Separated Values).</span>
+                                    </li>
+                                </ol>
+                                
+                                <div className="mt-4 p-3 bg-white dark:bg-midnight-950 rounded-xl border border-gray-200 dark:border-midnight-800 overflow-x-auto">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Example</p>
+                                    <pre className="text-xs text-gray-600 dark:text-midnight-300 font-mono leading-relaxed">first_name,last_name,phone_number
+John,Doe,233541234567
+Jane,Smith,233501234567</pre>
+                                </div>
+                            </div>
                             
                             <input
                                 type="file"
                                 accept=".csv"
                                 onChange=${(e) => setUploadFile(e.target.files[0])}
-                                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 mb-6 mx-auto cursor-pointer"
+                                className="block w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-6 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 dark:file:bg-primary-900/20 dark:file:text-primary-400 dark:hover:file:bg-primary-900/30 mb-6 cursor-pointer transition-colors"
                             />
                             
-                            <${Button} onClick=${handleUpload} disabled=${!uploadFile || isUploading} variant="primary" className="w-full rounded-2xl shadow-glow py-3">
+                            <${Button} onClick=${handleUpload} disabled=${!uploadFile || isUploading} variant="primary" className="w-full rounded-2xl shadow-glow py-3.5 text-sm font-bold">
                                 ${isUploading ? 'Uploading & Processing...' : 'Upload and Add to Segment'}
                             </${Button}>
                         </${Card}>
