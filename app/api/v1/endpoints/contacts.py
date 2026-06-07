@@ -114,9 +114,9 @@ async def upload_contacts(
 
     # Define header mappings
     header_map = {
-        'first_name': ['first_name', 'firstname', 'first name', 'given name', 'given_name', 'fname'],
+        'first_name': ['first_name', 'firstname', 'first name', 'given name', 'given_name', 'fname', 'name'],
         'last_name': ['last_name', 'lastname', 'last name', 'surname', 'lname'],
-        'phone_number': ['phone_number', 'phone', 'phonenumber', 'phone number', 'mobile', 'mobile number', 'msisdn']
+        'phone_number': ['phone_number', 'phone', 'phonenumber', 'phone number', 'mobile', 'mobile number', 'msisdn', 'number', 'contact']
     }
 
     def get_value(row, internal_key):
