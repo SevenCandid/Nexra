@@ -243,6 +243,90 @@ async def resolve_stuck_messages_endpoint(
         **result
     }
 
+@router.post("/admin/force-deliver/{message_id}")
+async def force_deliver_message(
+    message_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """
+    Force marks a stuck message as DELIVERED.
+    """
+    from datetime import datetime
+    stmt = select(SMSMessage).where(SMSMessage.id == message_id)
+    result = await db.execute(stmt)
+    msg = result.scalar_one_or_none()
+
+    if not msg:
+        raise HTTPException(status_code=404, detail="Message not found")
+
+    msg.status = MessageStatus.DELIVERED
+    msg.delivered_at = datetime.utcnow()
+
+    if msg.campaign_id:
+        from app.services.campaign_status import refresh_campaign_delivery_status
+        await refresh_campaign_delivery_status(db, msg.campaign_id)
+
+    # Broadcast
+    try:
+        from app.core.websocket import manager
+        await manager.broadcast_to_org(msg.organization_id, {
+            "type": "message_updated",
+            "data": {
+                "id": msg.id,
+                "status": msg.status,
+                "recipient": msg.recipient,
+            },
+        })
+    except Exception as e:
+        logger.warning(f"WS broadcast failed: {e}")
+
+    await db.commit()
+    return {"message": "Message forcefully marked as DELIVERED"}
+
+@router.post("/admin/force-deliver-campaign/{campaign_id}")
+async def force_deliver_campaign(
+    campaign_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """
+    Force marks all SUBMITTED messages in a campaign as DELIVERED.
+    """
+    from datetime import datetime
+    stmt = select(SMSMessage).where(
+        SMSMessage.campaign_id == campaign_id,
+        SMSMessage.status == MessageStatus.SUBMITTED
+    )
+    result = await db.execute(stmt)
+    msgs = result.scalars().all()
+
+    if not msgs:
+        return {"message": "No stuck SUBMITTED messages found in this campaign.", "resolved": 0}
+
+    for msg in msgs:
+        msg.status = MessageStatus.DELIVERED
+        msg.delivered_at = datetime.utcnow()
+        # Broadcast
+        try:
+            from app.core.websocket import manager
+            await manager.broadcast_to_org(msg.organization_id, {
+                "type": "message_updated",
+                "data": {
+                    "id": msg.id,
+                    "status": msg.status,
+                    "recipient": msg.recipient,
+                },
+            })
+        except Exception:
+            pass
+
+    from app.services.campaign_status import refresh_campaign_delivery_status
+    await refresh_campaign_delivery_status(db, campaign_id)
+
+    await db.commit()
+    return {"message": f"Forcefully marked {len(msgs)} messages as DELIVERED.", "resolved": len(msgs)}
+
 @router.get("/webhook/arkesel/debug")
 async def arkesel_webhook_debug(
     db: AsyncSession = Depends(get_db),
