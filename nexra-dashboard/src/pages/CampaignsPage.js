@@ -18,6 +18,14 @@ export const CampaignsPage = () => {
         fetchCampaigns();
     }, []);
 
+    // Auto-refresh while any campaign is actively delivering
+    useEffect(() => {
+        const hasActive = campaigns.some(c => c.status === 'delivering' || c.status === 'sending');
+        if (!hasActive) return;
+        const interval = setInterval(fetchCampaigns, 15000);
+        return () => clearInterval(interval);
+    }, [campaigns]);
+
     const fetchCampaigns = async () => {
         try {
             const response = await apiClient.get('/campaigns');

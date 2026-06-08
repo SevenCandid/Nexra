@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.api.v1 import api_router
 from app.workers.retry_worker import retry_worker
 from app.workers.campaign_worker import campaign_worker
+from app.workers.resolve_worker import auto_resolve_loop
 from app.services.gateway_manager import gateway_manager
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -74,6 +75,7 @@ async def lifespan(app: FastAPI):
     await gateway_manager.initialize_from_db()
     asyncio.create_task(retry_worker.start())
     asyncio.create_task(campaign_worker.start())
+    asyncio.create_task(auto_resolve_loop())
     yield
     # Shutdown: Stop workers
     await retry_worker.stop()

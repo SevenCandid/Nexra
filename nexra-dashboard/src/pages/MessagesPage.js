@@ -52,6 +52,14 @@ export const MessagesPage = () => {
         return () => window.removeEventListener('nexra:update', handleRealtimeUpdate);
     }, [expandedId]);
 
+    // Auto-refresh while any campaign is in a non-terminal state (delivering/sending)
+    useEffect(() => {
+        const hasActive = campaigns.some(c => c.status === 'delivering' || c.status === 'sending');
+        if (!hasActive) return;
+        const interval = setInterval(fetchCampaigns, 15000);
+        return () => clearInterval(interval);
+    }, [campaigns]);
+
     const fetchCampaigns = async () => {
         setLoading(true);
         try {
