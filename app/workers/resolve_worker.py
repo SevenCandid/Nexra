@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import httpx
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import select
 from app.db.database import AsyncSessionLocal
@@ -86,6 +86,15 @@ async def resolve_stuck_messages() -> dict:
                     )
 
                     new_status = STATUS_MAP.get(raw_status)
+                    
+                    # Carrier DLR Loss Fallback:
+                    # If Arkesel still reports SUBMITTED after 2 hours, we assume it was delivered.
+                    # Carriers frequently lose or drop DLRs for heavy multi-part messages.
+                    if new_status is None and raw_status in ("SUBMITTED", "QUEUED"):
+                        if msg.created_at and datetime.utcnow() - msg.created_at > timedelta(hours=2):
+                            logger.info(f"[RESOLVE] Auto-resolving stale SUBMITTED msg_id={msg.id} to DELIVERED (older than 2 hours).")
+                            new_status = MessageStatus.DELIVERED
+
                     if new_status is not None:
                         msg.status = new_status
                         if new_status == MessageStatus.DELIVERED:
