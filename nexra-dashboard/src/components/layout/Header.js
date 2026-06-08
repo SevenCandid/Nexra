@@ -20,7 +20,7 @@ export const Header = ({ user, balance, onLogout, title, subtitle, onQuickSend, 
     };
 
     return html`
-        <header className="fixed top-2 left-1/2 -translate-x-1/2 w-[94%] max-w-lg glass rounded-2xl lg:hidden z-30 shadow-xl transition-all">
+        <header className="fixed top-2 left-1/2 -translate-x-1/2 w-[94%] max-w-lg glass rounded-2xl lg:hidden z-50 shadow-xl transition-all">
             <div className="px-2 pt-1.5 space-y-1.5">
                 <${AnnouncementBanner} />
                 <div className="px-2 pb-2 flex items-center justify-between gap-4">
