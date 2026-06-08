@@ -408,11 +408,39 @@ export const CreateCampaignPage = () => {
                         />
                         ${(() => {
                             const len = formData.template.length;
-                            const over = len > 160;
+                            const over = len > 612;
+                            let parts = 1;
+                            if (len > 160) {
+                                parts = Math.ceil(len / 153);
+                            } else if (len === 0) {
+                                parts = 0;
+                            }
+                            
+                            const isMulti = parts > 1 && !over;
+                            let textColor = 'text-gray-500 dark:text-midnight-400';
+                            if (over) textColor = 'text-red-500 dark:text-red-400';
+                            else if (isMulti) textColor = 'text-amber-500 dark:text-amber-400';
+
                             return html`
-                                <p className=${`text-sm mt-1 font-medium transition-colors ${over ? 'text-red-500 dark:text-red-400' : 'text-gray-500 dark:text-midnight-400'}`}>
-                                    ${over ? '⚠ ' : ''}${len} / 160 characters${over ? ` — ${len - 160} over the limit` : ''}
-                                </p>
+                                <div className="mt-2 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <p className=${`text-sm font-medium transition-colors ${textColor}`}>
+                                            ${over ? '⚠ ' : ''}${len} / 612 characters
+                                            ${parts > 0 && !over ? html`<span className="ml-2 px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/5 text-xs">${parts} SMS Part${parts > 1 ? 's' : ''}</span>` : ''}
+                                            ${over ? html`<span className="ml-2 font-bold">— ${len - 612} over limit</span>` : ''}
+                                        </p>
+                                    </div>
+                                    
+                                    ${isMulti ? html`
+                                        <div className="p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 rounded-xl flex gap-3 text-sm">
+                                            <${Icon} name="info" size=${16} className="text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
+                                            <p className="text-amber-800 dark:text-amber-200 leading-relaxed">
+                                                <strong>Multi-part Message:</strong> Messages over 160 characters are split into parts of 153 characters each. 
+                                                You will be billed <strong>${parts}x credits per recipient</strong> based on your current plan's SMS rate.
+                                            </p>
+                                        </div>
+                                    ` : ''}
+                                </div>
                             `;
                         })()}
                         
@@ -420,7 +448,7 @@ export const CreateCampaignPage = () => {
                             <${Button} variant="secondary" size="md" onClick=${() => setStep(2)} className="flex-1 py-3">
                                 Back
                             </${Button}>
-                            <${Button} size="md" onClick=${() => setStep(4)} className="flex-1 py-3" disabled=${!formData.template || formData.template.length > 160}>
+                            <${Button} size="md" onClick=${() => setStep(4)} className="flex-1 py-3" disabled=${!formData.template || formData.template.length > 612}>
                                 Next
                             </${Button}>
                         </div>

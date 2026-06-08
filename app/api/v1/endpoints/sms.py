@@ -51,7 +51,7 @@ async def send_sms(
     if not organization or not wallet:
         raise HTTPException(status_code=404, detail="Organization wallet not found.")
 
-    cost = await billing_service.calculate_sms_cost(db, normalized_recipient, organization)
+    cost = await billing_service.calculate_sms_cost(db, normalized_recipient, sms_in.message, organization)
 
     if wallet.balance < cost:
         raise HTTPException(
@@ -138,10 +138,7 @@ async def quick_send_sms(
     if not organization or not wallet:
         raise HTTPException(status_code=404, detail="Organization wallet not found.")
 
-    cost = await billing_service.calculate_sms_cost(db, normalized_recipient, organization)
 
-    if wallet.balance < cost:
-        raise HTTPException(status_code=402, detail="Insufficient credits.")
 
     # Determine Provider
     provider_name = await gateway_manager.route_message(normalized_recipient)
@@ -166,6 +163,11 @@ async def quick_send_sms(
         content = content.replace("{last_name}", l_name)
         content = content.replace("{name}", display_name)
     content = content.replace("{phone_number}", normalized_recipient)
+
+    cost = await billing_service.calculate_sms_cost(db, normalized_recipient, content, organization)
+
+    if wallet.balance < cost:
+        raise HTTPException(status_code=402, detail="Insufficient credits.")
 
     # Log PENDING message
     db_obj = SMSMessage(

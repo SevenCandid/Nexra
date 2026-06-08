@@ -171,6 +171,7 @@ class BillingService:
     async def calculate_sms_cost(
         db: AsyncSession,
         recipient: str,
+        message_content: str,
         organization: Organization
     ) -> Decimal:
         """
@@ -178,13 +179,23 @@ class BillingService:
         
         Steps:
         1. Resolve the organization's active plan
-        2. Use that plan's SMS rate as the billable cost
+        2. Calculate parts (1-160 = 1 part, >160 = 153 chars per part)
+        3. Multiply rate by parts
         """
-        if not organization.plan:
+        base_rate = Decimal("0.08")
+        if organization.plan:
+            base_rate = Decimal(str(organization.plan.sms_rate))
+        else:
             logger.warning("Organization %s has no active plan; falling back to PAYG rate", organization.id)
-            return Decimal("0.08")
 
-        return Decimal(str(organization.plan.sms_rate))
+        import math
+        length = len(message_content) if message_content else 0
+        if length <= 160:
+            parts = 1
+        else:
+            parts = math.ceil(length / 153)
+            
+        return base_rate * parts
     
     @staticmethod
     async def deduct_credits_for_sms(

@@ -50,7 +50,7 @@ async def _async_process_sms(sms_id: int):
         # 3. Billing & Rate Limiting
         try:
             from app.services.billing_service import billing_service
-            cost = await billing_service.calculate_sms_cost(db, msg.recipient, org)
+            cost = await billing_service.calculate_sms_cost(db, msg.recipient, msg.content, org)
 
             # Check Rate Limit (TPS)
             tps_limit = org.plan.features.get("tps_limit", 5) if org.plan else 5
