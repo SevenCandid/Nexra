@@ -42,9 +42,6 @@ export const Header = ({ user, balance, onLogout, title, subtitle, onQuickSend, 
                         <${Dropdown}
                             trigger=${html`
                                 <button className="flex items-center gap-2 p-1 px-2 hover:bg-gray-100 dark:hover:bg-midnight-800 rounded-xl transition-all">
-                                    <div className="text-right mr-1">
-                                        <p className="text-xs font-bold text-gray-900 dark:text-white tracking-wide">${user?.organization_name || 'Personal'}</p>
-                                    </div>
                                     <div className="h-7 w-7 bg-primary-100 dark:bg-primary-900/50 rounded-full flex items-center justify-center text-primary-700 dark:text-primary-400 font-bold border border-primary-200 dark:border-primary-800/50 text-xs">
                                         ${user?.full_name?.charAt(0) || 'U'}
                                     </div>
@@ -75,6 +72,14 @@ export const Header = ({ user, balance, onLogout, title, subtitle, onQuickSend, 
                             <a href="#/sender-ids" className="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 dark:text-midnight-200 hover:bg-gray-50 dark:hover:bg-midnight-800 transition-colors">
                                 <${Icon} name="pen-tool" size=${16} className="text-gray-400 dark:text-midnight-500" />
                                 Sender IDs
+                            </a>
+                            <a href="#/api-docs" className="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 dark:text-midnight-200 hover:bg-gray-50 dark:hover:bg-midnight-800 transition-colors">
+                                <${Icon} name="code" size=${16} className="text-gray-400 dark:text-midnight-500" />
+                                API & Integration
+                            </a>
+                            <a href="#/settings" className="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 dark:text-midnight-200 hover:bg-gray-50 dark:hover:bg-midnight-800 transition-colors">
+                                <${Icon} name="settings" size=${16} className="text-gray-400 dark:text-midnight-500" />
+                                Settings
                             </a>
                             <a href="#/help" className="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 dark:text-midnight-200 hover:bg-gray-50 dark:hover:bg-midnight-800 transition-colors">
                                 <${Icon} name="help-circle" size=${16} className="text-gray-400 dark:text-midnight-500" />
@@ -137,9 +142,6 @@ export const Header = ({ user, balance, onLogout, title, subtitle, onQuickSend, 
                         <${Dropdown}
                             trigger=${html`
                                 <button className="flex items-center gap-2 p-1 px-2 hover:bg-gray-100 dark:hover:bg-midnight-800 rounded-xl transition-all">
-                                    <div className="text-right mr-1">
-                                        <p className="text-sm font-bold text-gray-900 dark:text-white tracking-wide">${user?.organization_name || 'Personal'}</p>
-                                    </div>
                                     <div className="h-8 w-8 bg-primary-100 dark:bg-primary-900/50 rounded-full flex items-center justify-center text-primary-700 dark:text-primary-400 font-bold border border-primary-200 dark:border-primary-800/50">
                                         ${user?.full_name?.charAt(0) || 'U'}
                                     </div>
@@ -169,6 +171,22 @@ export const Header = ({ user, balance, onLogout, title, subtitle, onQuickSend, 
                             >
                                 <${Icon} name="credit-card" size=${16} className="text-gray-400 dark:text-midnight-500" />
                                 Wallet & Credits
+                            </a>
+                            <a
+                                href="#/api-docs"
+                                className="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 dark:text-midnight-200 hover:bg-gray-50 dark:hover:bg-midnight-800 transition-colors"
+                                role="menuitem"
+                            >
+                                <${Icon} name="code" size=${16} className="text-gray-400 dark:text-midnight-500" />
+                                API & Integration
+                            </a>
+                            <a
+                                href="#/settings"
+                                className="flex items-center gap-2 px-4 py-3 text-sm text-gray-700 dark:text-midnight-200 hover:bg-gray-50 dark:hover:bg-midnight-800 transition-colors"
+                                role="menuitem"
+                            >
+                                <${Icon} name="settings" size=${16} className="text-gray-400 dark:text-midnight-500" />
+                                Settings
                             </a>
                             <a
                                 href="#/help"

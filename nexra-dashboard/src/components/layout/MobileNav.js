@@ -6,9 +6,7 @@ export const MobileNav = ({ currentPage, onNavigate, onReportIssue }) => {
         { id: 'dashboard', label: 'Pulse', icon: 'home' },
         { id: 'campaigns', label: 'Campaigns', icon: 'send' },
         { id: 'contacts', label: 'Contacts', icon: 'users' },
-        { id: 'messages', label: 'Messages', icon: 'message-square' },
-        { id: 'api-docs', label: 'API', icon: 'code' },
-        { id: 'settings', label: 'Settings', icon: 'settings' },
+        { id: 'messages', label: 'Messages', icon: 'message-square' }
     ];
 
     return html`
@@ -24,13 +22,6 @@ export const MobileNav = ({ currentPage, onNavigate, onReportIssue }) => {
                         <span className="text-[9px] mt-0.5 font-bold uppercase tracking-wider">${item.label}</span>
                     </button>
                 `)}
-                <button
-                    onClick=${onReportIssue}
-                    className="flex-1 min-w-[3.5rem] flex flex-col items-center py-1.5 rounded-xl transition-all text-gray-500 dark:text-gray-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 hover:text-rose-500 dark:hover:text-rose-400"
-                >
-                    <${Icon} name="bug" size=${18} />
-                    <span className="text-[9px] mt-0.5 font-bold uppercase tracking-wider">Report</span>
-                </button>
             </div>
         </nav>
     `;
