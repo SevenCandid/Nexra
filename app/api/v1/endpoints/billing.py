@@ -16,26 +16,49 @@ PLAN_ALIASES = {
     "enterprise": "pro"
 }
 
-@router.get("/balance", response_model=WalletResponse)
+@router.get("/balance")
 async def get_balance(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(deps.get_current_active_user)
 ):
     """
-    Get current organization wallet balance.
+    Get current organization wallet balance, including SMS count equivalents.
     """
     result = await db.execute(select(Wallet).where(Wallet.organization_id == current_user.organization_id))
     wallet = result.scalar_one_or_none()
-    
+
+    # Load org plan to get the sms_rate for subscription credit conversion
+    org_stmt = select(Organization).options(selectinload(Organization.plan)).where(Organization.id == current_user.organization_id)
+    org_res = await db.execute(org_stmt)
+    org = org_res.scalar_one_or_none()
+
+    plan_rate = Decimal(str(org.plan.sms_rate)) if org and org.plan else Decimal("0.08")
+    payg_rate = Decimal("0.08")  # PAYG rate is always 0.08 GHS/SMS
+
     if not wallet:
-        return WalletResponse(
-            balance=0.00,
-            currency="GHS",
-            subscription_credits=0.00,
-            payg_credits=0.00
-        )
-        
-    return wallet
+        return {
+            "balance": 0.00,
+            "currency": "GHS",
+            "subscription_credits": 0.00,
+            "payg_credits": 0.00,
+            "subscription_sms": 0,
+            "payg_sms": 0,
+        }
+
+    sub_credits = Decimal(str(wallet.subscription_credits or 0))
+    payg_credits = Decimal(str(wallet.payg_credits or 0))
+
+    subscription_sms = int(sub_credits / plan_rate) if plan_rate > 0 else 0
+    payg_sms = int(payg_credits / payg_rate) if payg_rate > 0 else 0
+
+    return {
+        "balance": float(wallet.balance or 0),
+        "currency": wallet.currency or "GHS",
+        "subscription_credits": float(sub_credits),
+        "payg_credits": float(payg_credits),
+        "subscription_sms": subscription_sms,
+        "payg_sms": payg_sms,
+    }
 
 @router.get("/pricing")
 async def get_pricing(
