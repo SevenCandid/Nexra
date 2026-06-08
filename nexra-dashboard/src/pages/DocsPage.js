@@ -119,7 +119,7 @@ const sections = [
         content: [
             {
                 heading: 'Creating a Campaign',
-                body: `Go to Campaigns → New Campaign. Fill in:\n• Campaign Name — internal reference only\n• Sender ID — must be pre-approved\n• Message — your SMS content (160 chars = 1 SMS, 320 = 2 SMS, etc.)\n• Recipients — select one or more contact segments\n• Schedule — optional date/time to auto-send`
+                body: `Go to Campaigns → New Campaign. Fill in:\n• Campaign Name — internal reference only\n• Sender ID — must be pre-approved\n• Message — your SMS content (max 612 chars; 160 chars = 1 part, >160 splits every 153 chars)\n• Recipients — select one or more contact segments\n• Schedule — optional date/time to auto-send`
             },
             {
                 heading: 'Campaign Statuses',
@@ -150,7 +150,7 @@ const sections = [
         content: [
             {
                 heading: 'How Credits Work',
-                body: `NEXRA uses a credit-based billing system. 1 credit = 1 standard SMS (up to 160 characters) to a Ghana network. Multi-part messages (>160 chars) consume additional credits proportionally.\n\nCredits are deducted from your organization's wallet the moment a message is dispatched. If delivery fails, the credit is automatically refunded to your wallet.`
+                body: `NEXRA uses a credit-based billing system. 1 credit = 1 standard SMS (up to 160 characters) to a Ghana network. Longer messages are split into multiple parts (160 characters for the first part, 153 for subsequent parts) and consume additional credits proportionally, up to a maximum of 612 characters (4 credits).\n\nCredits are deducted from your organization's wallet the moment a message is dispatched. If delivery fails, the credit is automatically refunded to your wallet.`
             },
             {
                 heading: 'Credit Types',
@@ -186,7 +186,7 @@ const sections = [
             },
             {
                 heading: 'Character Count',
-                body: `NEXRA shows the character count for every template. Standard SMS supports 160 characters per message part. Going over results in a multi-part SMS which costs additional credits.`
+                body: `NEXRA shows the character count for every template. Standard SMS supports 160 characters for the first part, and 153 characters for subsequent parts. The maximum allowed length is 612 characters (4 parts). Going over 160 results in a multi-part SMS which costs additional credits.`
             }
         ]
     },

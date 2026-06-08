@@ -75,7 +75,7 @@ const faqData = [
         items: [
             {
                 q: 'How does the credit system work?',
-                a: '1 credit = 1 standard SMS (up to 160 characters). Multi-part messages (over 160 chars) use proportionally more credits. Credits are deducted at the moment of dispatch and refunded if delivery fails.'
+                a: '1 credit = 1 standard SMS (up to 160 characters). Longer messages are split into multiple parts (160 characters for the first part, and 153 characters for each subsequent part). The absolute maximum character limit is 612 characters (which costs 4 credits). Credits are deducted at the moment of dispatch and refunded if delivery fails.'
             },
             {
                 q: 'Do my credits expire?',
