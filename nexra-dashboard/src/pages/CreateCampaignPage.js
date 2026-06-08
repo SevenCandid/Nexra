@@ -406,15 +406,21 @@ export const CreateCampaignPage = () => {
                             placeholder="Hi {name}, welcome to NEXRA!"
                             required
                         />
-                        <p className="text-sm text-gray-500 mt-1">
-                            ${formData.template.length} / 160 characters
-                        </p>
+                        ${(() => {
+                            const len = formData.template.length;
+                            const over = len > 160;
+                            return html`
+                                <p className=${`text-sm mt-1 font-medium transition-colors ${over ? 'text-red-500 dark:text-red-400' : 'text-gray-500 dark:text-midnight-400'}`}>
+                                    ${over ? '⚠ ' : ''}${len} / 160 characters${over ? ` — ${len - 160} over the limit` : ''}
+                                </p>
+                            `;
+                        })()}
                         
                         <div className="flex gap-3 pt-4">
                             <${Button} variant="secondary" size="md" onClick=${() => setStep(2)} className="flex-1 py-3">
                                 Back
                             </${Button}>
-                            <${Button} size="md" onClick=${() => setStep(4)} className="flex-1 py-3" disabled=${!formData.template}>
+                            <${Button} size="md" onClick=${() => setStep(4)} className="flex-1 py-3" disabled=${!formData.template || formData.template.length > 160}>
                                 Next
                             </${Button}>
                         </div>
