@@ -19,6 +19,11 @@ async def refresh_campaign_delivery_status(db: AsyncSession, campaign_id: int) -
       - if at least one message was delivered, mark COMPLETED
       - otherwise mark FAILED
     """
+    # CRITICAL: Flush pending session changes to the DB first.
+    # Because autoflush is False, if we don't flush here, the counts_stmt 
+    # below will group by the old, unmodified data in the DB.
+    await db.flush()
+
     campaign_stmt = select(Campaign).where(Campaign.id == campaign_id)
     campaign_result = await db.execute(campaign_stmt)
     campaign = campaign_result.scalar_one_or_none()

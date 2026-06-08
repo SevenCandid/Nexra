@@ -301,9 +301,6 @@ async def force_deliver_campaign(
     result = await db.execute(stmt)
     msgs = result.scalars().all()
 
-    if not msgs:
-        return {"message": "No stuck SUBMITTED messages found in this campaign.", "resolved": 0}
-
     for msg in msgs:
         msg.status = MessageStatus.DELIVERED
         msg.delivered_at = datetime.utcnow()
