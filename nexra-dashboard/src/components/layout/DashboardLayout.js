@@ -149,6 +149,12 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
                     </div>
 
                     ${children}
+
+                    <footer className="mt-8 pt-6 border-t border-gray-200 dark:border-midnight-800 flex justify-center pb-4">
+                        <p className="text-sm text-gray-500 dark:text-midnight-400">
+                            Powered by <a href="https://veroseven.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary-600 dark:text-primary-500 hover:text-primary-700 dark:hover:text-primary-400 transition-colors">VeroSeven</a>
+                        </p>
+                    </footer>
                 </main>
 
                 <${MobileNav} currentPage=${currentPage} onNavigate=${onNavigate} onReportIssue=${() => setIsBugReportOpen(true)} />
