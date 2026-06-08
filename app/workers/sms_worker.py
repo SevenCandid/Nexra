@@ -55,25 +55,13 @@ async def _async_process_sms(sms_id: int):
             # Check Rate Limit (TPS)
             tps_limit = org.plan.features.get("tps_limit", 5) if org.plan else 5
             if not await RateLimiter.is_allowed(f"org:{org.id}", limit=tps_limit):
-                # Throttled messages should retry later without charging credits yet.
-                msg.status = MessageStatus.FAILED
-                msg.error_message = "Rate limit exceeded for organization"
+                # Throttled — reset to PENDING so the retry_worker picks it up.
+                # Do NOT mark as FAILED: this is a transient queue condition, not a delivery failure.
+                # Do NOT fire message.failed webhook: it hasn't been attempted yet.
+                msg.status = MessageStatus.PENDING
                 msg.next_retry_at = datetime.utcnow() + timedelta(minutes=1)
                 await db.commit()
-                logger.info(f"Rate limited msg_id={msg.id}; scheduled retry at {msg.next_retry_at}")
-
-                from app.core.websocket import manager
-                from app.services.webhook_service import webhook_service
-
-                await manager.broadcast_to_org(msg.organization_id, {
-                    "type": "message_updated",
-                    "data": {
-                        "id": msg.id,
-                        "status": msg.status,
-                        "recipient": msg.recipient
-                    }
-                })
-                asyncio.create_task(webhook_service.dispatch_message_event(msg.id, "message.failed"))
+                logger.info(f"[RATE-LIMIT] msg_id={msg.id} re-queued as PENDING, retry at {msg.next_retry_at}")
                 return
 
             success, error = await billing_service.deduct_credits_for_sms(

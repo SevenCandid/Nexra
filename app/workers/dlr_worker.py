@@ -57,9 +57,9 @@ async def _async_process_dlr(dlr_data: dict):
                 "REJECTED": MessageStatus.NOT_DELIVERED,
             }
             
-            new_status = status_map.get(stat, MessageStatus.SUBMITTED)
+            new_status = status_map.get(stat)
             
-            # 2. Create the raw audit log
+            # 2. Create the raw audit log (always, regardless of whether we recognize the status)
             log_entry = DeliveryReportLog(
                 raw_content=dlr_data.get("raw"),
                 provider_msg_id=provider_msg_id,
@@ -70,22 +70,30 @@ async def _async_process_dlr(dlr_data: dict):
                 sms_message_id=msg.id if msg else None
             )
             db.add(log_entry)
-            
 
-            # 3. Update SMSMessage if found
+            # 3. Update SMSMessage if found and status is recognized
             if msg:
-                msg.status = new_status
-                if new_status == MessageStatus.DELIVERED:
-                    msg.delivered_at = datetime.utcnow()
-                elif new_status in [MessageStatus.FAILED, MessageStatus.NOT_DELIVERED]:
-                    if dlr_data.get("err"):
-                        msg.error_message = str(dlr_data.get("err"))
-                logger.info(f"Updated msg_id={msg.id} to status={new_status} via DLR")
+                if new_status is None:
+                    # Unknown status string from the provider — log and skip the update.
+                    # Do NOT default to SUBMITTED: that would silently keep the message
+                    # alive in the poller queue for an unrecognized reason.
+                    logger.warning(
+                        f"[DLR] Unrecognized status '{stat}' for provider_msg_id={provider_msg_id} "
+                        f"(msg_id={msg.id}). Audit log written but msg status NOT changed."
+                    )
+                else:
+                    msg.status = new_status
+                    if new_status == MessageStatus.DELIVERED:
+                        msg.delivered_at = datetime.utcnow()
+                    elif new_status in [MessageStatus.FAILED, MessageStatus.NOT_DELIVERED]:
+                        if dlr_data.get("err"):
+                            msg.error_message = str(dlr_data.get("err"))
+                    logger.info(f"Updated msg_id={msg.id} to status={new_status} via DLR")
 
-                # Check if refund is needed for failed deliveries
-                if new_status in [MessageStatus.FAILED, MessageStatus.NOT_DELIVERED]:
-                    from app.services.billing_service import billing_service
-                    await billing_service.refund_failed_sms(db, msg.id)
+                    # Check if refund is needed for failed deliveries
+                    if new_status in [MessageStatus.FAILED, MessageStatus.NOT_DELIVERED]:
+                        from app.services.billing_service import billing_service
+                        await billing_service.refund_failed_sms(db, msg.id)
 
                 if msg.campaign_id:
                     await refresh_campaign_delivery_status(db, msg.campaign_id)

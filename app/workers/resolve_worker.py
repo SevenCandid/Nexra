@@ -41,9 +41,14 @@ async def resolve_stuck_messages() -> dict:
         return {"message": "Arkesel API key not configured.", "resolved": 0}
 
     async with AsyncSessionLocal() as db:
+        # Only poll messages sent within the last 2 hours.
+        # Older messages have either been auto-resolved by the 15-min fallback
+        # or are genuinely stuck and should not keep hitting the Arkesel API.
+        cutoff = datetime.utcnow() - timedelta(hours=2)
         stmt = select(SMSMessage).where(
             SMSMessage.status == MessageStatus.SUBMITTED,
             SMSMessage.provider_msg_id.isnot(None),
+            SMSMessage.sent_at >= cutoff,
         ).limit(100)
         result = await db.execute(stmt)
         stuck = result.scalars().all()
@@ -88,11 +93,11 @@ async def resolve_stuck_messages() -> dict:
                     new_status = STATUS_MAP.get(raw_status)
                     
                     # Carrier DLR Loss Fallback:
-                    # If Arkesel still reports SUBMITTED after 2 hours, we assume it was delivered.
+                    # If Arkesel still reports SUBMITTED after 15 minutes, we assume it was delivered.
                     # Carriers frequently lose or drop DLRs for heavy multi-part messages.
                     if new_status is None and raw_status in ("SUBMITTED", "QUEUED"):
-                        if msg.created_at and datetime.utcnow() - msg.created_at > timedelta(hours=2):
-                            logger.info(f"[RESOLVE] Auto-resolving stale SUBMITTED msg_id={msg.id} to DELIVERED (older than 2 hours).")
+                        if msg.created_at and datetime.utcnow() - msg.created_at > timedelta(minutes=15):
+                            logger.info(f"[RESOLVE] Auto-resolving stale SUBMITTED msg_id={msg.id} to DELIVERED (older than 15 minutes).")
                             new_status = MessageStatus.DELIVERED
 
                     if new_status is not None:
