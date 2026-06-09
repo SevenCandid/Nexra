@@ -85,3 +85,46 @@ async def send_sender_id_status_email(
     subject = f"NEXRA: Sender ID '{sender_id}' {status_label}"
 
     await send_email(to_email, subject, body_html, body_text)
+
+async def send_low_balance_email(
+    to_email: str,
+    organization_name: str,
+    current_balance: float,
+    threshold: float,
+    top_up_url: str
+) -> None:
+    """Fire-and-forget email alerting a user that their wallet balance is low."""
+    
+    body_html = f"""
+    <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 8px;">
+        <h2 style="color: #ea580c; margin-top: 0;">Low Balance Alert ⚠️</h2>
+        <p>Hello,</p>
+        <p>This is an automated notice that the SMS credit balance for <strong>{organization_name}</strong> has dropped below the {threshold} credit threshold.</p>
+        
+        <div style="background-color: #fff7ed; padding: 16px; border-radius: 6px; margin: 20px 0;">
+            <p style="margin: 0; color: #9a3412; font-size: 1.1em;">
+                Current Balance: <strong>{current_balance:.2f} credits</strong>
+            </p>
+        </div>
+        
+        <p>To ensure your SMS campaigns continue to send without interruption, please top up your wallet.</p>
+        
+        <p style="margin-top: 30px;">
+            <a href="{top_up_url}" style="display:inline-block;padding:12px 24px;background:#ea580c;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">
+                Top Up Now
+            </a>
+        </p>
+        
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0 20px 0;">
+        <p style="color: #64748b; font-size: 12px; margin: 0;">NEXRA Messaging Platform • Automated Billing System</p>
+    </div>
+    """
+    
+    body_text = (
+        f"Low Balance Alert: The SMS credit balance for {organization_name} is now {current_balance:.2f} credits.\n\n"
+        f"To avoid campaign interruptions, please top up your wallet at: {top_up_url}\n"
+    )
+    
+    subject = f"⚠️ Low Balance Alert: {organization_name}"
+    
+    await send_email(to_email, subject, body_html, body_text)

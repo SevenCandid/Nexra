@@ -306,6 +306,10 @@ class Wallet(Base):
     payg_credits: Mapped[float] = mapped_column(Numeric(12, 4), default=0.0)
     last_subscription_renewal: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
+    # Low-balance notification throttle: stores when the last low-balance alert was sent.
+    # We only re-notify once per 24 hours to avoid spamming users.
+    low_balance_notified_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
     organization = relationship("Organization", back_populates="wallet")
 
 class BillingLedger(Base):

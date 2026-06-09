@@ -1,6 +1,6 @@
 import logging
 from decimal import Decimal
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, Tuple, List, Dict
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -8,8 +8,9 @@ from sqlalchemy import update
 from sqlalchemy.orm import selectinload
 from app.db.models import (
     Organization, Wallet, BillingLedger, SMSMessage, NetworkPricing,
-    SubscriptionPlan, LedgerType, MessageStatus
+    SubscriptionPlan, LedgerType, MessageStatus, User, UserRole, Notification
 )
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -272,6 +273,9 @@ class BillingService:
                 sms.credit_source = credit_source
                 sms.ledger_entry_id = ledger.id
             
+            # Check for low balance
+            await BillingService._check_and_notify_low_balance(db, wallet)
+            
             await db.commit()
             logger.info(f"Deducted {cost} credits from org {organization_id} for SMS {sms_message_id}")
             return True, ""
@@ -280,6 +284,65 @@ class BillingService:
             await db.rollback()
             logger.error(f"Error deducting credits: {str(e)}")
             return False, f"Error processing payment: {str(e)}"
+
+    @staticmethod
+    async def _check_and_notify_low_balance(db: AsyncSession, wallet: Wallet, threshold: float = 20.0) -> None:
+        """
+        Check if balance is below threshold and send notifications if we haven't
+        already sent one in the last 24 hours.
+        """
+        if float(wallet.balance) > threshold:
+            return
+            
+        if wallet.low_balance_notified_at and datetime.utcnow() - wallet.low_balance_notified_at < timedelta(hours=24):
+            return
+            
+        # Get organization
+        org = await db.get(Organization, wallet.organization_id)
+        if not org:
+            return
+            
+        # Get org admins
+        stmt = select(User).where(
+            User.organization_id == wallet.organization_id, 
+            User.role == UserRole.ORG_ADMIN,
+            User.is_active == True
+        )
+        result = await db.execute(stmt)
+        admins = result.scalars().all()
+        
+        if not admins:
+            return
+            
+        import asyncio
+        from app.services.email_service import send_low_balance_email
+        top_up_url = f"{settings.FRONTEND_URL}/billing"
+        
+        for admin in admins:
+            # Dispatch Email
+            asyncio.create_task(
+                send_low_balance_email(
+                    to_email=admin.email,
+                    organization_name=org.name,
+                    current_balance=float(wallet.balance),
+                    threshold=threshold,
+                    top_up_url=top_up_url
+                )
+            )
+            
+            # Create In-App Notification
+            notification = Notification(
+                title="Low Balance Alert",
+                message=f"Your SMS credit balance is low ({wallet.balance:.2f} credits remaining). Please top up to avoid campaign interruptions.",
+                type="warning",
+                link="/billing",
+                user_id=admin.id,
+                organization_id=org.id
+            )
+            db.add(notification)
+            
+        wallet.low_balance_notified_at = datetime.utcnow()
+        logger.info(f"Low balance notifications dispatched for org {org.id}")
     
     @staticmethod
     async def refund_failed_sms(
