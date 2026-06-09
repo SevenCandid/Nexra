@@ -30,23 +30,72 @@ async def get_analytics_stats(
     # Strip timezone info — DB stores naive UTC datetimes; incoming ISO strings may be tz-aware
     start_date = start_date.replace(tzinfo=None)
     end_date = end_date.replace(tzinfo=None)
+    
+    delta = end_date - start_date
+    is_24h_view = delta.total_seconds() <= 90000  # 25 hours
 
-    # 1. Activity (Messages per day)
-    activity_query = (
-        select(
-            func.date(SMSMessage.created_at).label("day"),  # type: ignore
-            func.count(SMSMessage.id).label("count")  # type: ignore
+    # 1. Activity (Messages per time bucket)
+    if is_24h_view:
+        # Group by hour for 24h view
+        activity_query = (
+            select(
+                func.date_trunc('hour', SMSMessage.created_at).label("time_bucket"),
+                func.count(SMSMessage.id).label("count")
+            )
+            .where(
+                SMSMessage.organization_id == current_user.organization_id,
+                SMSMessage.created_at >= start_date,
+                SMSMessage.created_at <= end_date
+            )
+            .group_by(func.date_trunc('hour', SMSMessage.created_at))
+            .order_by(func.date_trunc('hour', SMSMessage.created_at))
         )
-        .where(
-            SMSMessage.organization_id == current_user.organization_id,
-            SMSMessage.created_at >= start_date,
-            SMSMessage.created_at <= end_date
+        activity_result = await db.execute(activity_query)
+        db_counts = {row.time_bucket.isoformat(): row.count for row in activity_result}
+        
+        # Pad missing hours
+        activity_data = []
+        current_hour = start_date.replace(minute=0, second=0, microsecond=0)
+        end_hour = end_date.replace(minute=0, second=0, microsecond=0)
+        while current_hour <= end_hour:
+            iso_key = current_hour.isoformat()
+            label = current_hour.strftime("%H:00")
+            activity_data.append({
+                "day": label,
+                "count": db_counts.get(iso_key, 0)
+            })
+            current_hour += timedelta(hours=1)
+    else:
+        # Group by day for >24h view
+        activity_query = (
+            select(
+                func.date(SMSMessage.created_at).label("time_bucket"),
+                func.count(SMSMessage.id).label("count")
+            )
+            .where(
+                SMSMessage.organization_id == current_user.organization_id,
+                SMSMessage.created_at >= start_date,
+                SMSMessage.created_at <= end_date
+            )
+            .group_by(func.date(SMSMessage.created_at))
+            .order_by(func.date(SMSMessage.created_at))
         )
-        .group_by(func.date(SMSMessage.created_at))  # type: ignore
-        .order_by(func.date(SMSMessage.created_at))  # type: ignore
-    )
-    activity_result = await db.execute(activity_query)
-    activity_data = [{"day": row.day.isoformat(), "count": row.count} for row in activity_result]
+        activity_result = await db.execute(activity_query)
+        db_counts = {row.time_bucket.isoformat(): row.count for row in activity_result}
+        
+        # Pad missing days
+        activity_data = []
+        current_day = start_date.date()
+        end_day = end_date.date()
+        while current_day <= end_day:
+            iso_key = current_day.isoformat()
+            # For UI display, we'll format it as a short date like "Jun 08" or just keep iso
+            label = current_day.strftime("%b %d")
+            activity_data.append({
+                "day": label,
+                "count": db_counts.get(iso_key, 0)
+            })
+            current_day += timedelta(days=1)
 
     # 2. Success Rate (Delivered vs Failed) within the range
     success_query = (
