@@ -81,7 +81,7 @@ export const RecipientsDrawer = ({ campaign, onClose }) => {
     const statusInfo = (status) => STATUS_BADGE[status] || { variant: 'default', label: status || 'Unknown' };
 
     return html`
-        <>
+        <div>
             <!-- Backdrop -->
             <div
                 onClick=${onClose}
@@ -201,6 +201,6 @@ export const RecipientsDrawer = ({ campaign, onClose }) => {
                     </div>
                 `}
             </div>
-        </>
+        </div>
     `;
 };
