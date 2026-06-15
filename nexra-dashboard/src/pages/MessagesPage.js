@@ -6,6 +6,7 @@ import { Card } from '../components/ui/Card.js';
 import { Icon } from '../components/ui/Icon.js';
 import { Badge } from '../components/ui/Badge.js';
 import { ConfirmModal } from '../components/ui/ConfirmModal.js';
+import { RecipientsDrawer } from '../components/RecipientsDrawer.js';
 
 export const MessagesPage = () => {
     const { showToast } = useToast();
@@ -18,6 +19,7 @@ export const MessagesPage = () => {
     const [expandedId, setExpandedId] = useState(null);
     const [campaignStats, setCampaignStats] = useState({});
     const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null });
+    const [recipientsCampaign, setRecipientsCampaign] = useState(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
     
     const PAGE_SIZE = 10;
@@ -297,6 +299,15 @@ export const MessagesPage = () => {
                                                             <${Button} 
                                                                 variant="ghost"
                                                                 size="sm"
+                                                                onClick=${() => setRecipientsCampaign(campaign)}
+                                                                className="h-8 w-8 !p-0 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg"
+                                                                title="View Recipients"
+                                                            >
+                                                                <${Icon} name="users" size=${16} />
+                                                            </${Button}>
+                                                            <${Button} 
+                                                                variant="ghost"
+                                                                size="sm"
                                                                 onClick=${() => window.location.hash = `#/campaigns/create?edit=${campaign.id}`} 
                                                                 className="h-8 w-8 !p-0 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg"
                                                                 title="View Details"
@@ -422,6 +433,11 @@ export const MessagesPage = () => {
                 message="This will permanently remove this campaign from your history. This action cannot be undone."
                 confirmText="Delete History"
                 variant="danger"
+            />
+
+            <${RecipientsDrawer}
+                campaign=${recipientsCampaign}
+                onClose=${() => setRecipientsCampaign(null)}
             />
         </div>
     `;

@@ -371,3 +371,73 @@ async def get_campaign_stats(
             + await get_count(MessageStatus.NOT_DELIVERED)
         )
     )
+
+@router.get("/{campaign_id}/recipients")
+async def get_campaign_recipients(
+    campaign_id: int,
+    skip: int = 0,
+    limit: int = 50,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """
+    Return a paginated list of all SMS recipients for a campaign,
+    including their phone number, delivery status, and name (if available).
+    """
+    # Verify campaign belongs to org
+    c_stmt = select(Campaign).where(
+        Campaign.id == campaign_id,
+        Campaign.organization_id == current_user.organization_id
+    )
+    c_res = await db.execute(c_stmt)
+    campaign = c_res.scalar_one_or_none()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    # Total count
+    count_stmt = select(func.count(SMSMessage.id)).where(
+        SMSMessage.campaign_id == campaign_id,
+        SMSMessage.organization_id == current_user.organization_id
+    )
+    count_res = await db.execute(count_stmt)
+    total = count_res.scalar() or 0
+
+    # Fetch messages (recipient, status)
+    msg_stmt = (
+        select(SMSMessage)
+        .where(
+            SMSMessage.campaign_id == campaign_id,
+            SMSMessage.organization_id == current_user.organization_id,
+        )
+        .order_by(SMSMessage.id.asc())
+        .offset(skip)
+        .limit(limit)
+    )
+    msg_res = await db.execute(msg_stmt)
+    messages = msg_res.scalars().all()
+
+    # Build a phone -> contact name map for this campaign's contacts
+    contact_ids = campaign.contact_ids or []
+    name_map = {}
+    if contact_ids:
+        contacts_stmt = select(Contact).where(
+            Contact.id.in_(contact_ids),
+            Contact.organization_id == current_user.organization_id
+        )
+        contacts_res = await db.execute(contacts_stmt)
+        for c in contacts_res.scalars().all():
+            full = f"{c.first_name or ''} {c.last_name or ''}".strip()
+            name_map[c.phone_number] = full or None
+
+    items = [
+        {
+            "phone": msg.recipient,
+            "name": name_map.get(msg.recipient),
+            "status": msg.status,
+            "sent_at": msg.created_at.isoformat() if msg.created_at else None,
+        }
+        for msg in messages
+    ]
+
+    return {"items": items, "total": total}
+
