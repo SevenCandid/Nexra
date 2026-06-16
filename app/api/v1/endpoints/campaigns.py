@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import logging
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, func
 from app.db.models import User, Contact, Campaign, SMSMessage, MessageStatus, CampaignStatus, ContactGroup, contact_group_association
@@ -382,9 +383,8 @@ async def get_campaign_recipients(
 ):
     """
     Return a paginated list of all SMS recipients for a campaign,
-    including their phone number, delivery status, and name (if available).
+    including message_id, phone number, name, delivery status, and error info.
     """
-    # Verify campaign belongs to org
     c_stmt = select(Campaign).where(
         Campaign.id == campaign_id,
         Campaign.organization_id == current_user.organization_id
@@ -394,7 +394,6 @@ async def get_campaign_recipients(
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
 
-    # Total count
     count_stmt = select(func.count(SMSMessage.id)).where(
         SMSMessage.campaign_id == campaign_id,
         SMSMessage.organization_id == current_user.organization_id
@@ -402,7 +401,6 @@ async def get_campaign_recipients(
     count_res = await db.execute(count_stmt)
     total = count_res.scalar() or 0
 
-    # Fetch messages (recipient, status)
     msg_stmt = (
         select(SMSMessage)
         .where(
@@ -416,7 +414,7 @@ async def get_campaign_recipients(
     msg_res = await db.execute(msg_stmt)
     messages = msg_res.scalars().all()
 
-    # Build a phone -> contact name map for this campaign's contacts
+    # Build phone -> contact name map
     contact_ids = campaign.contact_ids or []
     name_map = {}
     if contact_ids:
@@ -431,9 +429,12 @@ async def get_campaign_recipients(
 
     items = [
         {
+            "id": msg.id,
             "phone": msg.recipient,
             "name": name_map.get(msg.recipient),
             "status": msg.status,
+            "error_message": msg.error_message,
+            "retry_count": msg.retry_count,
             "sent_at": msg.created_at.isoformat() if msg.created_at else None,
         }
         for msg in messages
@@ -441,3 +442,70 @@ async def get_campaign_recipients(
 
     return {"items": items, "total": total}
 
+
+@router.post("/{campaign_id}/messages/{message_id}/retry")
+async def retry_single_message(
+    campaign_id: int,
+    message_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """Retry a single failed message by its ID."""
+    stmt = select(SMSMessage).where(
+        SMSMessage.id == message_id,
+        SMSMessage.campaign_id == campaign_id,
+        SMSMessage.organization_id == current_user.organization_id
+    )
+    res = await db.execute(stmt)
+    msg = res.scalar_one_or_none()
+    if not msg:
+        raise HTTPException(status_code=404, detail="Message not found")
+    if msg.status not in (MessageStatus.FAILED.value, MessageStatus.NOT_DELIVERED.value):
+        raise HTTPException(status_code=400, detail=f"Message is not in a failed state (current: {msg.status})")
+
+    msg.status = MessageStatus.PENDING
+    msg.retry_count = (msg.retry_count or 0) + 1
+    msg.error_message = None
+    await db.commit()
+    await enqueue_sms(msg.id)
+    return {"message": "Message re-enqueued for delivery."}
+
+
+class RetrySelectedRequest(BaseModel):
+    message_ids: List[int]
+
+@router.post("/{campaign_id}/messages/retry-selected")
+async def retry_selected_messages(
+    campaign_id: int,
+    body: RetrySelectedRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """Retry a specific selection of failed message IDs from a campaign."""
+    if not body.message_ids:
+        raise HTTPException(status_code=400, detail="No message IDs provided.")
+
+    stmt = select(SMSMessage).where(
+        SMSMessage.id.in_(body.message_ids),
+        SMSMessage.campaign_id == campaign_id,
+        SMSMessage.organization_id == current_user.organization_id,
+        SMSMessage.status.in_([MessageStatus.FAILED.value, MessageStatus.NOT_DELIVERED.value])
+    )
+    res = await db.execute(stmt)
+    messages = res.scalars().all()
+
+    if not messages:
+        return {"message": "No failed messages found for the given IDs."}
+
+    count = 0
+    for msg in messages:
+        msg.status = MessageStatus.PENDING
+        msg.retry_count = (msg.retry_count or 0) + 1
+        msg.error_message = None
+        count += 1
+
+    await db.commit()
+    for msg in messages:
+        await enqueue_sms(msg.id)
+
+    return {"message": f"Successfully re-enqueued {count} messages for retry."}
