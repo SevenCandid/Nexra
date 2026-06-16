@@ -133,8 +133,8 @@ const AnnouncementBanner = () => {
                 <div className="absolute -right-8 -top-8 h-20 w-20 rounded-full bg-current/10 blur-3xl animate-pulse hidden sm:block"></div>
                 <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 dark:from-white/0 dark:via-white/5 dark:to-white/0 animate-pulse"></div>
 
-                <div className="relative px-4 py-3 sm:px-6 sm:py-3 flex flex-col gap-2 max-w-7xl mx-auto">
-                    <div className="flex items-start gap-3 min-w-0">
+                <div className="relative px-3 py-2 sm:px-4 sm:py-2.5 flex flex-col gap-1.5 max-w-7xl mx-auto">
+                    <div className="flex items-start gap-2.5 min-w-0">
                         <div className="relative shrink-0 self-start">
                             <div className="absolute -inset-1 rounded-xl bg-current/10 blur-md animate-pulse"></div>
                             <div className=${`relative w-8 h-8 rounded-lg flex items-center justify-center ${typeTheme.iconBg} shadow-sm`}>
@@ -147,16 +147,16 @@ const AnnouncementBanner = () => {
                         </div>
 
                         <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
-                                <span className="text-[9px] font-black uppercase tracking-[0.28em] opacity-70 whitespace-nowrap">${typeLabel}</span>
-                                <span className=${`px-1.5 py-0.5 rounded-full text-[8px] sm:text-[9px] font-black uppercase tracking-widest ${priorityMeta.className}`}>
+                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-0.5">
+                                <span className="text-[8px] font-black uppercase tracking-[0.28em] opacity-70 whitespace-nowrap">${typeLabel}</span>
+                                <span className=${`px-1.5 py-0.5 rounded-full text-[7px] sm:text-[8px] font-black uppercase tracking-widest ${priorityMeta.className}`}>
                                     ${priorityMeta.label}
                                 </span>
                             </div>
-                            <h4 className="font-black text-[12px] sm:text-[13px] leading-tight mb-1 truncate">${activeAnnouncement.title}</h4>
+                            <h4 className="font-black text-[11px] sm:text-[12px] leading-tight mb-0.5 truncate">${activeAnnouncement.title}</h4>
                             
                             <div className="flex flex-col gap-1 items-start">
-                                <p className=${`text-[11px] sm:text-[12px] leading-relaxed opacity-95 ${expanded ? 'whitespace-pre-wrap' : 'line-clamp-1 sm:line-clamp-2'}`}>
+                                <p className=${`text-[10px] sm:text-[11px] leading-relaxed opacity-95 ${expanded ? 'whitespace-pre-wrap' : 'line-clamp-1 sm:line-clamp-2'}`}>
                                     ${activeAnnouncement.content}
                                 </p>
                                 ${isLongContent && html`
@@ -170,11 +170,11 @@ const AnnouncementBanner = () => {
                             </div>
                         </div>
 
-                        <div className="flex flex-col items-end gap-3 shrink-0">
+                        <div className="flex flex-col items-end gap-2 shrink-0">
                             <button
                                 type="button"
                                 onClick=${() => handleDismiss(activeAnnouncement.id)}
-                                className="p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                                className="p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
                                 aria-label="Dismiss announcement"
                             >
                                 <${Icon} name="x" size=${13} className="opacity-80" />
