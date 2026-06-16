@@ -28,7 +28,7 @@ const PlatformRow = ({ label, value, icon }) => html`
     </div>
 `;
 
-export const AdminOverviewSection = () => {
+export const AdminReportsPage = () => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
 
