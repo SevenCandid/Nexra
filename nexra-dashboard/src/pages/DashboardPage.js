@@ -131,19 +131,26 @@ export const DashboardPage = () => {
         return () => window.removeEventListener('nexra:update', handlePulse);
     }, [dateRange]);
 
-    // Init charts exactly once when canvas elements are ready
+    // Cleanup on unmount
     useEffect(() => {
-        if (loading || !analytics) return;
-        if (!activityChartRef.current || !successChartRef.current) return;
+        return () => {
+            if (chartsInitialized.current.activity) { chartsInitialized.current.activity.destroy(); chartsInitialized.current.activity = null; }
+            if (chartsInitialized.current.success) { chartsInitialized.current.success.destroy(); chartsInitialized.current.success = null; }
+        };
+    }, []);
 
-        // Only create if not already created
+    // Init or Update charts
+    useEffect(() => {
+        if (!analytics || !activityChartRef.current || !successChartRef.current) return;
+
+        // Activity Chart
         if (!chartsInitialized.current.activity) {
             const activityCtx = activityChartRef.current.getContext('2d');
             chartsInitialized.current.activity = new window.Chart(activityCtx, {
                 type: 'bar',
                 data: {
-                    labels: [],
-                    datasets: [{ label: 'Messages Sent', data: [], backgroundColor: '#3b82f6', borderRadius: 4, barThickness: 12 }]
+                    labels: analytics.activity.map(d => d.day || d.date),
+                    datasets: [{ label: 'Messages Sent', data: analytics.activity.map(d => d.count), backgroundColor: '#3b82f6', borderRadius: 4, barThickness: 12 }]
                 },
                 options: {
                     responsive: true,
@@ -155,7 +162,22 @@ export const DashboardPage = () => {
                     }
                 }
             });
+        } else {
+            const chart = chartsInitialized.current.activity;
+            chart.data.labels = analytics.activity.map(d => d.day || d.date);
+            chart.data.datasets[0].data = analytics.activity.map(d => d.count);
+            chart.update();
         }
+
+        // Success Chart
+        const s = analytics.success_rate;
+        const doughnutData = [
+            s.delivered || 0,
+            s.submitted || 0,
+            s.delivering || 0,
+            s.not_delivered || 0,
+            s.failed || 0
+        ];
 
         if (!chartsInitialized.current.success) {
             const successCtx = successChartRef.current.getContext('2d');
@@ -163,7 +185,7 @@ export const DashboardPage = () => {
                 type: 'doughnut',
                 data: {
                     labels: ['Delivered', 'Submitted', 'Delivering', 'Not Delivered', 'Failed'],
-                    datasets: [{ data: [0, 0, 0, 0, 0], backgroundColor: ['#22c55e', '#3b82f6', '#f59e0b', '#f97316', '#ef4444'], borderWidth: 0, hoverOffset: 4 }]
+                    datasets: [{ data: doughnutData, backgroundColor: ['#22c55e', '#3b82f6', '#f59e0b', '#f97316', '#ef4444'], borderWidth: 0, hoverOffset: 4 }]
                 },
                 options: {
                     responsive: true,
@@ -172,36 +194,10 @@ export const DashboardPage = () => {
                     plugins: { legend: { display: false } }
                 }
             });
-        }
-
-        return () => {
-            if (chartsInitialized.current.activity) { chartsInitialized.current.activity.destroy(); chartsInitialized.current.activity = null; }
-            if (chartsInitialized.current.success) { chartsInitialized.current.success.destroy(); chartsInitialized.current.success = null; }
-        };
-    }, []); // Run once on mount only
-
-    // Update chart data whenever analytics changes (no recreate)
-    useEffect(() => {
-        if (!analytics) return;
-
-        const activityChart = chartsInitialized.current.activity;
-        if (activityChart) {
-            activityChart.data.labels = analytics.activity.map(d => d.day || d.date);
-            activityChart.data.datasets[0].data = analytics.activity.map(d => d.count);
-            activityChart.update();
-        }
-
-        const successChart = chartsInitialized.current.success;
-        if (successChart) {
-            const s = analytics.success_rate;
-            successChart.data.datasets[0].data = [
-                s.delivered || 0,
-                s.submitted || 0,
-                s.delivering || 0,
-                s.not_delivered || 0,
-                s.failed || 0
-            ];
-            successChart.update();
+        } else {
+            const chart = chartsInitialized.current.success;
+            chart.data.datasets[0].data = doughnutData;
+            chart.update();
         }
     }, [analytics]);
 
