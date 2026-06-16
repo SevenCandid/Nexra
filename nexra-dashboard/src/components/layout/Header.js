@@ -3,7 +3,6 @@ import { Icon } from '../ui/Icon.js';
 import { Dropdown } from '../ui/Dropdown.js';
 import { Button } from '../ui/Button.js';
 import { NotificationDropdown } from './NotificationDropdown.js';
-import { AnnouncementBanner } from './AnnouncementBanner.js';
 
 export const Header = ({ user, balance, onLogout, title, subtitle, onQuickSend, notifications, onMarkRead, onMarkAllRead, onReportIssue }) => {
     const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
@@ -22,7 +21,6 @@ export const Header = ({ user, balance, onLogout, title, subtitle, onQuickSend, 
     return html`
         <header className="fixed top-2 left-1/2 -translate-x-1/2 w-[94%] max-w-lg glass rounded-2xl lg:hidden z-50 shadow-xl transition-all">
             <div className="px-2 pt-1.5 space-y-1.5">
-                <${AnnouncementBanner} />
                 <div className="px-2 pb-2 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-2">
                         <div className="dark:bg-white/10 dark:p-0 dark:px-1 dark:rounded-lg dark:border dark:border-white/10 transition-all">
@@ -101,7 +99,6 @@ export const Header = ({ user, balance, onLogout, title, subtitle, onQuickSend, 
 
         <header className="hidden lg:block bg-white/80 dark:bg-midnight-950/80 backdrop-blur-lg border-b border-gray-200 dark:border-midnight-800 sticky top-0 z-30 transition-colors">
             <div className="px-8 pt-2.5 pb-3 space-y-2">
-                <${AnnouncementBanner} />
                 <div className="flex items-center justify-between gap-4">
                     <div className="min-w-0 flex flex-col">
                         <h1 className="text-xl font-bold text-gray-900 dark:text-white truncate line-clamp-1 leading-tight">
