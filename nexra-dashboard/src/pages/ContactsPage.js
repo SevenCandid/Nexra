@@ -149,6 +149,7 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
     const [activeTab, setActiveTab] = useState('members');
     const [members, setMembers] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [isListExpanded, setIsListExpanded] = useState(false);
     
     // Add Manually State
     const [newContact, setNewContact] = useState({ first_name: '', last_name: '', phone_number: '' });
@@ -421,50 +422,66 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
                         </div>
                     ` : html`
                         <${Card} className="overflow-hidden border-gray-100 dark:border-midnight-800">
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left">
-                                    <thead className="bg-gray-50/80 dark:bg-midnight-900/80 border-b border-gray-100 dark:border-midnight-800">
-                                        <tr>
-                                            <th className="px-4 sm:px-6 py-3.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Name</th>
-                                            <th className="px-4 sm:px-6 py-3.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Phone</th>
-                                            <th className="px-4 sm:px-6 py-3.5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right w-24">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100 dark:divide-midnight-800">
-                                        ${members.map(member => {
-                                            const fullName = `${member.first_name || ''} ${member.last_name || ''}`.trim();
-                                            const initial = (member.first_name?.[0] || member.phone_number?.[0] || '?').toUpperCase();
-                                            return html`
-                                                <tr key=${member.id} className="hover:bg-gray-50/60 dark:hover:bg-midnight-900/40 transition-colors group">
-                                                    <td className="px-4 sm:px-6 py-4">
-                                                        <div className="flex items-center gap-3 min-w-0">
-                                                            <div className="w-9 h-9 shrink-0 rounded-lg bg-gray-100 dark:bg-midnight-900 flex items-center justify-center text-sm font-black text-gray-600 dark:text-gray-300">
-                                                                ${initial}
-                                                            </div>
-                                                            <span className="text-sm font-bold text-gray-900 dark:text-white truncate">
-                                                                ${fullName || '—'}
-                                                            </span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-4 sm:px-6 py-4">
-                                                        <span className="text-sm font-mono text-gray-600 dark:text-midnight-300">${member.phone_number}</span>
-                                                    </td>
-                                                    <td className="px-4 sm:px-6 py-4 text-right">
-                                                        <button
-                                                            type="button"
-                                                            onClick=${() => handleRemoveMember(member.id)}
-                                                            className="inline-flex items-center justify-center p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors sm:opacity-0 sm:group-hover:opacity-100"
-                                                            title="Remove from segment"
-                                                        >
-                                                            <${Icon} name="user-minus" size=${16} />
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            `;
-                                        })}
-                                    </tbody>
-                                </table>
+                            <div 
+                                className="p-4 bg-gray-50/50 dark:bg-midnight-900/20 flex justify-between items-center cursor-pointer hover:bg-gray-100/50 dark:hover:bg-midnight-900/50 transition-colors"
+                                onClick=${() => setIsListExpanded(!isListExpanded)}
+                            >
+                                <h3 className="font-bold flex items-center gap-2 text-sm text-gray-900 dark:text-white">
+                                    <${Icon} name="list" size=${16} className="text-primary-500" />
+                                    Contact Directory (${members.length})
+                                </h3>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-500 font-medium">${isListExpanded ? 'Hide' : 'View All'}</span>
+                                    <${Icon} name=${isListExpanded ? "chevron-up" : "chevron-down"} size=${16} className="text-gray-400" />
+                                </div>
                             </div>
+                            
+                            ${isListExpanded && html`
+                                <div className="overflow-auto max-h-[500px] custom-scrollbar relative border-t border-gray-100 dark:border-midnight-800">
+                                    <table className="w-full text-left relative">
+                                        <thead className="bg-gray-50/95 dark:bg-midnight-900/95 border-b border-gray-100 dark:border-midnight-800 sticky top-0 z-10 backdrop-blur-sm">
+                                            <tr>
+                                                <th className="px-4 sm:px-6 py-3.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Name</th>
+                                                <th className="px-4 sm:px-6 py-3.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Phone</th>
+                                                <th className="px-4 sm:px-6 py-3.5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right w-24">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100 dark:divide-midnight-800">
+                                            ${members.map(member => {
+                                                const fullName = `${member.first_name || ''} ${member.last_name || ''}`.trim();
+                                                const initial = (member.first_name?.[0] || member.phone_number?.[0] || '?').toUpperCase();
+                                                return html`
+                                                    <tr key=${member.id} className="hover:bg-gray-50/60 dark:hover:bg-midnight-900/40 transition-colors group">
+                                                        <td className="px-4 sm:px-6 py-4">
+                                                            <div className="flex items-center gap-3 min-w-0">
+                                                                <div className="w-9 h-9 shrink-0 rounded-lg bg-gray-100 dark:bg-midnight-900 flex items-center justify-center text-sm font-black text-gray-600 dark:text-gray-300">
+                                                                    ${initial}
+                                                                </div>
+                                                                <span className="text-sm font-bold text-gray-900 dark:text-white truncate">
+                                                                    ${fullName || '—'}
+                                                                </span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 sm:px-6 py-4">
+                                                            <span className="text-sm font-mono text-gray-600 dark:text-midnight-300">${member.phone_number}</span>
+                                                        </td>
+                                                        <td className="px-4 sm:px-6 py-4 text-right">
+                                                            <button
+                                                                type="button"
+                                                                onClick=${() => handleRemoveMember(member.id)}
+                                                                className="inline-flex items-center justify-center p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors sm:opacity-0 sm:group-hover:opacity-100"
+                                                                title="Remove from segment"
+                                                            >
+                                                                <${Icon} name="user-minus" size=${16} />
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                `;
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            `}
                         </${Card}>
                     `}
                 `}
