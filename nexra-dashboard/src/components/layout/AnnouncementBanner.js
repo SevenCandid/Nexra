@@ -84,17 +84,17 @@ const AnnouncementBanner = () => {
     }, [activeIndex, visibleAnnouncements.length]);
 
     useEffect(() => {
-        if (timerRef.current) clearInterval(timerRef.current);
+        if (visibleAnnouncements.length <= 1 || expanded) return;
 
-        if (visibleAnnouncements.length > 1 && !expanded) {
-            timerRef.current = window.setInterval(() => {
-                setActiveIndex((current) => (current + 1) % visibleAnnouncements.length);
-            }, 5000);
-        }
+        const timer = window.setInterval(() => {
+            setActiveIndex((current) => {
+                // If the array shrank while we were waiting, bounds check
+                if (current + 1 >= visibleAnnouncements.length) return 0;
+                return current + 1;
+            });
+        }, 5000);
 
-        return () => {
-            if (timerRef.current) clearInterval(timerRef.current);
-        };
+        return () => window.clearInterval(timer);
     }, [visibleAnnouncements.length, expanded]);
 
     const handleDismiss = (id) => {
