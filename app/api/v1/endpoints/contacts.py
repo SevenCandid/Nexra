@@ -52,11 +52,22 @@ async def create_contact(
         Contact.phone_number == phone
     )
     result = await db.execute(query)
-    if result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Contact with this phone number already exists in your organization."
-        )
+    existing_contact = result.scalar_one_or_none()
+    if existing_contact:
+        # Upsert: Update names if provided
+        updated = False
+        if contact_in.first_name and existing_contact.first_name != contact_in.first_name:
+            existing_contact.first_name = contact_in.first_name
+            updated = True
+        if contact_in.last_name and existing_contact.last_name != contact_in.last_name:
+            existing_contact.last_name = contact_in.last_name
+            updated = True
+        
+        if updated:
+            db.add(existing_contact)
+            await db.commit()
+            await db.refresh(existing_contact)
+        return existing_contact
 
     db_obj = Contact(
         first_name=contact_in.first_name,
