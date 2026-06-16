@@ -7,6 +7,7 @@ import { MobileNav } from './MobileNav.js';
 import { QuickSendModal } from '../QuickSendModal.js';
 import { CompleteProfileModal } from '../CompleteProfileModal.js';
 import { ReportBugModal } from '../ReportBugModal.js';
+import { AnnouncementsBanner } from '../AnnouncementsBanner.js';
 
 export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
     const { logout } = useAuth();
@@ -125,11 +126,13 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
     const { title, subtitle } = pageInfo[routeKey] || { title: 'Pulse', subtitle: '' };
 
     return html`
-        <div className="flex h-[100dvh] overflow-hidden bg-[#f8fafc] dark:bg-midnight-950 transition-colors">
-            <${Sidebar} currentPage=${currentPage} onNavigate=${onNavigate} onReportIssue=${() => setIsBugReportOpen(true)} />
+        <div className="flex flex-col h-[100dvh] overflow-hidden bg-[#f8fafc] dark:bg-midnight-950 transition-colors">
+            <${AnnouncementsBanner} />
+            <div className="flex-1 flex min-h-0 relative">
+                <${Sidebar} currentPage=${currentPage} onNavigate=${onNavigate} onReportIssue=${() => setIsBugReportOpen(true)} />
 
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-                <${Header} 
+                <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+                    <${Header} 
                     user=${user} 
                     balance=${balance.wallet} 
                     onLogout=${logout} 
@@ -182,5 +185,6 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
                 />
             </div>
         </div>
+    </div>
     `;
 };
