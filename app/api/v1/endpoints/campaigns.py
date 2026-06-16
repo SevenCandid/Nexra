@@ -291,7 +291,7 @@ async def retry_campaign(
     # 2. Find all failed messages for this campaign
     msg_stmt = select(SMSMessage).where(
         SMSMessage.campaign_id == campaign_id,
-        SMSMessage.status == MessageStatus.FAILED
+        SMSMessage.status.in_([MessageStatus.FAILED.value, MessageStatus.NOT_DELIVERED.value])
     )
     msg_result = await db.execute(msg_stmt)
     failed_messages = msg_result.scalars().all()

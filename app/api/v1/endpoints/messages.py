@@ -62,7 +62,7 @@ async def get_message_stats(
         return result.scalar() or 0
 
     total = await get_count()
-    sent = await get_count(MessageStatus.SENT)
+    sent = await get_count(MessageStatus.SUBMITTED)
     delivered = await get_count(MessageStatus.DELIVERED)
     pending = await get_count(MessageStatus.PENDING)
     failed = (
