@@ -43,77 +43,6 @@ const AnnouncementBanner = () => {
     const [announcements, setAnnouncements] = useState([]);
     const [dismissedIds, setDismissedIds] = useState([]);
     const [activeIndex, setActiveIndex] = useState(0);
-    const timerRef = useRef(null);
-
-    useEffect(() => {
-        try {
-            const saved = window.localStorage.getItem('nexra_dismissed_announcements');
-            if (saved) setDismissedIds(JSON.parse(saved));
-        } catch (_) {}
-    }, []);
-
-    const fetchAnnouncements = async () => {
-        try {
-            const res = await apiClient.get('/admin/announcements/active');
-            setAnnouncements(res.data || []);
-        } catch (_) {}
-    };
-
-    useEffect(() => {
-        fetchAnnouncements();
-        const refreshTimer = window.setInterval(fetchAnnouncements, 60000);
-        return () => window.clearInterval(refreshTimer);
-    }, []);
-
-    const visibleAnnouncements = useMemo(() => {
-        const filtered = announcements.filter((ann) => !dismissedIds.includes(ann.id));
-        return [...filtered].sort((a, b) => {
-            const aPriority = PRIORITY_RANK[(a.priority || 'normal').toLowerCase()] || PRIORITY_RANK.normal;
-import { html, useEffect, useMemo, useRef, useState } from '../../utils/htm.js';
-import apiClient from '../../api/client.js';
-import { Icon } from '../ui/Icon.js';
-
-const PRIORITY_RANK = {
-    critical: 4,
-    high: 3,
-    normal: 2,
-    low: 1,
-};
-
-const TYPE_THEME = {
-    emergency: {
-        shell: 'from-rose-50 via-white to-rose-50 border-rose-200 text-rose-950 dark:from-rose-950/30 dark:via-midnight-950 dark:to-rose-950/15 dark:border-rose-900/40 dark:text-rose-200',
-        iconBg: 'bg-rose-600 text-white',
-        accent: 'bg-rose-500',
-    },
-    warning: {
-        shell: 'from-amber-50 via-white to-amber-50 border-amber-200 text-amber-950 dark:from-amber-950/30 dark:via-midnight-950 dark:to-amber-950/15 dark:border-amber-900/40 dark:text-amber-200',
-        iconBg: 'bg-amber-500 text-white',
-        accent: 'bg-amber-500',
-    },
-    success: {
-        shell: 'from-emerald-50 via-white to-emerald-50 border-emerald-200 text-emerald-950 dark:from-emerald-950/20 dark:via-midnight-950 dark:to-emerald-950/10 dark:border-emerald-900/40 dark:text-emerald-200',
-        iconBg: 'bg-emerald-600 text-white',
-        accent: 'bg-emerald-500',
-    },
-    info: {
-        shell: 'from-primary-50 via-white to-primary-50 border-primary-200 text-primary-950 dark:from-primary-950/20 dark:via-midnight-950 dark:to-primary-950/10 dark:border-primary-900/40 dark:text-primary-200',
-        iconBg: 'bg-primary-600 text-white',
-        accent: 'bg-primary-500',
-    },
-};
-
-const PRIORITY_META = {
-    critical: { label: 'Critical', className: 'bg-rose-600 text-white shadow-rose-500/20' },
-    high: { label: 'High', className: 'bg-amber-500 text-white shadow-amber-500/20' },
-    normal: { label: 'Normal', className: 'bg-white/80 text-gray-700 border border-gray-200 dark:bg-midnight-950/70 dark:text-midnight-200 dark:border-midnight-800' },
-    low: { label: 'Low', className: 'bg-gray-100 text-gray-600 border border-gray-200 dark:bg-midnight-900 dark:text-midnight-400 dark:border-midnight-800' },
-};
-
-const AnnouncementBanner = () => {
-    const [announcements, setAnnouncements] = useState([]);
-    const [dismissedIds, setDismissedIds] = useState([]);
-    const [activeIndex, setActiveIndex] = useState(0);
     const [expanded, setExpanded] = useState(false);
     const timerRef = useRef(null);
 
@@ -273,5 +202,8 @@ const AnnouncementBanner = () => {
                     </div>
                 </div>
             </div>
+        </div>
+    `;
+};
 
 export { AnnouncementBanner };
