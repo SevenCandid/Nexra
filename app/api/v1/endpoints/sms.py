@@ -232,15 +232,21 @@ async def resolve_stuck_messages_endpoint(
 ):
     """
     One-shot recovery tool.
-    Finds all messages stuck in SUBMITTED status and polls Arkesel
-    directly to update their real delivery status.
+    1. Finds all messages stuck in SUBMITTED status and polls Arkesel
+       directly to update their real delivery status (up to 24 hours back).
+    2. Re-enqueues any orphaned PENDING messages whose RQ jobs were lost.
     This same logic also runs automatically every 2 minutes in the background.
     """
-    from app.workers.resolve_worker import resolve_stuck_messages
-    result = await resolve_stuck_messages()
+    from app.workers.resolve_worker import resolve_stuck_messages, recover_orphaned_pending_messages
+    submitted_result = await resolve_stuck_messages()
+    pending_result = await recover_orphaned_pending_messages()
     return {
-        "message": f"Resolved {result['resolved']} of {result['checked']} stuck messages.",
-        **result
+        "message": (
+            f"Resolved {submitted_result['resolved']} of {submitted_result['checked']} stuck SUBMITTED messages. "
+            f"Re-enqueued {pending_result['recovered']} orphaned PENDING messages."
+        ),
+        "submitted": submitted_result,
+        "pending": pending_result,
     }
 
 @router.post("/admin/force-deliver/{message_id}")

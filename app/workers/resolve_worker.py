@@ -12,6 +12,8 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 POLL_INTERVAL_SECONDS = 120  # Poll every 2 minutes
+SUBMITTED_POLL_WINDOW_HOURS = 24  # How far back to look for stuck SUBMITTED messages
+PENDING_ORPHAN_THRESHOLD_MINUTES = 5  # Re-enqueue PENDING messages older than this
 
 
 STATUS_MAP = {
@@ -41,10 +43,10 @@ async def resolve_stuck_messages() -> dict:
         return {"message": "Arkesel API key not configured.", "resolved": 0}
 
     async with AsyncSessionLocal() as db:
-        # Only poll messages sent within the last 2 hours.
-        # Older messages have either been auto-resolved by the 15-min fallback
-        # or are genuinely stuck and should not keep hitting the Arkesel API.
-        cutoff = datetime.utcnow() - timedelta(hours=2)
+        # Poll SUBMITTED messages sent within the last 24 hours.
+        # Previously this was 2 hours, which caused messages that arrived late
+        # (or whose DLRs were delayed) to be permanently stuck in SUBMITTED.
+        cutoff = datetime.utcnow() - timedelta(hours=SUBMITTED_POLL_WINDOW_HOURS)
         stmt = select(SMSMessage).where(
             SMSMessage.status == MessageStatus.SUBMITTED,
             SMSMessage.provider_msg_id.isnot(None),
@@ -145,13 +147,55 @@ async def resolve_stuck_messages() -> dict:
     return summary
 
 
+async def recover_orphaned_pending_messages() -> dict:
+    """
+    Re-enqueues PENDING messages that were never processed (sent_at IS NULL)
+    and are older than PENDING_ORPHAN_THRESHOLD_MINUTES.
+
+    This handles messages whose RQ jobs were lost due to worker crashes or
+    Render cold starts, which leave them permanently stuck in PENDING.
+    """
+    from app.core.queue import enqueue_sms
+
+    threshold = datetime.utcnow() - timedelta(minutes=PENDING_ORPHAN_THRESHOLD_MINUTES)
+
+    async with AsyncSessionLocal() as db:
+        stmt = select(SMSMessage).where(
+            SMSMessage.status == MessageStatus.PENDING,
+            SMSMessage.sent_at.is_(None),
+            SMSMessage.created_at <= threshold,
+        ).limit(100)
+        result = await db.execute(stmt)
+        orphans = result.scalars().all()
+
+        if not orphans:
+            logger.debug("[PENDING-RECOVERY] No orphaned PENDING messages found.")
+            return {"message": "No orphaned messages.", "recovered": 0}
+
+        logger.info(f"[PENDING-RECOVERY] Found {len(orphans)} orphaned PENDING message(s). Re-enqueuing...")
+
+        recovered = 0
+        for msg in orphans:
+            try:
+                await enqueue_sms(msg.id)
+                recovered += 1
+                logger.info(f"[PENDING-RECOVERY] Re-enqueued msg_id={msg.id} (created_at={msg.created_at})")
+            except Exception as e:
+                logger.error(f"[PENDING-RECOVERY] Failed to re-enqueue msg_id={msg.id}: {e}")
+
+    summary = {"recovered": recovered, "checked": len(orphans)}
+    logger.info(f"[PENDING-RECOVERY] Complete. {summary}")
+    return summary
+
+
 async def auto_resolve_loop():
     """
-    Background loop that automatically polls Arkesel every POLL_INTERVAL_SECONDS
-    for any messages stuck in SUBMITTED status.
+    Background loop that runs every POLL_INTERVAL_SECONDS and:
+    1. Polls Arkesel for SUBMITTED messages and auto-resolves them.
+    2. Re-enqueues orphaned PENDING messages whose RQ jobs were lost.
 
     This compensates for Render free-tier cold starts which cause Arkesel's
-    push DLR callbacks to be lost.
+    push DLR callbacks to be lost and RQ jobs to be dropped.
     """
     logger.info(f"[AUTO-RESOLVE] Poller started. Interval: {POLL_INTERVAL_SECONDS}s")
     while True:
@@ -159,6 +203,7 @@ async def auto_resolve_loop():
             await asyncio.sleep(POLL_INTERVAL_SECONDS)
             logger.info("[AUTO-RESOLVE] Running scheduled resolve pass...")
             await resolve_stuck_messages()
+            await recover_orphaned_pending_messages()
         except asyncio.CancelledError:
             logger.info("[AUTO-RESOLVE] Poller cancelled.")
             break
