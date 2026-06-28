@@ -20,6 +20,6 @@ api_router.include_router(notifications.router, prefix="/notifications", tags=["
 api_router.include_router(developer.router, prefix="/developer", tags=["developer"])
 api_router.include_router(ws.router, prefix="/ws", tags=["websocket"])
 api_router.include_router(bugs.router, prefix="/bugs", tags=["bugs"])
-from app.api.v1.endpoints import admin
+from app.api.v1.endpoints import admin, search
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
-
+api_router.include_router(search.router, prefix="/search", tags=["search"])
