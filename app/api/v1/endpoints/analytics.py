@@ -20,6 +20,24 @@ async def get_analytics_stats(
     """
     Get aggregated statistics for dashboard charts with date filtering.
     """
+    import json
+    from app.core.redis import redis_client
+
+    # 1. Determine Cache Key
+    cache_key = None
+    if redis_client:
+        if start_date and end_date:
+            # Round to nearest minute to allow cache hits
+            s_str = start_date.strftime('%Y%m%d%H%M')
+            e_str = end_date.strftime('%Y%m%d%H%M')
+            cache_key = f"org:{current_user.organization_id}:analytics:stats:start_{s_str}:end_{e_str}"
+        else:
+            cache_key = f"org:{current_user.organization_id}:analytics:stats:default"
+
+        cached_data = await redis_client.get(cache_key)
+        if cached_data:
+            return json.loads(cached_data)
+
     now = datetime.utcnow()
     # Default to last 7 days if no dates provided
     if not start_date:
@@ -148,7 +166,7 @@ async def get_analytics_stats(
     speed_result = await db.execute(speed_query)
     avg_speed = speed_result.scalar() or 0
 
-    return {
+    response_data = {
         "activity": activity_data,
         "success_rate": {
             "delivering": (
@@ -163,6 +181,11 @@ async def get_analytics_stats(
         "networks": network_data,
         "avg_delivery_time": round(float(avg_speed), 2)
     }
+
+    if redis_client and cache_key:
+        await redis_client.setex(cache_key, 120, json.dumps(response_data))
+
+    return response_data
 
 @router.get("/export/messages")
 async def export_messages_csv(
@@ -238,6 +261,11 @@ async def get_admin_overview(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Superadmin access required"
         )
+        
+    if redis_client:
+        cached_data = await redis_client.get("admin:overview:stats")
+        if cached_data:
+            return json.loads(cached_data)
 
     # 1. Total Revenue: Sum of all topup credits ever received
     revenue_q = select(func.coalesce(func.sum(BillingLedger.amount), 0)).where(  # type: ignore
@@ -364,7 +392,7 @@ async def get_admin_overview(
     dist_result = await db.execute(dist_q)
     dist_row = dist_result.first()
     
-    return {
+    response_data = {
         "financials": {
             "total_revenue": round(total_revenue, 2),
             "total_liability": round(total_liability, 2),
@@ -388,3 +416,8 @@ async def get_admin_overview(
         "recent_topups": recent_topups,
         "trends": trends
     }
+    
+    if redis_client:
+        await redis_client.setex("admin:overview:stats", 120, json.dumps(response_data))
+        
+    return response_data

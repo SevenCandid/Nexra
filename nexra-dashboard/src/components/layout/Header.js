@@ -30,6 +30,14 @@ export const Header = ({ user, balance, onLogout, title, subtitle, onQuickSend, 
 
                     <div className="flex items-center gap-3">
                         <button 
+                            onClick=${() => window.dispatchEvent(new CustomEvent('nexra:open-search'))}
+                            className="p-1.5 rounded-full text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 transition-all focus:outline-none flex items-center justify-center active:scale-90"
+                            title="Search"
+                        >
+                            <${Icon} name="search" size=${16} />
+                        </button>
+
+                        <button 
                             onClick=${toggleDarkMode}
                             className="p-1.5 rounded-full text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 transition-all focus:outline-none flex items-center justify-center active:scale-90"
                             title=${isDark ? 'Switch to Light' : 'Switch to Dark'}
@@ -112,6 +120,15 @@ export const Header = ({ user, balance, onLogout, title, subtitle, onQuickSend, 
                     </div>
 
                     <div className="flex items-center gap-4">
+                        <button 
+                            onClick=${() => window.dispatchEvent(new CustomEvent('nexra:open-search'))}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-midnight-800 dark:hover:bg-midnight-700 text-gray-500 dark:text-gray-400 transition-colors"
+                        >
+                            <${Icon} name="search" size=${14} />
+                            <span className="text-xs font-medium">Search</span>
+                            <kbd className="hidden sm:inline-block ml-2 px-1.5 py-0.5 text-[10px] font-bold bg-white dark:bg-midnight-900 rounded border border-gray-200 dark:border-midnight-700 shadow-sm">Ctrl K</kbd>
+                        </button>
+
                         <button 
                             onClick=${toggleDarkMode}
                             className="p-2 rounded-full text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-gray-800 transition-all focus:outline-none flex items-center justify-center active:scale-90"

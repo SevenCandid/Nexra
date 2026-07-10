@@ -53,6 +53,15 @@ async def get_message_stats(
     """
     Get message statistics for the organization.
     """
+    import json
+    from app.core.redis import redis_client
+
+    cache_key = f"org:{current_user.organization_id}:messages:stats"
+    if redis_client:
+        cached_data = await redis_client.get(cache_key)
+        if cached_data:
+            return MessageStats(**json.loads(cached_data))
+
     # Helper to count messages by status
     async def get_count(status: str = None):
         query = select(func.count(SMSMessage.id)).where(SMSMessage.organization_id == current_user.organization_id)
@@ -71,13 +80,18 @@ async def get_message_stats(
         + await get_count(MessageStatus.UNDELIVERABLE)
     )
     
-    return MessageStats(
-        total=total,
-        sent=sent,
-        delivered=delivered,
-        pending=pending,
-        failed=failed
-    )
+    stats_data = {
+        "total": total,
+        "sent": sent,
+        "delivered": delivered,
+        "pending": pending,
+        "failed": failed
+    }
+
+    if redis_client:
+        await redis_client.setex(cache_key, 120, json.dumps(stats_data))
+
+    return MessageStats(**stats_data)
 
 @router.delete("/{message_id}")
 async def delete_message(

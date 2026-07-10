@@ -40,7 +40,7 @@ async def resolve_stuck_messages() -> dict:
     """
     if not settings.ARKESEL_API_KEY:
         logger.warning("[RESOLVE] ARKESEL_API_KEY not set, skipping resolve.")
-        return {"message": "Arkesel API key not configured.", "resolved": 0}
+        return {"message": "Arkesel API key not configured.", "resolved": 0, "checked": 0, "errors": []}
 
     async with AsyncSessionLocal() as db:
         # Poll SUBMITTED messages sent within the last 24 hours.
@@ -57,7 +57,7 @@ async def resolve_stuck_messages() -> dict:
 
         if not stuck:
             logger.debug("[RESOLVE] No stuck SUBMITTED messages found.")
-            return {"message": "No stuck messages.", "resolved": 0}
+            return {"message": "No stuck messages.", "resolved": 0, "checked": 0, "errors": []}
 
         logger.info(f"[RESOLVE] Found {len(stuck)} SUBMITTED message(s) to poll.")
 
@@ -170,7 +170,7 @@ async def recover_orphaned_pending_messages() -> dict:
 
         if not orphans:
             logger.debug("[PENDING-RECOVERY] No orphaned PENDING messages found.")
-            return {"message": "No orphaned messages.", "recovered": 0}
+            return {"message": "No orphaned messages.", "recovered": 0, "checked": 0}
 
         logger.info(f"[PENDING-RECOVERY] Found {len(orphans)} orphaned PENDING message(s). Re-enqueuing...")
 

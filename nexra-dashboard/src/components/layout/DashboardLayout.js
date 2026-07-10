@@ -8,6 +8,7 @@ import { QuickSendModal } from '../QuickSendModal.js';
 import { CompleteProfileModal } from '../CompleteProfileModal.js';
 import { ReportBugModal } from '../ReportBugModal.js';
 import { AnnouncementBanner } from './AnnouncementBanner.js';
+import { CommandPalette } from '../ui/CommandPalette.js';
 
 export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
     const { logout } = useAuth();
@@ -183,6 +184,8 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
                     isOpen=${isBugReportOpen}
                     onClose=${() => setIsBugReportOpen(false)}
                 />
+
+                <${CommandPalette} />
             </div>
         </div>
     </div>

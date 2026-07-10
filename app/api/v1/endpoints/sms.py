@@ -240,10 +240,15 @@ async def resolve_stuck_messages_endpoint(
     from app.workers.resolve_worker import resolve_stuck_messages, recover_orphaned_pending_messages
     submitted_result = await resolve_stuck_messages()
     pending_result = await recover_orphaned_pending_messages()
+    
+    resolved_count = submitted_result.get("resolved", 0)
+    checked_count = submitted_result.get("checked", 0)
+    recovered_count = pending_result.get("recovered", 0)
+    
     return {
         "message": (
-            f"Resolved {submitted_result['resolved']} of {submitted_result['checked']} stuck SUBMITTED messages. "
-            f"Re-enqueued {pending_result['recovered']} orphaned PENDING messages."
+            f"Resolved {resolved_count} of {checked_count} stuck SUBMITTED messages. "
+            f"Re-enqueued {recovered_count} orphaned PENDING messages."
         ),
         "submitted": submitted_result,
         "pending": pending_result,
