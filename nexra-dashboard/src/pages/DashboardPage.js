@@ -51,8 +51,13 @@ export const DashboardPage = () => {
                     }
                 }
 
+                const params = new URLSearchParams();
+                if (start_date) params.append('start_date', start_date);
+                if (end_date) params.append('end_date', end_date);
+                const queryStr = params.toString() ? `?${params.toString()}` : '';
+
                 const [analyticsData, campaignsData] = await Promise.all([
-                    apiClient.get(`/analytics/stats?start_date=${start_date}&end_date=${end_date}`),
+                    apiClient.get(`/analytics/stats${queryStr}`),
                     apiClient.get('/campaigns?limit=5')
                 ]);
                 setAnalytics(analyticsData.data);
