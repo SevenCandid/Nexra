@@ -23,21 +23,6 @@ async def get_analytics_stats(
     import json
     from app.core.redis import redis_client
 
-    # 1. Determine Cache Key
-    cache_key = None
-    if redis_client:
-        if start_date and end_date:
-            # Round to nearest minute to allow cache hits
-            s_str = start_date.strftime('%Y%m%d%H%M')
-            e_str = end_date.strftime('%Y%m%d%H%M')
-            cache_key = f"org:{current_user.organization_id}:analytics:stats:start_{s_str}:end_{e_str}"
-        else:
-            cache_key = f"org:{current_user.organization_id}:analytics:stats:default"
-
-        cached_data = await redis_client.get(cache_key)
-        if cached_data:
-            return json.loads(cached_data)
-
     now = datetime.utcnow()
     # Default to last 7 days if no dates provided
     if not start_date:
@@ -64,6 +49,18 @@ async def get_analytics_stats(
         # If there are no messages, set start_date to now - 7 days to avoid loops
         if start_date < now - timedelta(days=30):
             start_date = now - timedelta(days=7)
+
+    # Determine Cache Key AFTER parsing and clamping dates
+    cache_key = None
+    if redis_client:
+        # Round to nearest minute to allow cache hits
+        s_str = start_date.strftime('%Y%m%d%H%M')
+        e_str = end_date.strftime('%Y%m%d%H%M')
+        cache_key = f"org:{current_user.organization_id}:analytics:stats:start_{s_str}:end_{e_str}"
+
+        cached_data = await redis_client.get(cache_key)
+        if cached_data:
+            return json.loads(cached_data)
     
     delta = end_date - start_date
     is_24h_view = delta.total_seconds() <= 90000  # 25 hours
