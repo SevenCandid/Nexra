@@ -28,6 +28,7 @@ export const DashboardPage = () => {
 
     useEffect(() => {
         const fetchData = async () => {
+            setLoading(true);
             try {
                 let start_date = '';
                 let end_date = '';
@@ -93,31 +94,34 @@ export const DashboardPage = () => {
     useEffect(() => {
         if (!analytics || !activityChartRef.current || !successChartRef.current) return;
 
-        // Activity Chart
-        if (!chartsInitialized.current.activity) {
-            const activityCtx = activityChartRef.current.getContext('2d');
-            chartsInitialized.current.activity = new window.Chart(activityCtx, {
-                type: 'bar',
-                data: {
-                    labels: analytics.activity.map(d => d.day || d.date),
-                    datasets: [{ label: 'Messages Sent', data: analytics.activity.map(d => d.count), backgroundColor: '#3b82f6', borderRadius: 4, barThickness: 12 }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { display: true, grid: { display: false }, ticks: { font: { size: 10 } } },
-                        y: { display: true, grid: { color: 'rgba(0,0,0,0.05)' }, border: { display: false }, ticks: { font: { size: 10 } } }
-                    }
-                }
-            });
-        } else {
-            const chart = chartsInitialized.current.activity;
-            chart.data.labels = analytics.activity.map(d => d.day || d.date);
-            chart.data.datasets[0].data = analytics.activity.map(d => d.count);
-            chart.update();
+        // Destroy previous charts to guarantee clean re-rendering on data range change
+        if (chartsInitialized.current.activity) {
+            chartsInitialized.current.activity.destroy();
+            chartsInitialized.current.activity = null;
         }
+        if (chartsInitialized.current.success) {
+            chartsInitialized.current.success.destroy();
+            chartsInitialized.current.success = null;
+        }
+
+        // Activity Chart
+        const activityCtx = activityChartRef.current.getContext('2d');
+        chartsInitialized.current.activity = new window.Chart(activityCtx, {
+            type: 'bar',
+            data: {
+                labels: analytics.activity.map(d => d.day || d.date),
+                datasets: [{ label: 'Messages Sent', data: analytics.activity.map(d => d.count), backgroundColor: '#3b82f6', borderRadius: 4, barThickness: 12 }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { display: true, grid: { display: false }, ticks: { font: { size: 10 } } },
+                    y: { display: true, grid: { color: 'rgba(0,0,0,0.05)' }, border: { display: false }, ticks: { font: { size: 10 } } }
+                }
+            }
+        });
 
         // Success Chart
         const s = analytics.success_rate;
@@ -129,26 +133,20 @@ export const DashboardPage = () => {
             s.failed || 0
         ];
 
-        if (!chartsInitialized.current.success) {
-            const successCtx = successChartRef.current.getContext('2d');
-            chartsInitialized.current.success = new window.Chart(successCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Delivered', 'Submitted', 'Delivering', 'Not Delivered', 'Failed'],
-                    datasets: [{ data: doughnutData, backgroundColor: ['#22c55e', '#3b82f6', '#f59e0b', '#f97316', '#ef4444'], borderWidth: 0, hoverOffset: 4 }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '75%',
-                    plugins: { legend: { display: false } }
-                }
-            });
-        } else {
-            const chart = chartsInitialized.current.success;
-            chart.data.datasets[0].data = doughnutData;
-            chart.update();
-        }
+        const successCtx = successChartRef.current.getContext('2d');
+        chartsInitialized.current.success = new window.Chart(successCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Delivered', 'Submitted', 'Delivering', 'Not Delivered', 'Failed'],
+                datasets: [{ data: doughnutData, backgroundColor: ['#22c55e', '#3b82f6', '#f59e0b', '#f97316', '#ef4444'], borderWidth: 0, hoverOffset: 4 }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '75%',
+                plugins: { legend: { display: false } }
+            }
+        });
     }, [analytics]);
 
 
