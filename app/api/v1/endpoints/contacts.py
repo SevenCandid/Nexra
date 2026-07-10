@@ -104,15 +104,48 @@ async def upload_contacts(
             raise HTTPException(status_code=404, detail="Group not found")
 
     content = await file.read()
-    try:
-        decoded = content.decode('utf-8')
-    except UnicodeDecodeError:
+    is_xlsx = file.filename.lower().endswith(('.xlsx', '.xls'))
+    rows = []
+
+    if is_xlsx:
+        import io
+        from openpyxl import load_workbook
         try:
-            decoded = content.decode('latin-1')
-        except:
-            raise HTTPException(status_code=400, detail="Could not decode file. Please use UTF-8 or Latin-1 encoding.")
+            wb = load_workbook(filename=io.BytesIO(content), read_only=True)
+            sheet = wb.active
             
-    reader = csv.DictReader(io.StringIO(decoded))
+            # Read header row
+            header_row = next(sheet.iter_rows(values_only=True), None)
+            if not header_row:
+                raise HTTPException(status_code=400, detail="Excel file is empty.")
+            
+            headers = [str(h).strip() if h is not None else "" for h in header_row]
+            
+            # Read content rows
+            for row in sheet.iter_rows(min_row=2, values_only=True):
+                # If row is completely empty, skip
+                if not any(val is not None for val in row):
+                    continue
+                row_dict = {}
+                for idx, val in enumerate(row):
+                    if idx < len(headers) and headers[idx]:
+                        row_dict[headers[idx]] = val
+                rows.append(row_dict)
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Failed to parse Excel file: {str(e)}")
+    else:
+        try:
+            decoded = content.decode('utf-8')
+        except UnicodeDecodeError:
+            try:
+                decoded = content.decode('latin-1')
+            except:
+                raise HTTPException(status_code=400, detail="Could not decode file. Please use UTF-8 or Latin-1 encoding.")
+                
+        reader = csv.DictReader(io.StringIO(decoded))
+        rows = list(reader)
     
     created_count = 0
     skipped_count = 0
@@ -133,19 +166,23 @@ async def upload_contacts(
     def get_value(row, internal_key):
         """Find value in row by trying all possible header variants."""
         for header, value in row.items():
-            header_lower = header.lower().strip()
+            header_lower = str(header).lower().strip()
             if header_lower in header_map[internal_key] or header_lower.replace(' ', '_') in header_map[internal_key]:
                 return value
         return row.get(internal_key) # Fallback to literal key
 
-    for row in reader:
+    for row in rows:
         phone = get_value(row, 'phone_number')
         if not phone:
             skipped_count += 1
             continue
             
-        # Basic normalization: remove spaces, hyphens, parentheses
-        phone = "".join(filter(str.isdigit, phone))
+        # Basic normalization: remove spaces, hyphens, parentheses, handle numbers/floats
+        phone_str = str(phone).strip()
+        if phone_str.endswith('.0'):
+            phone_str = phone_str[:-2]
+            
+        phone = "".join(filter(str.isdigit, phone_str))
         if not phone:
             skipped_count += 1
             continue
@@ -163,10 +200,13 @@ async def upload_contacts(
                 contacts_to_add_to_group.append(existing_contact.id)
             continue
             
+        first_name_val = get_value(row, 'first_name')
+        last_name_val = get_value(row, 'last_name')
+        
         db_obj = Contact(
             phone_number=phone,
-            first_name=get_value(row, 'first_name'),
-            last_name=get_value(row, 'last_name'),
+            first_name=str(first_name_val).strip() if first_name_val is not None else None,
+            last_name=str(last_name_val).strip() if last_name_val is not None else None,
             organization_id=current_user.organization_id
         )
         db.add(db_obj)

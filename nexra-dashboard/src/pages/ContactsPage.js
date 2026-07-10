@@ -553,7 +553,7 @@ Jane Smith,233501234567</pre>
                             
                             <input
                                 type="file"
-                                accept=".csv"
+                                accept=".csv,.xlsx,.xls"
                                 onChange=${(e) => setUploadFile(e.target.files[0])}
                                 className="block w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-6 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 dark:file:bg-primary-900/20 dark:file:text-primary-400 dark:hover:file:bg-primary-900/30 mb-6 cursor-pointer transition-colors"
                             />
