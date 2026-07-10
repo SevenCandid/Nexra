@@ -18,6 +18,7 @@ argon2-cffi
 rq
 redis
 email-validator
+httpx
 slowapi
 openpyxl
 
