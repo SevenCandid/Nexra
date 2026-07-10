@@ -228,17 +228,19 @@ async def retry_sms(
 
 @router.post("/admin/resolve-stuck-messages")
 async def resolve_stuck_messages_endpoint(
+    hours: int = 24,
+    limit: int = 100,
     current_user: User = Depends(deps.get_current_active_user)
 ):
     """
     One-shot recovery tool.
     1. Finds all messages stuck in SUBMITTED status and polls Arkesel
-       directly to update their real delivery status (up to 24 hours back).
+       directly to update their real delivery status (up to a custom hours back).
     2. Re-enqueues any orphaned PENDING messages whose RQ jobs were lost.
     This same logic also runs automatically every 2 minutes in the background.
     """
     from app.workers.resolve_worker import resolve_stuck_messages, recover_orphaned_pending_messages
-    submitted_result = await resolve_stuck_messages()
+    submitted_result = await resolve_stuck_messages(hours=hours, limit=limit)
     pending_result = await recover_orphaned_pending_messages()
     
     resolved_count = submitted_result.get("resolved", 0)

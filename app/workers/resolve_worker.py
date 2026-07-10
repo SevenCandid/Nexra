@@ -29,7 +29,7 @@ STATUS_MAP = {
 }
 
 
-async def resolve_stuck_messages() -> dict:
+async def resolve_stuck_messages(hours: int = None, limit: int = 100) -> dict:
     """
     Polls Arkesel for all messages stuck in SUBMITTED status and updates
     their delivery state. Returns a summary dict.
@@ -42,16 +42,17 @@ async def resolve_stuck_messages() -> dict:
         logger.warning("[RESOLVE] ARKESEL_API_KEY not set, skipping resolve.")
         return {"message": "Arkesel API key not configured.", "resolved": 0, "checked": 0, "errors": []}
 
+    window_hours = hours if hours is not None else SUBMITTED_POLL_WINDOW_HOURS
     async with AsyncSessionLocal() as db:
-        # Poll SUBMITTED messages sent within the last 24 hours.
+        # Poll SUBMITTED messages sent within the last window_hours.
         # Previously this was 2 hours, which caused messages that arrived late
         # (or whose DLRs were delayed) to be permanently stuck in SUBMITTED.
-        cutoff = datetime.utcnow() - timedelta(hours=SUBMITTED_POLL_WINDOW_HOURS)
+        cutoff = datetime.utcnow() - timedelta(hours=window_hours)
         stmt = select(SMSMessage).where(
             SMSMessage.status == MessageStatus.SUBMITTED,
             SMSMessage.provider_msg_id.isnot(None),
             SMSMessage.sent_at >= cutoff,
-        ).limit(100)
+        ).limit(limit)
         result = await db.execute(stmt)
         stuck = result.scalars().all()
 
