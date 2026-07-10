@@ -48,7 +48,7 @@ async def global_search(
                 Contact.phone_number.ilike(search_term)
             )
         )
-        .order_by(Contact.created_at.desc())
+        .order_by(Contact.id.desc())
         .limit(5)
     )
     contacts_result = await db.execute(contacts_stmt)

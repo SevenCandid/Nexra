@@ -40,13 +40,15 @@ export const CommandPalette = () => {
     }, [isOpen]);
 
     useEffect(() => {
+        if (!query.trim()) {
+            setResults({ campaigns: [], contacts: [], segments: [] });
+            setLoading(false);
+            return;
+        }
+
+        setLoading(true);
+
         const fetchResults = async () => {
-            if (!query.trim()) {
-                setResults({ campaigns: [], contacts: [], segments: [] });
-                return;
-            }
-            
-            setLoading(true);
             try {
                 const res = await apiClient.get(`/search?q=${encodeURIComponent(query)}`);
                 setResults(res.data);
