@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from sqlalchemy import select
+from sqlalchemy import select, or_, and_
 from app.db.database import SessionLocal
 from app.db.models import SMSMessage, MessageStatus
 from app.core.queue import enqueue_sms
@@ -39,7 +39,13 @@ class RetryWorker:
         async with SessionLocal() as db:
             now = datetime.utcnow()
             stmt = select(SMSMessage).where(
-                SMSMessage.status.in_([MessageStatus.FAILED, MessageStatus.NOT_DELIVERED]),
+                or_(
+                    SMSMessage.status.in_([MessageStatus.FAILED, MessageStatus.NOT_DELIVERED]),
+                    and_(
+                        SMSMessage.status == MessageStatus.PENDING,
+                        SMSMessage.next_retry_at.isnot(None)
+                    )
+                ),
                 SMSMessage.retry_count < self.max_retries,
                 SMSMessage.next_retry_at <= now
             )
