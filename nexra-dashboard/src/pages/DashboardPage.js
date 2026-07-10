@@ -13,7 +13,15 @@ export const DashboardPage = () => {
     const [analytics, setAnalytics] = useState(null);
     const [campaigns, setCampaigns] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [dateRange, setDateRange] = useState('7d'); // 24h, 7d, 30d
+    const [dateRange, setDateRange] = useState('7d'); // 24h, 7d, 30d, all, custom
+    const [customStartDate, setCustomStartDate] = useState(() => {
+        const d = new Date();
+        d.setDate(d.getDate() - 7);
+        return d.toISOString().split('T')[0];
+    });
+    const [customEndDate, setCustomEndDate] = useState(() => {
+        return new Date().toISOString().split('T')[0];
+    });
     const activityChartRef = useRef(null);
     const successChartRef = useRef(null);
     const chartsInitialized = useRef({ activity: null, success: null });
@@ -22,6 +30,7 @@ export const DashboardPage = () => {
         const fetchData = async () => {
             try {
                 let start_date = '';
+                let end_date = '';
                 const now = new Date();
                 if (dateRange === '24h') {
                     start_date = new Date(now.getTime() - (24 * 60 * 60 * 1000)).toISOString();
@@ -29,10 +38,21 @@ export const DashboardPage = () => {
                     start_date = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000)).toISOString();
                 } else if (dateRange === '30d') {
                     start_date = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000)).toISOString();
+                } else if (dateRange === 'all') {
+                    start_date = new Date(0).toISOString(); // 1970-01-01
+                } else if (dateRange === 'custom') {
+                    if (customStartDate) {
+                        start_date = new Date(customStartDate).toISOString();
+                    }
+                    if (customEndDate) {
+                        const d = new Date(customEndDate);
+                        d.setHours(23, 59, 59, 999);
+                        end_date = d.toISOString();
+                    }
                 }
 
                 const [analyticsData, campaignsData] = await Promise.all([
-                    apiClient.get(`/analytics/stats?start_date=${start_date}`),
+                    apiClient.get(`/analytics/stats?start_date=${start_date}&end_date=${end_date}`),
                     apiClient.get('/campaigns?limit=5')
                 ]);
                 setAnalytics(analyticsData.data);
@@ -54,7 +74,7 @@ export const DashboardPage = () => {
 
         window.addEventListener('nexra:update', handlePulse);
         return () => window.removeEventListener('nexra:update', handlePulse);
-    }, [dateRange]);
+    }, [dateRange, customStartDate, customEndDate]);
 
     // Cleanup on unmount
     useEffect(() => {
@@ -149,18 +169,37 @@ export const DashboardPage = () => {
 
     return html`
         <div className="space-y-6 fade-in">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white">Pulse Overview</h2>
-                <div className="flex items-center gap-1 bg-gray-100 dark:bg-midnight-900 p-1 rounded-lg">
-                    ${['24h', '7d', '30d'].map(range => html`
-                        <button 
-                            key=${range}
-                            onClick=${() => setDateRange(range)}
-                            className="px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-md transition-all ${dateRange === range ? 'bg-white dark:bg-midnight-800 text-primary-600 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}"
-                        >
-                            ${range}
-                        </button>
-                    `)}
+                <div className="flex flex-wrap items-center gap-2">
+                    ${dateRange === 'custom' && html`
+                        <div className="flex items-center gap-1 bg-white dark:bg-midnight-800 border border-gray-200 dark:border-midnight-700 px-2 py-0.5 rounded-lg">
+                            <input 
+                                type="date" 
+                                value=${customStartDate} 
+                                onChange=${e => setCustomStartDate(e.target.value)} 
+                                className="bg-transparent border-0 outline-none text-[10px] text-gray-600 dark:text-gray-300 font-bold uppercase tracking-wider w-28"
+                            />
+                            <span className="text-[10px] text-gray-400 font-bold uppercase">to</span>
+                            <input 
+                                type="date" 
+                                value=${customEndDate} 
+                                onChange=${e => setCustomEndDate(e.target.value)} 
+                                className="bg-transparent border-0 outline-none text-[10px] text-gray-600 dark:text-gray-300 font-bold uppercase tracking-wider w-28"
+                            />
+                        </div>
+                    `}
+                    <div className="flex items-center gap-1 bg-gray-100 dark:bg-midnight-900 p-1 rounded-lg">
+                        ${['24h', '7d', '30d', 'all', 'custom'].map(range => html`
+                            <button 
+                                key=${range}
+                                onClick=${() => setDateRange(range)}
+                                className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-md transition-all ${dateRange === range ? 'bg-white dark:bg-midnight-800 text-primary-600 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}"
+                            >
+                                ${{ '24h': '24h', '7d': '7d', '30d': '30d', 'all': 'All', 'custom': 'Custom' }[range]}
+                            </button>
+                        `)}
+                    </div>
                 </div>
             </div>
 

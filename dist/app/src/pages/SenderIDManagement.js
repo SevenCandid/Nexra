@@ -279,6 +279,7 @@ export const SenderIDManagement = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <${Input}
                         label="Sender ID"
+                        hint="Max 11 chars"
                         placeholder="e.g. MYBRAND"
                         value=${requestForm.sender_id}
                         onChange=${(e) => handleChange('sender_id', e.target.value.toUpperCase())}

@@ -13,8 +13,8 @@ export const QuickSendModal = ({ isOpen, onClose, user, onSent }) => {
     
     // Character counting logic
     const charCount = formData.message.length;
-    const smsCount = Math.ceil(charCount / 160) || 1;
-    const isOverLimit = charCount > 160;
+    const smsCount = charCount === 0 ? 0 : (charCount <= 160 ? 1 : Math.ceil(charCount / 153));
+    const isOverLimit = charCount > 612;
 
     if (!isOpen) return null;
 
@@ -102,11 +102,11 @@ export const QuickSendModal = ({ isOpen, onClose, user, onSent }) => {
                                     required
                                 />
                                 <div className="absolute bottom-3 right-4 flex items-center gap-3">
-                                    <div className=${`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider ${isOverLimit ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-500'}`}>
-                                        ${charCount} / 160
+                                    <div className=${`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider ${isOverLimit ? 'bg-red-100 text-red-600' : (smsCount > 1 ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-500')}`}>
+                                        ${charCount} / 612
                                     </div>
                                     <div className="px-2 py-0.5 rounded-md bg-primary-50 text-primary-600 text-[9px] font-black uppercase tracking-wider">
-                                        ${smsCount} Unit${smsCount > 1 ? 's' : ''}
+                                        ${smsCount} Unit${smsCount !== 1 ? 's' : ''}
                                     </div>
                                 </div>
                             </div>
@@ -115,15 +115,20 @@ export const QuickSendModal = ({ isOpen, onClose, user, onSent }) => {
                         <div className="bg-primary-50/50 dark:bg-primary-900/5 p-4 rounded-2xl border border-primary-100/50 dark:border-primary-900/20">
                             <div className="flex items-center justify-between">
                                 <span className="text-[10px] font-bold text-primary-700 dark:text-primary-300 uppercase tracking-widest">Estimated Cost</span>
-                                <span className="text-sm font-black text-primary-600 dark:text-primary-400">${smsCount} Credit${smsCount > 1 ? 's' : ''}</span>
+                                <span className="text-sm font-black text-primary-600 dark:text-primary-400">${smsCount} Credit${smsCount !== 1 ? 's' : ''}</span>
                             </div>
+                            ${smsCount > 1 ? html`
+                                <p className="text-[10px] text-primary-600/70 dark:text-primary-400/70 mt-2 leading-relaxed">
+                                    Multi-part message (${smsCount} parts). You will be billed ${smsCount}x your plan's standard SMS rate.
+                                </p>
+                            ` : ''}
                         </div>
 
                         <${Button} 
                             type="submit" 
                             variant="primary" 
                             className="w-full py-4 rounded-2xl text-sm font-black uppercase tracking-[0.2em] shadow-glow h-14"
-                            disabled=${loading || !formData.recipient || !formData.message}
+                            disabled=${loading || !formData.recipient || !formData.message || charCount > 612}
                         >
                             ${loading ? html`<span className="animate-spin h-5 w-5 border-2 border-white/30 border-t-white rounded-full"></span>` : html`
                                 <${Icon} name="send" size=${18} className="mr-2" />

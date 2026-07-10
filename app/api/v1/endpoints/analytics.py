@@ -48,6 +48,22 @@ async def get_analytics_stats(
     # Strip timezone info — DB stores naive UTC datetimes; incoming ISO strings may be tz-aware
     start_date = start_date.replace(tzinfo=None)
     end_date = end_date.replace(tzinfo=None)
+
+    # Clamp start_date if it is older than the oldest message to avoid large padding loops
+    oldest_msg_query = (
+        select(func.min(SMSMessage.created_at))
+        .where(SMSMessage.organization_id == current_user.organization_id)
+    )
+    oldest_msg_result = await db.execute(oldest_msg_query)
+    oldest_msg_date = oldest_msg_result.scalar()
+    if oldest_msg_date:
+        oldest_msg_date = oldest_msg_date.replace(tzinfo=None)
+        if start_date < oldest_msg_date:
+            start_date = oldest_msg_date
+    else:
+        # If there are no messages, set start_date to now - 7 days to avoid loops
+        if start_date < now - timedelta(days=30):
+            start_date = now - timedelta(days=7)
     
     delta = end_date - start_date
     is_24h_view = delta.total_seconds() <= 90000  # 25 hours

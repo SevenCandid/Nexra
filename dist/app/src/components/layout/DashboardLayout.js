@@ -7,6 +7,8 @@ import { MobileNav } from './MobileNav.js';
 import { QuickSendModal } from '../QuickSendModal.js';
 import { CompleteProfileModal } from '../CompleteProfileModal.js';
 import { ReportBugModal } from '../ReportBugModal.js';
+import { AnnouncementBanner } from './AnnouncementBanner.js';
+import { CommandPalette } from '../ui/CommandPalette.js';
 
 export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
     const { logout } = useAuth();
@@ -32,12 +34,13 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
         const interval = setInterval(fetchUserData, 60000); // Slower fallback refresh (1m)
         
         // WebSocket Connection for Real-time Updates
-        const token = localStorage.getItem('nexra_token');
+        const token = localStorage.getItem('access_token');
         if (token) {
             const apiBase = window.__NEXRA_API_URL__ || 'https://nexra-api.onrender.com';
-            const wsBase = apiBase.replace('http', 'ws');
+            const wsBase = apiBase.replace(/^https/, 'wss').replace(/^http/, 'ws');
             const socket = new WebSocket(`${wsBase}/ws/${token}`);
 
+            socket.onopen = () => console.log('NEXRA Pulse Connected');
             socket.onmessage = (event) => {
                 try {
                     const msg = JSON.parse(event.data);
@@ -52,7 +55,8 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
                 }
             };
 
-            socket.onclose = () => console.log('NEXRA Pulse Disconnected');
+            socket.onclose = (e) => console.log('NEXRA Pulse Disconnected', e.code, e.reason);
+            socket.onerror = (e) => console.error('NEXRA Pulse Error:', e);
             return () => {
                 clearInterval(interval);
                 socket.close();
@@ -123,11 +127,13 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
     const { title, subtitle } = pageInfo[routeKey] || { title: 'Pulse', subtitle: '' };
 
     return html`
-        <div className="flex h-[100dvh] overflow-hidden bg-[#f8fafc] dark:bg-midnight-950 transition-colors">
-            <${Sidebar} currentPage=${currentPage} onNavigate=${onNavigate} onReportIssue=${() => setIsBugReportOpen(true)} />
+        <div className="flex flex-col h-[100dvh] overflow-hidden bg-[#f8fafc] dark:bg-midnight-950 transition-colors">
+            <${AnnouncementBanner} />
+            <div className="flex-1 flex min-h-0 relative">
+                <${Sidebar} currentPage=${currentPage} onNavigate=${onNavigate} onReportIssue=${() => setIsBugReportOpen(true)} />
 
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-                <${Header} 
+                <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+                    <${Header} 
                     user=${user} 
                     balance=${balance.wallet} 
                     onLogout=${logout} 
@@ -137,18 +143,25 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
                     notifications=${notifications}
                     onMarkRead=${handleMarkRead}
                     onMarkAllRead=${handleMarkAllRead}
+                    onReportIssue=${() => setIsBugReportOpen(true)}
                 />
                 
-                <main className="flex-1 p-4 lg:p-6 pb-28 lg:pb-6 pt-40 lg:pt-6 overflow-y-auto custom-scrollbar">
+                <main className="flex-1 p-4 lg:p-6 pb-28 lg:pb-6 pt-24 lg:pt-6 overflow-y-auto custom-scrollbar">
                     <div className="mb-4 lg:hidden">
                         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">${title}</h1>
                         ${subtitle && html`<p className="text-gray-600 dark:text-midnight-400 mt-0.5 text-sm">${subtitle}</p>`}
                     </div>
 
                     ${children}
+
+                    <footer className="mt-8 pt-6 border-t border-gray-200 dark:border-midnight-800 flex justify-center pb-4">
+                        <p className="text-sm text-gray-500 dark:text-midnight-400">
+                            Powered by <a href="https://veroseven.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary-600 dark:text-primary-500 hover:text-orange-500 dark:hover:text-orange-400 transition-colors">VeroSeven</a>
+                        </p>
+                    </footer>
                 </main>
 
-                <${MobileNav} currentPage=${currentPage} onNavigate=${onNavigate} />
+                <${MobileNav} currentPage=${currentPage} onNavigate=${onNavigate} onReportIssue=${() => setIsBugReportOpen(true)} />
 
                 <${QuickSendModal} 
                     isOpen=${isQuickSendOpen} 
@@ -171,7 +184,10 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
                     isOpen=${isBugReportOpen}
                     onClose=${() => setIsBugReportOpen(false)}
                 />
+
+                <${CommandPalette} />
             </div>
         </div>
+    </div>
     `;
 };

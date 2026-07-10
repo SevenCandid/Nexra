@@ -1,14 +1,19 @@
 import { html, useState } from '../../utils/htm.js';
 import { Icon } from './Icon.js';
 
-export const Input = ({ label, type = 'text', className = '', ...props }) => {
+export const Input = ({ label, hint, type = 'text', className = '', ...props }) => {
     const [showPassword, setShowPassword] = useState(false);
     const isPassword = type === 'password';
     const inputType = isPassword ? (showPassword ? 'text' : 'password') : type;
 
     return html`
         <div className="space-y-1.5 w-full">
-            ${label && html`<label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-midnight-400 ml-1">${label}</label>`}
+            ${label && html`
+                <div className="flex items-center justify-between ml-1 mb-0">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-midnight-400">${label}</label>
+                    ${hint && html`<span className="text-[10px] font-semibold text-gray-400 dark:text-midnight-500">${hint}</span>`}
+                </div>
+            `}
             <div className="relative">
                 <input
                     type=${inputType}

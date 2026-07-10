@@ -291,11 +291,13 @@ export const PricingPage = () => {
                 <div className="mt-8 pt-6 border-t border-white/5 grid grid-cols-2 md:grid-cols-4 gap-6 relative z-10">
                     <div>
                         <p className="text-midnight-400 text-[10px] font-bold uppercase mb-1">Subscription Credits</p>
-                        <p className="font-bold text-xl text-emerald-400">${balance?.subscription_credits?.toFixed(2) || '0.00'}</p>
+                        <p className="font-bold text-xl text-emerald-400">${balance?.subscription_sms ?? Math.floor((balance?.subscription_credits || 0) / 0.07)} <span className="text-sm font-medium text-midnight-500">SMS</span></p>
+                        <p className="text-[10px] text-midnight-600 mt-0.5">GH₵ ${balance?.subscription_credits?.toFixed(2) || '0.00'}</p>
                     </div>
                     <div>
                         <p className="text-midnight-400 text-[10px] font-bold uppercase mb-1">PAYG Credits</p>
-                        <p className="font-bold text-xl text-amber-400">${balance?.payg_credits?.toFixed(2) || '0.00'}</p>
+                        <p className="font-bold text-xl text-amber-400">${balance?.payg_sms ?? Math.floor((balance?.payg_credits || 0) / 0.08)} <span className="text-sm font-medium text-midnight-500">SMS</span></p>
+                        <p className="text-[10px] text-midnight-600 mt-0.5">GH₵ ${balance?.payg_credits?.toFixed(2) || '0.00'}</p>
                     </div>
                     <div className="md:col-span-2 md:text-right flex flex-col md:items-end justify-center">
                          <div className="inline-flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full border border-white/10">

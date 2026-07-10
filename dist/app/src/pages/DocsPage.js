@@ -119,7 +119,11 @@ const sections = [
         content: [
             {
                 heading: 'Creating a Campaign',
-                body: `Go to Campaigns → New Campaign. Fill in:\n• Campaign Name — internal reference only\n• Sender ID — must be pre-approved\n• Message — your SMS content (160 chars = 1 SMS, 320 = 2 SMS, etc.)\n• Recipients — select one or more contact segments\n• Schedule — optional date/time to auto-send`
+                body: `Go to Campaigns → New Campaign. Fill in:\n• Campaign Name — internal reference only\n• Sender ID — must be pre-approved\n• Message — your SMS content (max 612 chars; 160 chars = 1 part, >160 splits every 153 chars)\n• Recipients — select one or more contact segments\n• Schedule — optional date/time to auto-send`
+            },
+            {
+                heading: 'Message Personalization',
+                body: `NEXRA supports dynamic variables in your message content. These are automatically replaced per recipient at send time:\n{first_name} — recipient's first name\n{last_name} — recipient's last name\n{name} — recipient's full name\n{phone_number} — recipient's phone number\n\nExample: "Hello {first_name}, your order is ready!" will be personalized for each contact.`
             },
             {
                 heading: 'Campaign Statuses',
@@ -143,6 +147,35 @@ const sections = [
         ]
     },
     {
+        id: 'delivery',
+        icon: 'activity',
+        title: 'Delivery & Status',
+        color: 'cyan',
+        content: [
+            {
+                heading: 'How Delivery Tracking Works',
+                body: `NEXRA uses a dual-layer delivery tracking system to ensure accurate statuses even in unreliable network conditions:\n\n1. Arkesel sends Delivery Receipt (DLR) webhooks to NEXRA whenever a carrier confirms delivery.\n2. A background polling worker runs every 2 minutes to actively check the status of any messages still in SUBMITTED state, as a fallback in case webhooks are missed.`
+            },
+            {
+                heading: 'Carrier DLR Loss Fallback',
+                body: `Mobile carrier networks sometimes drop or delay delivery receipts — especially for multi-part messages. If a message remains in SUBMITTED status for more than 15 minutes without a DLR arriving, NEXRA automatically marks it as DELIVERED.\n\nThis prevents campaigns from getting permanently stuck in a "Delivering" state due to carrier-side tracking failures rather than actual non-delivery.`
+            },
+            {
+                heading: 'Message Status Lifecycle',
+                list: [
+                    '⏳ Pending — In queue, not yet submitted to the carrier',
+                    '📤 Submitted — Accepted by the carrier, awaiting DLR confirmation',
+                    '✅ Delivered — Carrier confirmed receipt on the handset',
+                    '❌ Failed — Could not be delivered (invalid number, carrier rejection, etc.)',
+                ]
+            },
+            {
+                heading: 'Admin Recovery Tools',
+                body: `If a message or campaign is stuck in an incorrect state, admins can use these endpoints to force-resolve them:\n\nPOST /api/v1/sms/admin/resolve-stuck-messages\n— Polls Arkesel for all SUBMITTED messages and updates them.\n\nPOST /api/v1/sms/admin/force-deliver/{message_id}\n— Force-marks a single message as DELIVERED and recalculates its campaign status.\n\nPOST /api/v1/sms/admin/force-deliver-campaign/{campaign_id}\n— Force-marks all SUBMITTED messages in a campaign as DELIVERED and repairs the campaign status aggregation.`
+            }
+        ]
+    },
+    {
         id: 'billing',
         icon: 'credit-card',
         title: 'Billing & Wallet',
@@ -150,7 +183,7 @@ const sections = [
         content: [
             {
                 heading: 'How Credits Work',
-                body: `NEXRA uses a credit-based billing system. 1 credit = 1 standard SMS (up to 160 characters) to a Ghana network. Multi-part messages (>160 chars) consume additional credits proportionally.\n\nCredits are deducted from your organization's wallet the moment a message is dispatched. If delivery fails, the credit is automatically refunded to your wallet.`
+                body: `NEXRA uses a credit-based billing system. 1 credit = 1 standard SMS (up to 160 characters) to a Ghana network. Longer messages are split into multiple parts (160 characters for the first part, 153 for subsequent parts) and consume additional credits proportionally, up to a maximum of 612 characters (4 credits).\n\nCredits are deducted from your organization's wallet the moment a message is dispatched. If delivery fails, the credit is automatically refunded to your wallet.`
             },
             {
                 heading: 'Credit Types',
@@ -186,7 +219,7 @@ const sections = [
             },
             {
                 heading: 'Character Count',
-                body: `NEXRA shows the character count for every template. Standard SMS supports 160 characters per message part. Going over results in a multi-part SMS which costs additional credits.`
+                body: `NEXRA shows the character count for every template. Standard SMS supports 160 characters for the first part, and 153 characters for subsequent parts. The maximum allowed length is 612 characters (4 parts). Going over 160 results in a multi-part SMS which costs additional credits.`
             }
         ]
     },
@@ -198,15 +231,29 @@ const sections = [
         content: [
             {
                 heading: 'Overview',
-                body: `NEXRA provides a REST API that lets you programmatically send SMS, manage contacts, and receive delivery reports. All API requests require an API key passed in the request header as X-API-Key.`
+                body: `NEXRA provides a REST API that lets you programmatically send SMS, manage contacts, and receive delivery reports. All API requests require an API key passed in the request header as X-API-Key.\n\nYour API key must be generated from the Developer → API & Integration page inside the dashboard.`
             },
             {
                 heading: 'Authentication',
                 body: `Generate an API key from the Developer → API page. Keep it secure — it grants full send access to your organization's account.\n\nHeader format:\nX-API-Key: nx_your_key_here`
             },
             {
-                heading: 'Send SMS Endpoint',
-                body: `POST /api/v1/sms/send\n\nRequest body:\n{\n  "recipient": "23324XXXXXXX",\n  "sender": "YOUR-SENDER-ID",\n  "message": "Your message here"\n}\n\nResponse:\n{\n  "id": 1234,\n  "status": "sent",\n  "recipient": "23324XXXXXXX",\n  "provider_name": "arkesel",\n  "created_at": "2026-04-22T12:00:00"\n}`
+                heading: 'Send Single SMS',
+                body: `POST /api/v1/sms/send\n\nRequest body:\n{\n  "recipient": "23324XXXXXXX",\n  "sender": "YOUR-SENDER-ID",\n  "message": "Your message here"\n}\n\nResponse:\n{\n  "id": 1234,\n  "status": "submitted",\n  "recipient": "23324XXXXXXX",\n  "provider_name": "arkesel",\n  "created_at": "2026-04-22T12:00:00"\n}`
+            },
+            {
+                heading: 'Check Message Status',
+                body: `GET /api/v1/sms/status/{message_id}\n\nReturns the current status of a previously sent message. Use the id returned from the send endpoint.\n\nResponse:\n{\n  "id": 1234,\n  "status": "delivered",\n  "recipient": "23324XXXXXXX",\n  "delivered_at": "2026-04-22T12:03:00"\n}`
+            },
+            {
+                heading: 'Message Personalization Variables',
+                list: [
+                    '{first_name} — replaced with the contact\'s first name',
+                    '{last_name} — replaced with the contact\'s last name',
+                    '{name} — replaced with the contact\'s full name',
+                    '{phone_number} — replaced with the recipient\'s phone number',
+                    'If the recipient is not a saved contact, the placeholder is left blank',
+                ]
             },
             {
                 heading: 'Rate Limits',
@@ -222,23 +269,27 @@ const sections = [
         id: 'webhooks',
         icon: 'webhook',
         title: 'Webhooks',
-        color: 'cyan',
+        color: 'primary',
         content: [
             {
                 heading: 'What are Webhooks?',
-                body: `Webhooks allow NEXRA to push delivery status events to your own server in real time. Instead of polling the API to check if a message was delivered, your server receives an HTTP POST the moment the carrier confirms delivery or failure.`
+                body: `Webhooks allow NEXRA to push delivery status events to your own server in real time. Instead of polling the API to check if a message was delivered, your server receives an HTTP POST the moment the carrier confirms delivery or failure.\n\nNote: NEXRA also runs an active background poller every 2 minutes as a fallback to ensure delivery statuses are always synced even if your webhook endpoint is temporarily down.`
             },
             {
                 heading: 'Setting Up a Webhook',
-                body: `Go to Developer → Webhooks → Add URL. Enter your publicly accessible endpoint URL. NEXRA will send POST requests to this URL for every message.delivered and message.failed event from your organization.`
+                body: `Go to Developer → API & Integration → Webhooks → Add URL. Enter your publicly accessible endpoint URL. NEXRA will send POST requests to this URL for every message.delivered and message.failed event from your organization.`
             },
             {
                 heading: 'Payload Format',
-                body: `{\n  "event": "message.delivered",\n  "timestamp": "2026-04-22T21:00:00",\n  "data": {\n    "id": 1234,\n    "recipient": "233241234567",\n    "status": "delivered",\n    "sent_at": "2026-04-22T20:59:00",\n    "delivered_at": "2026-04-22T21:00:00",\n    "error": null\n  }\n}`
+                body: `{\n  "event": "message.delivered",\n  "timestamp": "2026-04-22T21:00:00",\n  "data": {\n    "id": 1234,\n    "recipient": "233241234567",\n    "status": "delivered",\n    "provider_msg_id": "abc123xyz",\n    "sent_at": "2026-04-22T20:59:00",\n    "delivered_at": "2026-04-22T21:00:00",\n    "error": null\n  }\n}`
             },
             {
                 heading: 'Verifying Webhook Requests',
                 body: `Every webhook request includes an X-Nexra-Signature header containing an HMAC-SHA256 signature of the payload, signed using your webhook secret. Always verify this signature on your server to ensure the request is legitimate.`
+            },
+            {
+                heading: 'Debug Webhook Logs',
+                body: `Admins can inspect the last 20 Delivery Report Logs received from Arkesel via:\n\nGET /api/v1/sms/webhook/arkesel/debug\n\nThis is useful for diagnosing why a specific delivery report was or wasn't processed correctly.`
             }
         ]
     },
