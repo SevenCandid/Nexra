@@ -11,9 +11,9 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-POLL_INTERVAL_SECONDS = 120  # Poll every 2 minutes
+POLL_INTERVAL_SECONDS = 600  # Poll every 10 minutes (keeps Neon compute budget in check)
 SUBMITTED_POLL_WINDOW_HOURS = 24  # How far back to look for stuck SUBMITTED messages
-PENDING_ORPHAN_THRESHOLD_MINUTES = 5  # Re-enqueue PENDING messages older than this
+PENDING_ORPHAN_THRESHOLD_MINUTES = 10  # Re-enqueue PENDING messages older than this
 
 
 STATUS_MAP = {
