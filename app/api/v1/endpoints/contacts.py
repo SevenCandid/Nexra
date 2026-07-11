@@ -1,4 +1,5 @@
 from typing import List, Optional
+from datetime import datetime
 import csv
 import io
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
@@ -280,8 +281,58 @@ async def update_contact(
 
     for key, value in update_data.items():
         setattr(db_obj, key, value)
-    
+
     db.add(db_obj)
     await db.commit()
     await db.refresh(db_obj)
     return db_obj
+
+
+@router.patch("/{contact_id}/opt-out", status_code=200)
+async def opt_out_contact(
+    contact_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """
+    Mark a contact as opted-out (STOP). No further messages will be sent to them.
+    Can be triggered manually by an admin or automatically when a recipient replies STOP.
+    """
+    query = select(Contact).where(
+        Contact.id == contact_id,
+        Contact.organization_id == current_user.organization_id
+    )
+    result = await db.execute(query)
+    contact = result.scalar_one_or_none()
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact not found")
+
+    contact.is_opted_out = True
+    contact.opted_out_at = datetime.utcnow()
+    await db.commit()
+    return {"message": f"Contact {contact.phone_number} has been opted out successfully."}
+
+
+@router.patch("/{contact_id}/opt-in", status_code=200)
+async def opt_in_contact(
+    contact_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """
+    Re-subscribe a contact who previously opted out.
+    Only use when you have explicit renewed consent from the recipient.
+    """
+    query = select(Contact).where(
+        Contact.id == contact_id,
+        Contact.organization_id == current_user.organization_id
+    )
+    result = await db.execute(query)
+    contact = result.scalar_one_or_none()
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact not found")
+
+    contact.is_opted_out = False
+    contact.opted_out_at = None
+    await db.commit()
+    return {"message": f"Contact {contact.phone_number} has been opted back in."}

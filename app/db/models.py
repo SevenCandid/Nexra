@@ -178,8 +178,10 @@ class Contact(Base):
     phone_number: Mapped[str] = mapped_column(String(20), index=True)
     first_name: Mapped[Optional[str]] = mapped_column(String(100))
     last_name: Mapped[Optional[str]] = mapped_column(String(100))
-    tags: Mapped[Optional[dict]] = mapped_column(JSON) # e.g. ["customer", "loyalty_program"]
-    
+    tags: Mapped[Optional[dict]] = mapped_column(JSON)  # e.g. ["customer", "loyalty_program"]
+    is_opted_out: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    opted_out_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
     organization_id: Mapped[int] = mapped_column(Integer, ForeignKey("organizations.id"), index=True)
     organization = relationship("Organization", back_populates="contacts")
 

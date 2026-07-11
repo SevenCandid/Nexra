@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api import deps
 from app.db.database import get_db
-from app.db.models import User, SMSMessage, MessageStatus, Wallet, Organization
+from app.db.models import User, SMSMessage, MessageStatus, Wallet, Organization, Contact
 from app.schemas.schemas import SMSCreate, SMSResponse
 from app.services.gateway_manager import gateway_manager
 from app.services.billing_service import billing_service
@@ -12,9 +12,56 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from datetime import datetime, timedelta
 import logging
+import time
+import collections
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+# ── Per-org rate limiter ──────────────────────────────────────────────────────
+# Tracks message send timestamps per org in a sliding 60-second window.
+# Pure in-memory: resets on server restart, which is acceptable for free tier.
+_org_send_times: dict[int, collections.deque] = {}
+RATE_LIMIT_MAX = 100       # max messages per org per window
+RATE_LIMIT_WINDOW = 60     # seconds
+
+
+def _check_rate_limit(org_id: int) -> None:
+    """Raise 429 if the org has sent too many messages in the last 60 seconds."""
+    now = time.monotonic()
+    if org_id not in _org_send_times:
+        _org_send_times[org_id] = collections.deque()
+    dq = _org_send_times[org_id]
+    # Drop timestamps outside the window
+    while dq and now - dq[0] > RATE_LIMIT_WINDOW:
+        dq.popleft()
+    if len(dq) >= RATE_LIMIT_MAX:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=(
+                f"Rate limit exceeded: max {RATE_LIMIT_MAX} messages per "
+                f"{RATE_LIMIT_WINDOW}s per organisation."
+            ),
+        )
+    dq.append(now)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+async def _check_opt_out(db: AsyncSession, phone: str, org_id: int) -> None:
+    """Raise 403 if the recipient has opted out for this org."""
+    stmt = select(Contact).where(
+        Contact.phone_number == phone,
+        Contact.organization_id == org_id,
+        Contact.is_opted_out.is_(True),
+    )
+    result = await db.execute(stmt)
+    if result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Recipient {phone} has opted out and cannot receive messages.",
+        )
+# ─────────────────────────────────────────────────────────────────────────────
+
 
 @router.post("/send", response_model=SMSResponse)
 async def send_sms(
@@ -37,6 +84,12 @@ async def send_sms(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid Ghana phone number: {sms_in.recipient}"
         )
+
+    # 0a. Rate limit — max 100 messages/min per org
+    _check_rate_limit(current_user.organization_id)
+
+    # 0b. Opt-out check — do not send to contacts who replied STOP
+    await _check_opt_out(db, normalized_recipient, current_user.organization_id)
     
     # 1. Load org plan and wallet, then calculate the true billable SMS cost.
     org_result = await db.execute(
@@ -124,6 +177,12 @@ async def quick_send_sms(
     normalized_recipient = normalize_phone_number(sms_in.recipient)
     if not validate_ghana_number(normalized_recipient):
         raise HTTPException(status_code=400, detail=f"Invalid number: {sms_in.recipient}")
+
+    # Rate limit — max 100 messages/min per org
+    _check_rate_limit(current_user.organization_id)
+
+    # Opt-out check
+    await _check_opt_out(db, normalized_recipient, current_user.organization_id)
     
     # Check balance against the actual SMS rate for the current plan
     org_result = await db.execute(
