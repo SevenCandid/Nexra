@@ -13,9 +13,7 @@ export const Sidebar = ({ currentPage, onNavigate, onReportIssue }) => {
         { id: 'settings', label: 'Settings', icon: 'settings' }
     ];
 
-    if (user?.role === 'superadmin' || user?.role === 'staff') {
-        navItems.push({ id: 'admin-reports', label: 'Admin Reports', icon: 'bar-chart-2' });
-    }
+    // Admin Reports link moved to dedicated admin.js dashboard
 
     return html`
         <aside className="hidden lg:flex lg:flex-col lg:w-72 bg-white dark:bg-midnight-950 border-r border-gray-200 dark:border-midnight-800 h-screen sticky top-0 transition-colors">
