@@ -1,3 +1,4 @@
+"""Billing endpoints — wallet balance, pricing catalog, ledger, top-up, and plan management."""
 from decimal import Decimal
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -26,13 +27,20 @@ async def get_balance(
 
     Rules:
     - PAYG plan: ALL credits (sub + payg) count as PAYG credits at 0.08 GHS/SMS.
-    - Paid plan (Starter/Pro): subscription_credits use the plan rate; payg_credits use 0.08 GHS/SMS.
+    - Paid plan (Starter/Pro): subscription_credits use the plan rate;
+      payg_credits use 0.08 GHS/SMS.
     """
-    result = await db.execute(select(Wallet).where(Wallet.organization_id == current_user.organization_id))
+    result = await db.execute(
+        select(Wallet).where(Wallet.organization_id == current_user.organization_id)
+    )
     wallet = result.scalar_one_or_none()
 
     # Load org plan
-    org_stmt = select(Organization).options(selectinload(Organization.plan)).where(Organization.id == current_user.organization_id)
+    org_stmt = (
+        select(Organization)
+        .options(selectinload(Organization.plan))
+        .where(Organization.id == current_user.organization_id)
+    )
     org_res = await db.execute(org_stmt)
     org = org_res.scalar_one_or_none()
 
@@ -60,7 +68,6 @@ async def get_balance(
     if is_payg:
         # On PAYG, ALL credits (including any leftover sub credits) count as PAYG
         effective_payg = sub_credits + payg_credits
-        subscription_sms = 0
         payg_sms = int(effective_payg / payg_rate) if payg_rate > 0 else 0
         return {
             "balance": float(wallet.balance or 0),
@@ -93,10 +100,12 @@ async def get_pricing(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(deps.get_current_active_user)
 ):
-    """
-    Get the active plan catalog and current organization plan.
-    """
-    org_stmt = select(Organization).options(selectinload(Organization.plan)).where(Organization.id == current_user.organization_id)
+    """Get the active plan catalog and current organization plan."""
+    org_stmt = (
+        select(Organization)
+        .options(selectinload(Organization.plan))
+        .where(Organization.id == current_user.organization_id)
+    )
     org_res = await db.execute(org_stmt)
     org = org_res.scalar_one_or_none()
 
@@ -122,13 +131,11 @@ async def get_ledger(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(deps.get_current_active_user)
 ):
-    """
-    Get browsing history / ledger.
-    """
+    """Get browsing history / ledger."""
     query = select(BillingLedger).where(
         BillingLedger.organization_id == current_user.organization_id
     ).order_by(BillingLedger.created_at.desc()).offset(skip).limit(limit)
-    
+
     result = await db.execute(query)
     ledger = result.scalars().all()
     return ledger
@@ -139,13 +146,11 @@ async def topup_wallet(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(deps.get_current_active_user)
 ):
-    """
-    Simulated wallet top-up for development.
-    """
+    """Simulated wallet top-up for development."""
     await billing_service.add_payg_credits(
-        db, 
-        current_user.organization_id, 
-        Decimal(str(amount)), 
+        db,
+        current_user.organization_id,
+        Decimal(str(amount)),
         f"TOPUP-{datetime.utcnow().timestamp()}",
         current_user.id
     )
@@ -173,10 +178,13 @@ async def admin_adjust_balance(
             db, organization_id, Decimal(str(abs(amount))), description
         )
         if not success:
-            raise HTTPException(status_code=400, detail="Insufficient funds in organization wallet to perform deduction.")
-            
+            raise HTTPException(
+                status_code=400,
+                detail="Insufficient funds in organization wallet to perform deduction."
+            )
+
     await deps.log_admin_action(
-        db, current_user, "adjust_balance", "organization", 
+        db, current_user, "adjust_balance", "organization",
         str(organization_id), {"amount": amount, "description": description}
     )
     await db.commit()
@@ -184,13 +192,11 @@ async def admin_adjust_balance(
 @router.post("/admin/assign-plan")
 async def assign_org_plan(
     org_id: int,
-    plan_slug: str = None, 
+    plan_slug: str = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(deps.get_current_active_platform_manager)
 ):
-    """
-    Manually assign or cancel a plan for an organization (Admin only).
-    """
+    """Manually assign or cancel a plan for an organization (Admin only)."""
     result = await db.execute(select(Organization).where(Organization.id == org_id))
     organization = result.scalar_one_or_none()
     if not organization:
@@ -204,20 +210,29 @@ async def assign_org_plan(
         await db.commit()
 
         # Migrate any remaining subscription credits -> PAYG credits so user keeps their balance
-        wallet_res = await db.execute(select(Wallet).where(Wallet.organization_id == org_id))
+        wallet_res = await db.execute(
+            select(Wallet).where(Wallet.organization_id == org_id)
+        )
         wallet = wallet_res.scalar_one_or_none()
         if wallet and wallet.subscription_credits and wallet.subscription_credits > Decimal("0"):
-            wallet.payg_credits = (wallet.payg_credits or Decimal("0")) + wallet.subscription_credits
+            wallet.payg_credits = (
+                (wallet.payg_credits or Decimal("0")) + wallet.subscription_credits
+            )
             wallet.subscription_credits = Decimal("0")
             wallet.balance = wallet.payg_credits + (wallet.subscription_credits or Decimal("0"))
             await db.commit()
 
         await deps.log_admin_action(
-            db, current_user, "cancel_plan", "organization", 
+            db, current_user, "cancel_plan", "organization",
             str(org_id), {}
         )
         await db.commit()
-        return {"message": "Plan reset to Pay As You Go successfully. Remaining credits moved to PAYG wallet."}
+        return {
+            "message": (
+                "Plan reset to Pay As You Go successfully. "
+                "Remaining credits moved to PAYG wallet."
+            )
+        }
 
     normalized_slug = PLAN_ALIASES.get(plan_slug.lower().strip(), plan_slug.lower().strip())
     plan = plans.get(normalized_slug)
@@ -226,19 +241,23 @@ async def assign_org_plan(
 
     organization.plan_id = plan.id
     await db.commit()
-    
+
     # Clear SQLAlchemy identity map cache to force reloading the updated plan relationship
     db.expire_all()
-    
+
     # Grant the plan's monthly subscription credits immediately on manual assignment.
     await billing_service.renew_subscription_credits(db, org_id)
-    
+
     await deps.log_admin_action(
-        db, current_user, "assign_plan", "organization", 
+        db, current_user, "assign_plan", "organization",
         str(org_id), {"plan_slug": plan_slug}
     )
     await db.commit()
-    return {"message": f"Plan {plan_slug} assigned successfully and monthly subscription credits granted."}
+    return {
+        "message": (
+            f"Plan {plan_slug} assigned successfully and monthly subscription credits granted."
+        )
+    }
 
 
 @router.post("/buy-plan")
@@ -247,9 +266,7 @@ async def buy_plan(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(deps.get_current_active_user)
 ):
-    """
-    Purchase a subscription plan and assign it to the current organization.
-    """
+    """Purchase a subscription plan and assign it to the current organization."""
     plans = await BillingService.ensure_pricing_catalog(db)
     normalized_slug = PLAN_ALIASES.get(plan_slug.lower().strip(), plan_slug.lower().strip())
     plan = plans.get(normalized_slug)
@@ -257,9 +274,13 @@ async def buy_plan(
         raise HTTPException(status_code=404, detail="Plan not found")
 
     if plan.slug == "payg":
-        return {"message": "Pay As You Go is already the default plan. Top up your wallet to send SMS."}
+        return {
+            "message": "Pay As You Go is already the default plan. Top up your wallet to send SMS."
+        }
 
-    result = await db.execute(select(Wallet).where(Wallet.organization_id == current_user.organization_id))
+    result = await db.execute(
+        select(Wallet).where(Wallet.organization_id == current_user.organization_id)
+    )
     wallet = result.scalar_one_or_none()
     if not wallet:
         raise HTTPException(status_code=404, detail="Wallet not found")
