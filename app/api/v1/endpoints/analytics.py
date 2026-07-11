@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from fastapi import APIRouter, Depends
@@ -7,6 +8,7 @@ from app.api import deps
 from app.db.database import get_db
 from app.db.models import User, SMSMessage, MessageStatus, BillingLedger, Wallet, LedgerType, UserRole
 from fastapi import HTTPException, status
+from app.core.redis import redis_client
 
 router = APIRouter()
 
@@ -20,9 +22,6 @@ async def get_analytics_stats(
     """
     Get aggregated statistics for dashboard charts with date filtering.
     """
-    import json
-    from app.core.redis import redis_client
-
     now = datetime.utcnow()
     # Default to last 7 days if no dates provided
     if not start_date:
