@@ -1629,8 +1629,8 @@ const PlatformManagementPage = () => {
                             ${[
                                 { id: '', name: 'No Plan / Cancel Plan', desc: 'Remove all subscription benefits' },
                                 { id: 'payg', name: 'Pay As You Go', desc: 'Standard usage-based pricing' },
-                                { id: 'starter', name: 'Starter Plan', desc: 'GHS 25 / Month - 500 Credits' },
-                                { id: 'enterprise', name: 'Enterprise Plan', desc: 'GHS 50 / Month - 1,250 Credits' }
+                                { id: 'starter', name: 'Starter Plan', desc: 'GHS 25 / Month - 357 Credits' },
+                                { id: 'enterprise', name: 'Enterprise Plan', desc: 'GHS 50 / Month - 833 Credits' }
                             ].map(p => html`
                                 <button
                                     type="button"

@@ -35,7 +35,7 @@ const PricingComparison = ({ userPlan, onBuyPlan, onTopup }) => {
             name: 'Starter',
             subtitle: 'For growing businesses',
             price: '25.00',
-            unit: '500 Messages',
+            unit: '357 Messages',
             rate: '0.0700',
             features: [
                 'Priority Delivery Speed',
@@ -49,7 +49,7 @@ const PricingComparison = ({ userPlan, onBuyPlan, onTopup }) => {
             name: 'Pro',
             subtitle: 'Maximum performance',
             price: '50.00',
-            unit: '1,250 Messages',
+            unit: '833 Messages',
             rate: '0.0600',
             features: [
                 'Ultra-Fast Delivery (High TPS)',
