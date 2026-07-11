@@ -2253,8 +2253,9 @@ const SystemHealthPage = () => {
 
     return html`
         <div className="space-y-6 fade-in max-w-4xl mx-auto">
-            <h2 className="text-2xl font-bold dark:text-white">System Health</h2>
+            <h2 className="text-2xl font-bold dark:text-white mb-6">System Health</h2>
             
+            <${SystemHealthWidget} />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <${Card} className="p-6 flex items-center justify-between">
                     <div className="flex items-center gap-4">
