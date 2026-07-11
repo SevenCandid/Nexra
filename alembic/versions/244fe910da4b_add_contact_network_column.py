@@ -49,7 +49,12 @@ def get_carrier_for_phone(phone: str) -> str:
 
 def upgrade() -> None:
     """Upgrade schema and backfill networks."""
-    op.add_column('contacts', sa.Column('network', sa.String(length=50), nullable=True))
+    connection = op.get_bind()
+    inspector = sa.inspect(connection)
+    columns = [col['name'] for col in inspector.get_columns('contacts')]
+    
+    if 'network' not in columns:
+        op.add_column('contacts', sa.Column('network', sa.String(length=50), nullable=True))
     
     # Backfill existing contacts
     connection = op.get_bind()
