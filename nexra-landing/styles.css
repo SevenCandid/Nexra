@@ -379,7 +379,6 @@ body {
     gap: 3rem;
     animation: marquee 40s linear infinite;
     min-width: -webkit-fill-available;
-    min-width: fit-content;
 }
 
 @keyframes marquee {
