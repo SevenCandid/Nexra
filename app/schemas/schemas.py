@@ -44,6 +44,7 @@ class ContactResponse(BaseModel):
     phone_number: str
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+    network: Optional[str] = None
     
     class Config:
         from_attributes = True

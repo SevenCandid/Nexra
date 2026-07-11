@@ -74,11 +74,15 @@ async def create_contact(
             await db.refresh(existing_contact)
         return existing_contact
 
+    from app.core.phone_utils import detect_network
+    network_provider, _ = detect_network(phone)
+
     db_obj = Contact(
         first_name=contact_in.first_name,
         last_name=contact_in.last_name,
         phone_number=phone,
-        organization_id=current_user.organization_id
+        organization_id=current_user.organization_id,
+        network=network_provider.value if network_provider else None
     )
     db.add(db_obj)
     await db.commit()
@@ -205,11 +209,15 @@ async def upload_contacts(
         first_name_val = get_value(row, 'first_name')
         last_name_val = get_value(row, 'last_name')
         
+        from app.core.phone_utils import detect_network
+        network_provider, _ = detect_network(phone)
+
         db_obj = Contact(
             phone_number=phone,
             first_name=str(first_name_val).strip() if first_name_val is not None else None,
             last_name=str(last_name_val).strip() if last_name_val is not None else None,
-            organization_id=current_user.organization_id
+            organization_id=current_user.organization_id,
+            network=network_provider.value if network_provider else None
         )
         db.add(db_obj)
         await db.flush() # flush to get the id
@@ -277,7 +285,7 @@ async def update_contact(
     
     update_data = contact_in.model_dump(exclude_unset=True)
     if "phone_number" in update_data:
-        from app.core.phone_utils import normalize_phone_number, validate_ghana_number
+        from app.core.phone_utils import normalize_phone_number, validate_ghana_number, detect_network
         normalized = normalize_phone_number(update_data["phone_number"])
         if not validate_ghana_number(normalized):
             raise HTTPException(
@@ -285,6 +293,9 @@ async def update_contact(
                 detail=f"Invalid Ghana phone number: {update_data['phone_number']}"
             )
         update_data["phone_number"] = normalized
+        # Update the network provider
+        network_provider, _ = detect_network(normalized)
+        db_obj.network = network_provider.value if network_provider else None
 
     for key, value in update_data.items():
         setattr(db_obj, key, value)

@@ -11,6 +11,24 @@ import { SenderIDSelect } from '../components/SenderIDSelect.js';
 import { TemplateSelector } from '../components/ui/TemplateSelector.js';
 import { BroadcastCheckoutModal } from '../components/BroadcastCheckoutModal.js';
 
+const getNetworkBadge = (network) => {
+    if (!network) return null;
+    let colorClasses = 'bg-gray-100 text-gray-700 dark:bg-midnight-800 dark:text-midnight-300';
+    const lower = network.toLowerCase();
+    if (lower.includes('mtn')) {
+        colorClasses = 'bg-amber-500/10 text-amber-700 border border-amber-500/20 dark:bg-amber-500/20 dark:text-amber-300';
+    } else if (lower.includes('vodafone') || lower.includes('telecel')) {
+        colorClasses = 'bg-red-500/10 text-red-700 border border-red-500/20 dark:bg-red-500/20 dark:text-red-300';
+    } else if (lower.includes('airtel') || lower.includes('tigo') || lower.includes('at ')) {
+        colorClasses = 'bg-blue-500/10 text-blue-700 border border-blue-500/20 dark:bg-blue-500/20 dark:text-blue-300';
+    }
+    return html`
+        <span className=${`text-[9px] font-black px-2 py-0.5 rounded-full ${colorClasses}`}>
+            ${network}
+        </span>
+    `;
+};
+
 export const CreateCampaignPage = () => {
     const { showToast } = useToast();
     const [step, setStep] = useState(1);
@@ -372,7 +390,10 @@ export const CreateCampaignPage = () => {
                                                         ${contact.first_name || ''} ${contact.last_name || ''}
                                                     </p>
                                                 </div>
-                                                <p className="text-xs text-gray-500 dark:text-midnight-400 font-medium">${contact.phone_number}</p>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                    <p className="text-xs text-gray-500 dark:text-midnight-400 font-medium font-mono">${contact.phone_number}</p>
+                                                    ${getNetworkBadge(contact.network)}
+                                                </div>
                                             </div>
                                         </div>
                                         <button 
@@ -682,7 +703,10 @@ export const CreateCampaignPage = () => {
                                     <p className="font-semibold text-gray-900 group-hover:text-primary-700 transition-colors text-sm">
                                         ${contact.first_name || ''} ${contact.last_name || ''}
                                     </p>
-                                    <p className="text-xs text-gray-500 font-medium">${contact.phone_number}</p>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                        <p className="text-xs text-gray-500 font-medium font-mono">${contact.phone_number}</p>
+                                        ${getNetworkBadge(contact.network)}
+                                    </div>
                                 </div>
                             </label>
                         `) : html`

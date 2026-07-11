@@ -8,6 +8,24 @@ import { Icon } from '../components/ui/Icon.js';
 import { Modal } from '../components/ui/Modal.js';
 import { ConfirmModal } from '../components/ui/ConfirmModal.js';
 
+const getNetworkBadge = (network) => {
+    if (!network) return null;
+    let colorClasses = 'bg-gray-100 text-gray-700 dark:bg-midnight-800 dark:text-midnight-300';
+    const lower = network.toLowerCase();
+    if (lower.includes('mtn')) {
+        colorClasses = 'bg-amber-500/10 text-amber-700 border border-amber-500/20 dark:bg-amber-500/20 dark:text-amber-300';
+    } else if (lower.includes('vodafone') || lower.includes('telecel')) {
+        colorClasses = 'bg-red-500/10 text-red-700 border border-red-500/20 dark:bg-red-500/20 dark:text-red-300';
+    } else if (lower.includes('airtel') || lower.includes('tigo') || lower.includes('at ')) {
+        colorClasses = 'bg-blue-500/10 text-blue-700 border border-blue-500/20 dark:bg-blue-500/20 dark:text-blue-300';
+    }
+    return html`
+        <span className=${`text-[9px] font-black px-2 py-0.5 rounded-full ${colorClasses}`}>
+            ${network}
+        </span>
+    `;
+};
+
 const GroupsSidebar = ({ selectedGroupId, onOpenSegment, onRefresh }) => {
     const { showToast } = useToast();
     const [groups, setGroups] = useState([]);
@@ -463,7 +481,10 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
                                                             </div>
                                                         </td>
                                                         <td className="px-4 sm:px-6 py-4">
-                                                            <span className="text-sm font-mono text-gray-600 dark:text-midnight-300">${member.phone_number}</span>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-sm font-mono text-gray-600 dark:text-midnight-300">${member.phone_number}</span>
+                                                                ${getNetworkBadge(member.network)}
+                                                            </div>
                                                         </td>
                                                         <td className="px-4 sm:px-6 py-4 text-right">
                                                             <button
@@ -600,7 +621,10 @@ Jane Smith,233501234567</pre>
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-sm font-bold text-gray-900 dark:text-white truncate">${c.first_name} ${c.last_name}</p>
-                                            <p className="text-xs text-gray-500">${c.phone_number}</p>
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                <p className="text-xs text-gray-500 font-mono">${c.phone_number}</p>
+                                                ${getNetworkBadge(c.network)}
+                                            </div>
                                         </div>
                                     </button>
                                 `)}
