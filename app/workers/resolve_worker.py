@@ -15,6 +15,13 @@ POLL_INTERVAL_SECONDS = 600  # Poll every 10 minutes (keeps Neon compute budget 
 SUBMITTED_POLL_WINDOW_HOURS = 24  # How far back to look for stuck SUBMITTED messages
 PENDING_ORPHAN_THRESHOLD_MINUTES = 10  # Re-enqueue PENDING messages older than this
 
+# ── Heartbeat ────────────────────────────────────────────────────────────────
+# Updated by auto_resolve_loop after each successful pass.
+# The /health endpoint reads these without touching the DB.
+_last_run_at: datetime | None = None   # UTC timestamp of last completed cycle
+_loop_alive: bool = False              # True once the loop has started
+# ─────────────────────────────────────────────────────────────────────────────
+
 
 STATUS_MAP = {
     "DELIVERED": MessageStatus.DELIVERED,
@@ -198,6 +205,8 @@ async def auto_resolve_loop():
     This compensates for Render free-tier cold starts which cause Arkesel's
     push DLR callbacks to be lost and RQ jobs to be dropped.
     """
+    global _last_run_at, _loop_alive
+    _loop_alive = True
     logger.info(f"[AUTO-RESOLVE] Poller started. Interval: {POLL_INTERVAL_SECONDS}s")
     while True:
         try:
@@ -205,8 +214,11 @@ async def auto_resolve_loop():
             logger.info("[AUTO-RESOLVE] Running scheduled resolve pass...")
             await resolve_stuck_messages()
             await recover_orphaned_pending_messages()
+            _last_run_at = datetime.utcnow()  # ← heartbeat: record successful completion
         except asyncio.CancelledError:
+            _loop_alive = False
             logger.info("[AUTO-RESOLVE] Poller cancelled.")
             break
         except Exception as e:
             logger.error(f"[AUTO-RESOLVE] Unexpected error in resolve loop: {e}", exc_info=True)
+            # Don't update _last_run_at on error so health check detects the failure

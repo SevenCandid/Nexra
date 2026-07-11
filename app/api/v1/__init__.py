@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import sms, auth, billing, campaigns, messages, contacts, waitlist, sender_ids, staff, platform, payments, analytics, templates, groups, notifications, developer, ws, bugs
+from app.api.v1.endpoints import sms, auth, billing, campaigns, messages, contacts, waitlist, sender_ids, staff, platform, payments, analytics, templates, groups, notifications, developer, ws, bugs, health
 
 api_router = APIRouter()
 api_router.include_router(sms.router, prefix="/sms", tags=["sms"])
@@ -23,3 +23,4 @@ api_router.include_router(bugs.router, prefix="/bugs", tags=["bugs"])
 from app.api.v1.endpoints import admin, search
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 api_router.include_router(search.router, prefix="/search", tags=["search"])
+api_router.include_router(health.router, prefix="/health", tags=["health"])
