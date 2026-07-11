@@ -1,0 +1,803 @@
+// ============================================================================
+// NEXRA Landing Page - JavaScript
+// ============================================================================
+
+// Configuration
+// Google Apps Script Web App URL
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbztfdwxUTDhRoUKLgWQLL4TwKBXc21-L8R0QZuChHQ0ch0CtRWuRdkIFoUPGJGu6kzH9Q/exec';
+
+// Paystack Configuration
+const PAYSTACK_PUBLIC_KEY = 'pk_live_f2bc33d7eb129d525b3786314c8054415a262ad7';
+
+// ============================================================================
+// Mobile Menu
+// ============================================================================
+
+function toggleMobileMenu() {
+    const menu = document.getElementById('mobile-menu');
+    const hamburger = document.getElementById('hamburger-icon');
+    const closeIcon = document.getElementById('close-icon');
+    if (!menu) return;
+    const isOpen = !menu.classList.contains('hidden');
+    menu.classList.toggle('hidden', isOpen);
+    hamburger.classList.toggle('hidden', !isOpen);
+    closeIcon.classList.toggle('hidden', isOpen);
+}
+
+// Close mobile menu on outside click
+document.addEventListener('click', function (e) {
+    const menu = document.getElementById('mobile-menu');
+    const btn = document.getElementById('mobile-menu-btn');
+    if (menu && btn && !menu.classList.contains('hidden') && !menu.contains(e.target) && !btn.contains(e.target)) {
+        menu.classList.add('hidden');
+        document.getElementById('hamburger-icon')?.classList.remove('hidden');
+        document.getElementById('close-icon')?.classList.add('hidden');
+    }
+});
+
+
+// ============================================================================
+// Dashboard URL and Routing Helpers
+// ============================================================================
+
+function getDashboardUrl(path) {
+    // If running from local filesystem (file:///...)
+    if (window.location.protocol === 'file:') {
+        const currentPath = window.location.pathname;
+        const parentDir = currentPath.substring(0, currentPath.lastIndexOf('/'));
+        const grandParentDir = parentDir.substring(0, parentDir.lastIndexOf('/'));
+        return 'file://' + grandParentDir + '/nexra-dashboard/index.html' + path;
+    }
+
+    // If running on a web server
+    const hostname = window.location.hostname;
+    const port = window.location.port;
+
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        // If the server is serving the repo root, we must prepend the dashboard path
+        return '/nexra-dashboard/index.html' + path;
+    }
+
+    // Production/Default fallback: Netlify serves dashboard under /app/
+    return '/app/index.html' + path;
+}
+
+function bindDashboardLinks() {
+    document.querySelectorAll('[data-link]').forEach(el => {
+        const route = el.getAttribute('data-link');
+        el.href = getDashboardUrl(route);
+    });
+}
+
+// ============================================================================
+// Particle Animation
+// ============================================================================
+
+function createParticles() {
+    const container = document.getElementById('particles');
+    if (!container) return; // Safe guard - don't crash if element missing
+    const particleCount = window.innerWidth < 768 ? 30 : 50;
+
+    for (let i = 0; i < particleCount; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        particle.style.left = Math.random() * 100 + '%';
+        particle.style.animationDelay = Math.random() * 20 + 's';
+        particle.style.animationDuration = (15 + Math.random() * 10) + 's';
+
+        // Random colors
+        const colors = ['rgba(139, 92, 246, 0.5)', 'rgba(6, 182, 212, 0.5)', 'rgba(236, 72, 153, 0.5)'];
+        particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+
+        container.appendChild(particle);
+    }
+}
+
+// ============================================================================
+// Waitlist Counter Animation
+// ============================================================================
+
+function animateCounter() {
+    const counter = document.getElementById('waitlist-count');
+    if (!counter) return;
+    const target = typeof waitlistCount !== 'undefined' ? waitlistCount : 0;
+    const duration = 2000;
+    const start = target - 50;
+    const increment = (target - start) / (duration / 16);
+    let current = start;
+
+    const timer = setInterval(() => {
+        current += increment;
+        if (current >= target) {
+            current = target;
+            clearInterval(timer);
+        }
+        counter.textContent = Math.floor(current) + '+';
+    }, 16);
+}
+
+// ============================================================================
+// Toast Notifications
+// ============================================================================
+
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+
+    const icon = type === 'success'
+        ? '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>'
+        : '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>';
+
+    toast.innerHTML = `${icon}<span>${message}</span>`;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.animation = 'slide-in 0.3s ease-out reverse';
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
+// ============================================================================
+// Confetti Effect
+// ============================================================================
+
+function createConfetti() {
+    const colors = ['#8b5cf6', '#06b6d4', '#ec4899', '#10b981', '#f59e0b'];
+    const confettiCount = 50;
+
+    for (let i = 0; i < confettiCount; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti';
+        confetti.style.left = Math.random() * 100 + 'vw';
+        confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+        confetti.style.animationDelay = Math.random() * 0.5 + 's';
+        confetti.style.animationDuration = (2 + Math.random() * 2) + 's';
+        document.body.appendChild(confetti);
+
+        setTimeout(() => confetti.remove(), 3000);
+    }
+}
+
+// ============================================================================
+// Form Handling
+// ============================================================================
+
+async function handleSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+    const emailInput = form.querySelector('input[type="email"]');
+    const email = emailInput ? emailInput.value : '';
+
+    const nameInput = form.querySelector('input[name="full_name"]');
+    const name = nameInput ? nameInput.value : null;
+
+    const companyInput = form.querySelector('input[name="company_name"]');
+    const company = companyInput ? companyInput.value : null;
+
+    const button = form.querySelector('button[type="submit"]');
+
+    // Validation
+    if (!email || !email.includes('@')) {
+        showToast('Please enter a valid email address', 'error');
+        return;
+    }
+
+    // Loading state
+    button.classList.add('loading');
+    button.disabled = true;
+
+    // Check if Paystack is loaded
+    if (typeof PaystackPop === 'undefined') {
+        showToast('Payment system is currently unavailable. Please refresh and try again.', 'error');
+        button.classList.remove('loading');
+        button.disabled = false;
+        return;
+    }
+
+    // Initialize Paystack Payment
+    let handler = PaystackPop.setup({
+        key: PAYSTACK_PUBLIC_KEY,
+        email: email,
+        amount: 5000, // 50 GHS in pesewas
+        currency: 'GHS',
+        ref: 'NEXRA_WAITLIST_' + Math.floor((Math.random() * 1000000000) + 1),
+        callback: function (response) {
+            // Payment successful, proceed to save waitlist entry
+            (async () => {
+                try {
+                    // Send to Google Apps Script
+                    // We use mode: 'no-cors' to avoid browser CORS preflight blocks for POST
+                    await fetch(SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: {
+                            'Content-Type': 'text/plain;charset=utf-8',
+                        },
+                        body: JSON.stringify({
+                            action: 'add',
+                            email,
+                            name,
+                            company,
+                            paystack_ref: response.reference
+                        })
+                    });
+
+                    // Success
+                    showToast('🎉 Payment successful! You\'re on the list.', 'success');
+                    createConfetti();
+                    form.reset();
+
+                    // Update counter
+                    waitlistCount++;
+                    document.querySelectorAll('#waitlist-count').forEach(el => {
+                        el.textContent = waitlistCount + '+';
+                    });
+                } catch (error) {
+                    console.error('Error saving to waitlist:', error);
+                    showToast('Payment succeeded, but we had trouble saving your details. Please contact support.', 'error');
+                } finally {
+                    button.classList.remove('loading');
+                    button.disabled = false;
+                }
+            })();
+        },
+        onClose: function () {
+            showToast('Payment cancelled.', 'error');
+            button.classList.remove('loading');
+            button.disabled = false;
+        }
+    });
+
+    // Open Paystack popup
+    handler.openIframe();
+}
+
+// ============================================================================
+// Donation Logic
+// ============================================================================
+
+function openDonateModal() {
+    document.getElementById('donate-modal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeDonateModal() {
+    document.getElementById('donate-modal').classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+function handleDonate(amount) {
+    // If it's a fixed amount button, we still need their email
+    openDonateModal();
+    if (amount) {
+        document.getElementById('donate-amount').value = amount;
+    }
+}
+
+async function submitDonation() {
+    const amountInput = document.getElementById('donate-amount');
+    const emailInput = document.getElementById('donate-email');
+    const amount = parseFloat(amountInput.value);
+    const email = emailInput.value;
+
+    if (!amount || amount <= 0) {
+        showToast('Please enter a valid amount', 'error');
+        return;
+    }
+
+    if (!email || !email.includes('@')) {
+        showToast('Please enter a valid email address', 'error');
+        return;
+    }
+
+    // Check if Paystack is loaded
+    if (typeof PaystackPop === 'undefined') {
+        showToast('Payment system is temporarily unavailable. Please refresh.', 'error');
+        return;
+    }
+
+    // Initialize Paystack Payment
+    let handler = PaystackPop.setup({
+        key: PAYSTACK_PUBLIC_KEY,
+        email: email,
+        amount: Math.round(amount * 100), // Ensure it's an integer in pesewas
+        currency: 'GHS',
+        ref: 'NEXRA_DONATE_' + Math.floor((Math.random() * 1000000000) + 1),
+        callback: function (response) {
+            (async () => {
+                console.log('Payment successful. Recording to Google Sheets...', response);
+                try {
+                    // Record donation in Google Sheets
+                    await fetch(SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: {
+                            'Content-Type': 'text/plain;charset=utf-8',
+                        },
+                        body: JSON.stringify({
+                            action: 'add',
+                            email: email,
+                            name: 'DONATION',
+                            company: amount + ' GHS',
+                            paystack_ref: response.reference
+                        })
+                    });
+
+                    console.log('Donation record sent to Google Sheets successfully.');
+                    showToast('🎉 Thank you so much for your support!', 'success');
+                    createConfetti();
+                    closeDonateModal();
+                } catch (error) {
+                    console.error('Error recording donation:', error);
+                    showToast('Payment successful! Thank you for your support.', 'success');
+                    closeDonateModal();
+                }
+            })();
+        },
+        onClose: function () {
+            showToast('Donation cancelled.', 'error');
+        }
+    });
+
+    handler.openIframe();
+}
+
+// ============================================================================
+// Scroll Reveal Animation
+// ============================================================================
+
+function revealOnScroll() {
+    const reveals = document.querySelectorAll('.scroll-reveal');
+
+    reveals.forEach(element => {
+        const elementTop = element.getBoundingClientRect().top;
+        const elementVisible = 150;
+
+        if (elementTop < window.innerHeight - elementVisible) {
+            element.classList.add('revealed');
+        }
+    });
+}
+
+// ============================================================================
+// Smooth Scroll for Anchor Links
+// ============================================================================
+
+function setupSmoothScroll() {
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+}
+
+// ============================================================================
+// Initialize
+// ============================================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Bind dynamic dashboard routes
+    bindDashboardLinks();
+
+    // Create particles
+    createParticles();
+
+    // Animate counter
+    animateCounter();
+
+    // Setup form handlers
+    const mainForm = document.getElementById('waitlist-form');
+    if (mainForm) mainForm.addEventListener('submit', handleSubmit);
+
+    const footerForm = document.getElementById('waitlist-form-footer');
+    if (footerForm) footerForm.addEventListener('submit', handleSubmit);
+
+    // Setup scroll reveal
+    window.addEventListener('scroll', revealOnScroll);
+    revealOnScroll(); // Initial check
+
+    // Setup smooth scroll
+    setupSmoothScroll();
+
+    // ============================================================================
+    // Conversion Tracking & Interactive Features
+    // ============================================================================
+
+    // 1. ROI Calculator (GHS)
+    const volumeSlider = document.getElementById('roi-volume');
+    const volumeDisplay = document.getElementById('volume-display');
+    const savingsDisplay = document.getElementById('savings-display');
+
+    if (volumeSlider && volumeDisplay && savingsDisplay) {
+        const volumeValues = [
+            100, 200, 300, 400, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000, 250000, 500000, 1000000
+        ];
+
+        const formatNumber = (n) => n.toLocaleString();
+        const formatCurrency = (n) => 'GH\u20B5 ' + Math.round(n).toLocaleString();
+
+        const updateROI = () => {
+            const index = parseInt(volumeSlider.value);
+            const volume = volumeValues[index];
+
+            volumeDisplay.textContent = formatNumber(volume);
+
+            // Logic Adjusted for Realistic Ghana Rates (2024/2025):
+            const annualSavings = volume * 0.04 * 12;
+            savingsDisplay.textContent = formatCurrency(annualSavings);
+        };
+
+        // Set slider max to match array length
+        volumeSlider.max = volumeValues.length - 1;
+        volumeSlider.min = 0;
+        volumeSlider.step = 1;
+        volumeSlider.value = 5; // Default to 1,000 for a good initial view
+
+        volumeSlider.addEventListener('input', updateROI);
+        updateROI(); // Initial calc
+    }
+
+    // 2. FAQ Accordion (Fix)
+    const faqItems = document.querySelectorAll('.faq-item');
+    if (faqItems.length > 0) {
+        faqItems.forEach(item => {
+            const button = item.querySelector('button');
+            if (button) {
+                button.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const isActive = item.classList.contains('active');
+
+                    // Close all other items
+                    faqItems.forEach(otherItem => otherItem.classList.remove('active'));
+
+                    // Toggle current item
+                    if (!isActive) {
+                        item.classList.add('active');
+                    }
+                });
+            }
+        });
+    }
+
+
+
+    // 4. Testimonial Slider
+    const sliderContainer = document.querySelector('.testimonial-slider-container');
+    const track = document.querySelector('.testimonial-track');
+    const slides = document.querySelectorAll('.testimonial-slide');
+    if (sliderContainer && track && slides.length > 0) {
+        let currentSlide = 0;
+        const totalSlides = slides.length;
+
+        // Each slide is 100% of the container; track is totalSlides * 100%
+        track.style.width = `${totalSlides * 100}%`;
+        slides.forEach(slide => {
+            // Override any CSS/Tailwind w-full so each slide fills exactly 1/N of the track
+            slide.style.cssText += `width: ${100 / totalSlides}%; flex-shrink: 0;`;
+        });
+
+        const goToSlide = (index) => {
+            // Move the track left by one container-width per slide
+            const containerWidth = sliderContainer.offsetWidth;
+            track.style.transform = `translateX(-${index * containerWidth}px)`;
+        };
+
+        const rotateSlides = () => {
+            currentSlide = (currentSlide + 1) % totalSlides;
+            goToSlide(currentSlide);
+        };
+
+        // Also update on resize so pixel values stay correct
+        window.addEventListener('resize', () => goToSlide(currentSlide));
+
+        setInterval(rotateSlides, 5000);
+    }
+
+    // Add scroll-reveal class to sections
+    document.querySelectorAll('section').forEach((section, index) => {
+        if (index > 0 && section.id !== 'cta-section') { // Skip hero and cta sections
+            section.classList.add('scroll-reveal');
+        }
+    });
+    // Initialize Expansion Roadmap
+    initExpansionRoadmap();
+});
+
+// ============================================================================
+// Fetch Real Waitlist Count (Optional)
+// ============================================================================
+
+let waitlistCount = 0;
+
+async function fetchWaitlistCount() {
+    // If the URL hasn't been set yet, just use the default count
+    if (SCRIPT_URL === 'YOUR_GOOGLE_SCRIPT_WEB_APP_URL') return;
+
+    try {
+        const response = await fetch(`${SCRIPT_URL}?action=count`);
+        if (response.ok) {
+            const data = await response.json();
+            waitlistCount = data.count;
+            document.querySelectorAll('#waitlist-count').forEach(el => {
+                el.textContent = waitlistCount + '+';
+            });
+        }
+    } catch (error) {
+        console.log('Using default waitlist count');
+    }
+}
+
+// Fetch count on load
+fetchWaitlistCount();
+
+// ============================================================================
+// Global Expansion Roadmap Animation
+// ============================================================================
+
+function initExpansionRoadmap() {
+    const section = document.getElementById('expansion-roadmap');
+    if (!section) return;
+
+    const ghanaNode = section.querySelector('.node-ghana');
+    const waNodes = section.querySelectorAll('.node-wa');
+    const globalNodes = section.querySelectorAll('.node-global');
+    const phaseCards = [
+        document.getElementById('phase-1-card'),
+        document.getElementById('phase-2-card'),
+        document.getElementById('phase-3-card')
+    ];
+
+    let hasStarted = false;
+
+    const startExpansionSequence = () => {
+        if (hasStarted) return;
+        hasStarted = true;
+
+        // Phase 1: Ghana
+        if (ghanaNode) ghanaNode.classList.add('active');
+        if (phaseCards[0]) phaseCards[0].classList.add('active');
+
+        // Phase 2: West Africa
+        setTimeout(() => {
+            waNodes.forEach(node => {
+                node.classList.add('active');
+                drawConnectingLine(ghanaNode, node);
+            });
+            // Keep card grayed out as requested, but we can still highlight text color if needed
+            // if (phaseCards[1]) phaseCards[1].classList.add('active'); 
+        }, 1200);
+
+        // Phase 3: Global
+        setTimeout(() => {
+            globalNodes.forEach(node => {
+                node.classList.add('active');
+                drawConnectingLine(ghanaNode, node);
+            });
+            // Keep card grayed out as requested
+            // if (phaseCards[2]) phaseCards[2].classList.add('active');
+        }, 2500);
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting || entry.boundingClientRect.top < 0) {
+                startExpansionSequence();
+                observer.unobserve(section);
+            }
+        });
+    }, { threshold: 0.1 });
+
+    observer.observe(section);
+
+    function drawConnectingLine(start, end) {
+        const svg = document.getElementById('expansion-lines');
+        if (!svg || !start || !end) return;
+
+        const x1 = parseFloat(start.getAttribute('data-x'));
+        const y1 = parseFloat(start.getAttribute('data-y'));
+        const x2 = parseFloat(end.getAttribute('data-x'));
+        const y2 = parseFloat(end.getAttribute('data-y'));
+
+        if (isNaN(x1) || isNaN(x2)) return;
+
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const sx = x1 * 10;
+        const sy = y1 * 5;
+        const ex = x2 * 10;
+        const ey = y2 * 5;
+
+        // Curved arc
+        const dx = ex - sx;
+        const dy = ey - sy;
+        const dr = Math.sqrt(dx * dx + dy * dy) * 1.2;
+
+        const arc = `M${sx},${sy} A${dr},${dr} 0 0,0 ${ex},${ey}`;
+
+        line.setAttribute('d', arc);
+        line.setAttribute('class', 'expansion-line');
+        svg.appendChild(line);
+
+        // Slight delay to ensure SVG is in DOM before starting stroke-dash animation
+        requestAnimationFrame(() => {
+            setTimeout(() => line.classList.add('active'), 50);
+        });
+    }
+}
+
+// ============================================================================
+// Enhanced Channel Section Functionality
+// ============================================================================
+
+// 1 & 2. Scroll-triggered fade-in animations with staggered delays
+function initChannelAnimations() {
+    const section = document.getElementById('channels-section');
+    if (!section) return;
+
+    const cards = section.querySelectorAll('.channel-card');
+    const progressBar = document.getElementById('phase-progress-bar');
+
+    let hasAnimated = false;
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting && !hasAnimated) {
+                hasAnimated = true;
+
+                // Trigger card animations with staggered delays
+                cards.forEach((card, index) => {
+                    setTimeout(() => {
+                        card.classList.add('animate-in');
+                    }, index * 200);
+                });
+
+                // Animate progress bar
+                if (progressBar) {
+                    setTimeout(() => {
+                        progressBar.classList.add('active');
+                    }, 400);
+                }
+            }
+        });
+    }, { threshold: 0.2 });
+
+    observer.observe(section);
+}
+
+// 5. Live metrics counter for SMS card
+function initLiveCounter() {
+    const counter = document.getElementById('sms-counter');
+    if (!counter) return;
+
+    let count = 12847;
+
+    // Increment counter realistically every few seconds
+    setInterval(() => {
+        const increment = Math.floor(Math.random() * 15) + 5; // Random 5-20
+        count += increment;
+
+        // Animate the number change
+        counter.style.transform = 'scale(1.1)';
+        counter.textContent = count.toLocaleString();
+
+        setTimeout(() => {
+            counter.style.transform = 'scale(1)';
+        }, 200);
+    }, 4000); // Update every 4 seconds
+}
+
+// 6. Expandable cards toggle function
+function toggleCard(button) {
+    const card = button.closest('.channel-card');
+    if (!card) return;
+
+    const isExpanded = card.classList.contains('expanded');
+
+    // Close all other cards
+    document.querySelectorAll('.channel-card.expanded').forEach(otherCard => {
+        if (otherCard !== card) {
+            otherCard.classList.remove('expanded');
+        }
+    });
+
+    // Toggle current card
+    if (isExpanded) {
+        card.classList.remove('expanded');
+        button.querySelector('span').textContent = 'Learn More';
+    } else {
+        card.classList.add('expanded');
+        button.querySelector('span').textContent = 'Show Less';
+    }
+}
+
+// Make toggleCard globally available
+window.toggleCard = toggleCard;
+
+// ============================================================================
+// Map Expansion Animation
+// ============================================================================
+
+function initMapExpansion() {
+    const ghanaNode = document.querySelector('.node-ghana');
+    const waNodes = document.querySelectorAll('.node-wa');
+    const globalNodes = document.querySelectorAll('.node-global');
+    const linesGroup = document.getElementById('expansion-lines');
+    
+    if (!ghanaNode || !linesGroup) return;
+    
+    const gx = parseFloat(ghanaNode.dataset.x) * 10;
+    const gy = parseFloat(ghanaNode.dataset.y) * 5;
+    
+    // Create lines to all nodes
+    const allNodes = [...waNodes, ...globalNodes];
+    allNodes.forEach(node => {
+        const nx = parseFloat(node.dataset.x) * 10;
+        const ny = parseFloat(node.dataset.y) * 5;
+        
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        const cx = (gx + nx) / 2;
+        const cy = Math.min(gy, ny) - 100; // Curve upwards
+        
+        path.setAttribute("d", `M ${gx} ${gy} Q ${cx} ${cy} ${nx} ${ny}`);
+        path.setAttribute("class", "map-line");
+        path.setAttribute("fill", "none");
+        node.mapLine = path; // Attach to node for later
+        linesGroup.appendChild(path);
+    });
+
+    const phase1Card = document.getElementById('phase-1-card');
+    const phase2Card = document.getElementById('phase-2-card');
+    const phase3Card = document.getElementById('phase-3-card');
+
+    let currentPhase = 1;
+
+    setInterval(() => {
+        // Reset
+        allNodes.forEach(node => {
+            node.classList.remove('active');
+            if (node.mapLine) {
+                node.mapLine.classList.remove('drawn', 'active');
+            }
+        });
+        
+        if (phase1Card) phase1Card.classList.add('opacity-50');
+        if (phase2Card) phase2Card.classList.add('opacity-50');
+        if (phase3Card) phase3Card.classList.add('opacity-50');
+
+        currentPhase = currentPhase % 3 + 1;
+
+        if (currentPhase === 1) {
+            if (phase1Card) phase1Card.classList.remove('opacity-50');
+        } else if (currentPhase === 2) {
+            if (phase1Card) phase1Card.classList.remove('opacity-50');
+            if (phase2Card) phase2Card.classList.remove('opacity-50');
+            waNodes.forEach(node => {
+                node.classList.add('active');
+                if (node.mapLine) node.mapLine.classList.add('drawn', 'active');
+            });
+        } else if (currentPhase === 3) {
+            if (phase1Card) phase1Card.classList.remove('opacity-50');
+            if (phase2Card) phase2Card.classList.remove('opacity-50');
+            if (phase3Card) phase3Card.classList.remove('opacity-50');
+            allNodes.forEach(node => {
+                node.classList.add('active');
+                if (node.mapLine) node.mapLine.classList.add('drawn', 'active');
+            });
+        }
+    }, 4000);
+}
+
+// Initialize all enhancements when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    initChannelAnimations();
+    initLiveCounter();
+    initMapExpansion();
+    bindDashboardLinks();
+});

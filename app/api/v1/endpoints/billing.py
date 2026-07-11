@@ -1,13 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from datetime import datetime
 from decimal import Decimal
+from datetime import datetime
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from app.api import deps
-from app.db.models import User, Wallet, NetworkPricing, BillingLedger, Organization, SubscriptionPlan
+from app.db.models import User, Wallet, BillingLedger, Organization
 from app.db.database import get_db
-from app.schemas.schemas import WalletResponse, NetworkPricingResponse, BillingLedgerResponse
+from app.schemas.schemas import BillingLedgerResponse
 from app.services.billing_service import billing_service, BillingService
 
 router = APIRouter()
@@ -142,9 +142,6 @@ async def topup_wallet(
     """
     Simulated wallet top-up for development.
     """
-    from decimal import Decimal
-    from app.services.billing_service import billing_service
-    
     await billing_service.add_payg_credits(
         db, 
         current_user.organization_id, 
@@ -166,9 +163,6 @@ async def admin_adjust_balance(
     Superadmin only: Manually adjust any organization's wallet balance.
     Positive amount adds credit, negative amount subtracts.
     """
-    from decimal import Decimal
-    from app.services.billing_service import billing_service
-    
     if amount >= 0:
         await billing_service.add_payg_credits(
             db, organization_id, Decimal(str(amount)), description, current_user.id

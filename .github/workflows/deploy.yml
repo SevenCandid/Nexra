@@ -48,7 +48,7 @@ jobs:
 
     steps:
       - name: Trigger Render Deploy Hook
-        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL != '' }}
+        if: secrets.RENDER_DEPLOY_HOOK_URL != ''
         run: |
           echo "Triggering Render deploy..."
           curl -s -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" \
@@ -66,7 +66,8 @@ jobs:
 
     steps:
       - name: Trigger Netlify Build Hook
-        if: ${{ secrets.NETLIFY_BUILD_HOOK_URL != '' }}
+        # Check if build hook exists
+        if: secrets.NETLIFY_BUILD_HOOK_URL != ''
         run: |
           echo "Triggering Netlify deploy..."
           curl -s -X POST "${{ secrets.NETLIFY_BUILD_HOOK_URL }}" \

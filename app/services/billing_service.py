@@ -170,8 +170,8 @@ class BillingService:
     
     @staticmethod
     async def calculate_sms_cost(
-        db: AsyncSession,
-        recipient: str,
+        _db: AsyncSession,
+        _recipient: str,
         message_content: str,
         organization: Organization
     ) -> Decimal:

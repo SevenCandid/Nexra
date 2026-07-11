@@ -1,7 +1,7 @@
 services:
   - type: web
     name: nexra-api
-    env: python
+    runtime: python
     region: ohio
     plan: free
     repo: https://github.com/SevenCandid/Nexra
