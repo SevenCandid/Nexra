@@ -42,10 +42,14 @@ async def create_contact(
     """
     Create a new contact.
     """
-    # Normalize phone number
-    phone = "".join(filter(str.isdigit, contact_in.phone_number))
-    if not phone:
-        raise HTTPException(status_code=400, detail="Invalid phone number")
+    # Normalize and validate phone number to E.164
+    from app.core.phone_utils import normalize_phone_number, validate_ghana_number
+    phone = normalize_phone_number(contact_in.phone_number)
+    if not validate_ghana_number(phone):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid Ghana phone number: {contact_in.phone_number}"
+        )
 
     # Check if contact already exists for this org
     query = select(Contact).where(
@@ -178,13 +182,10 @@ async def upload_contacts(
             skipped_count += 1
             continue
             
-        # Basic normalization: remove spaces, hyphens, parentheses, handle numbers/floats
-        phone_str = str(phone).strip()
-        if phone_str.endswith('.0'):
-            phone_str = phone_str[:-2]
-            
-        phone = "".join(filter(str.isdigit, phone_str))
-        if not phone:
+        # Normalize and validate phone number to E.164
+        from app.core.phone_utils import normalize_phone_number, validate_ghana_number
+        phone = normalize_phone_number(phone_str)
+        if not validate_ghana_number(phone):
             skipped_count += 1
             continue
         
@@ -276,8 +277,14 @@ async def update_contact(
     
     update_data = contact_in.model_dump(exclude_unset=True)
     if "phone_number" in update_data:
-        # Normalize phone
-        update_data["phone_number"] = "".join(filter(str.isdigit, update_data["phone_number"]))
+        from app.core.phone_utils import normalize_phone_number, validate_ghana_number
+        normalized = normalize_phone_number(update_data["phone_number"])
+        if not validate_ghana_number(normalized):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid Ghana phone number: {update_data['phone_number']}"
+            )
+        update_data["phone_number"] = normalized
 
     for key, value in update_data.items():
         setattr(db_obj, key, value)
