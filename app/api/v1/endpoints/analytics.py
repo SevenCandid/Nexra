@@ -310,7 +310,16 @@ async def get_admin_overview(
         .group_by(SMSMessage.status)
     )
     msg_stats_result = await db.execute(msg_stats_q)
-    msg_stats = {row.status: row.count for row in msg_stats_result}
+    # Normalize keys: DB may return raw strings or enum values depending on driver
+    msg_stats = {}
+    for row in msg_stats_result:
+        key = row.status
+        if isinstance(key, str):
+            try:
+                key = MessageStatus(key)
+            except ValueError:
+                pass
+        msg_stats[key] = row.count
 
     total_messages = sum(msg_stats.values())
     
@@ -367,7 +376,11 @@ async def get_admin_overview(
         .order_by(func.date(SMSMessage.created_at))
     )
     sms_trend_result = await db.execute(sms_trend_q)
-    sms_trend = {row.day.isoformat(): row.count for row in sms_trend_result}
+    sms_trend = {
+        row.day.isoformat(): row.count
+        for row in sms_trend_result
+        if row.day is not None
+    }
 
     # Revenue Trend
     rev_trend_q = (
@@ -384,7 +397,11 @@ async def get_admin_overview(
         .order_by(func.date(BillingLedger.created_at))
     )
     rev_trend_result = await db.execute(rev_trend_q)
-    rev_trend = {row.day.isoformat(): float(row.total) for row in rev_trend_result}
+    rev_trend = {
+        row.day.isoformat(): float(row.total)
+        for row in rev_trend_result
+        if row.day is not None
+    }
 
     # Merge trends into a single array for the chart
     trends = []
