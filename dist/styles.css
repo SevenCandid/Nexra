@@ -20,6 +20,24 @@ body {
     width: 100%;
 }
 
+/* Animation delay utilities (replaces inline style="animation-delay") */
+.anim-delay-02 { animation-delay: 0.2s; }
+.anim-delay-08 { animation-delay: 0.8s; }
+.anim-delay-15 { animation-delay: 1.5s; }
+
+/* Ripple animation speed (replaces inline style="animation-duration: 3s") */
+.anim-ripple-slow { animation-duration: 3s; }
+
+/* Expansion map node positions (replaces inline style="left: X%; top: Y%") */
+.node-pos-49-58 { left: 49%; top: 58%; }
+.node-pos-45-55 { left: 45%; top: 55%; }
+.node-pos-53-56 { left: 53%; top: 56%; }
+.node-pos-51-62 { left: 51%; top: 62%; }
+.node-pos-50-35 { left: 50%; top: 35%; }
+.node-pos-25-40 { left: 25%; top: 40%; }
+.node-pos-80-45 { left: 80%; top: 45%; }
+.node-pos-65-55 { left: 65%; top: 55%; }
+
 /* Animations */
 @keyframes fade-in {
     from {

@@ -162,8 +162,8 @@
         /* Glassmorphism utility */
         .glass {
             background: rgba(255, 255, 255, 0.45) !important;
-            backdrop-filter: blur(20px) !important;
             -webkit-backdrop-filter: blur(20px) !important;
+            backdrop-filter: blur(20px) !important;
             border: 1px solid rgba(255, 255, 255, 0.3) !important;
         }
         
@@ -216,7 +216,8 @@
 
         /* Hide scrollbar utility */
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .no-scrollbar { -ms-overflow-style: none; overflow: auto; scrollbar-width: none; }
+        .no-scrollbar::-webkit-scrollbar { width: 0; height: 0; }
 
         /* Auth / login showcase animations */
         @keyframes auth-reveal-up {
@@ -327,7 +328,9 @@
                 transform: none !important;
             }
         }
-    </style>
+        /* Splash screen logo sizing */
+        .splash-logo { height: 48px; width: auto; }
+        </style>
 </head>
 
 <body class="bg-gray-50 dark:bg-gray-900 dark:text-white transition-colors duration-300">
@@ -335,8 +338,7 @@
     <div id="splash-screen" class="bg-gray-50 dark:bg-gray-900">
         <div class="text-center flex flex-col items-center justify-center fade-in">
             <img src="assets/NEXRA_IconAbove.png" alt="NEXRA Logo" 
-                 class="h-12 sm:h-14 mb-5 object-contain drop-shadow-md dark:contrast-125" 
-                 style="height: 48px; width: auto;" />
+                 class="splash-logo h-12 sm:h-14 mb-5 object-contain drop-shadow-md dark:contrast-125" />
             <div class="w-8 h-8 border-[3px] border-primary-100 dark:border-primary-900/30 border-t-primary-600 dark:border-t-primary-500 rounded-full animate-spin shadow-sm"></div>
         </div>
     </div>

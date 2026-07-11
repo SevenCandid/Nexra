@@ -343,8 +343,7 @@
                             <div
                                 class="w-10 h-10 sm:w-24 sm:h-24 bg-white rounded-2xl sm:rounded-3xl border border-slate-200 flex items-center justify-center shadow-2xl relative">
                                 <!-- Ripple Effect -->
-                                <div class="absolute inset-0 border border-cyan-500/30 rounded-2xl sm:rounded-3xl animate-ping"
-                                    style="animation-duration: 3s;"></div>
+                                <div class="absolute inset-0 border border-cyan-500/30 rounded-2xl sm:rounded-3xl animate-ping anim-ripple-slow"></div>
                                 <div
                                     class="absolute -inset-2 sm:-inset-4 border border-purple-500/10 rounded-3xl sm:rounded-xl animate-pulse">
                                 </div>
@@ -368,7 +367,7 @@
                         <div
                             class="absolute -right-2 sm:right-[10%] top-[10%] bottom-[10%] flex flex-col justify-between items-end z-10 py-4 sm:py-8 pr-2 sm:pr-0">
                             <!-- User 1 -->
-                            <div class="flex items-center gap-1.5 sm:gap-3 animate-float" style="animation-delay: 0.2s">
+                            <div class="flex items-center gap-1.5 sm:gap-3 animate-float anim-delay-02">
                                 <div
                                     class="w-8 h-8 sm:w-12 sm:h-12 bg-white rounded-full border sm:border-2 border-cyan-500/50 p-0.5 sm:p-1 flex-shrink-0 shadow-lg">
                                     <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Annie" alt="User"
@@ -384,8 +383,7 @@
                             </div>
 
                             <!-- User 2 -->
-                            <div class="flex flex-col sm:flex-row items-center sm:items-center gap-0.5 sm:gap-3 animate-float"
-                                style="animation-delay: 1.5s">
+                            <div class="flex flex-col sm:flex-row items-center sm:items-center gap-0.5 sm:gap-3 animate-float anim-delay-15">
                                 <div
                                     class="w-8 h-8 sm:w-12 sm:h-12 bg-white rounded-full border sm:border-2 border-cyan-500/50 p-0.5 sm:p-1 flex-shrink-0 z-10 shadow-lg">
                                     <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Bob" alt="User"
@@ -400,8 +398,7 @@
                             </div>
 
                             <!-- User 3 -->
-                            <div class="flex flex-col sm:flex-row items-center sm:items-center gap-0.5 sm:gap-3 animate-float"
-                                style="animation-delay: 0.8s">
+                            <div class="flex flex-col sm:flex-row items-center sm:items-center gap-0.5 sm:gap-3 animate-float anim-delay-08">
                                 <div
                                     class="w-8 h-8 sm:w-12 sm:h-12 bg-white rounded-full border sm:border-2 border-cyan-500/50 p-0.5 sm:p-1 flex-shrink-0 z-10 shadow-lg">
                                     <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Coco" alt="User"
@@ -866,38 +863,37 @@
                 <div class="absolute inset-0 flex items-center justify-center">
                     <div id="map-interaction-container" class="relative w-full h-full max-w-3xl sm:max-w-5xl">
                         <!-- Ghana Node (The Heart) -->
-                        <div class="expansion-node node-ghana active" data-x="49" data-y="58"
-                            style="left: 49%; top: 58%;">
+                        <div class="expansion-node node-ghana active node-pos-49-58" data-x="49" data-y="58">
                             <div class="pulse-ring"></div>
                             <div class="node-dot"></div>
                             <div class="node-label">Ghana</div>
                         </div>
 
                         <!-- West Africa Nodes -->
-                        <div class="expansion-node node-wa" data-x="45" data-y="55" style="left: 45%; top: 55%;">
+                        <div class="expansion-node node-wa node-pos-45-55" data-x="45" data-y="55">
                             <div class="node-dot small"></div>
                         </div>
-                        <div class="expansion-node node-wa" data-x="53" data-y="56" style="left: 53%; top: 56%;">
+                        <div class="expansion-node node-wa node-pos-53-56" data-x="53" data-y="56">
                             <div class="node-dot small"></div>
                         </div>
-                        <div class="expansion-node node-wa" data-x="51" data-y="62" style="left: 51%; top: 62%;">
+                        <div class="expansion-node node-wa node-pos-51-62" data-x="51" data-y="62">
                             <div class="node-dot small"></div>
                         </div>
 
                         <!-- Global Nodes -->
-                        <div class="expansion-node node-global" data-x="50" data-y="35" style="left: 50%; top: 35%;">
+                        <div class="expansion-node node-global node-pos-50-35" data-x="50" data-y="35">
                             <div class="node-dot small"></div>
                             <div class="node-label">Europe</div>
                         </div>
-                        <div class="expansion-node node-global" data-x="25" data-y="40" style="left: 25%; top: 40%;">
+                        <div class="expansion-node node-global node-pos-25-40" data-x="25" data-y="40">
                             <div class="node-dot small"></div>
                             <div class="node-label">USA</div>
                         </div>
-                        <div class="expansion-node node-global" data-x="80" data-y="45" style="left: 80%; top: 45%;">
+                        <div class="expansion-node node-global node-pos-80-45" data-x="80" data-y="45">
                             <div class="node-dot small"></div>
                             <div class="node-label">Asia</div>
                         </div>
-                        <div class="expansion-node node-global" data-x="65" data-y="55" style="left: 65%; top: 55%;">
+                        <div class="expansion-node node-global node-pos-65-55" data-x="65" data-y="55">
                             <div class="node-dot small"></div>
                             <div class="node-label">Dubai</div>
                         </div>
