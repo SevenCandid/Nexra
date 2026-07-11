@@ -195,12 +195,15 @@ async def assign_org_plan(
     organization.plan_id = plan.id
     await db.commit()
     
+    # Grant the plan's monthly subscription credits immediately on manual assignment.
+    await billing_service.renew_subscription_credits(db, org_id)
+    
     await deps.log_admin_action(
         db, current_user, "assign_plan", "organization", 
         str(org_id), {"plan_slug": plan_slug}
     )
     await db.commit()
-    return {"message": f"Plan {plan_slug} assigned successfully"}
+    return {"message": f"Plan {plan_slug} assigned successfully and monthly subscription credits granted."}
 
 
 @router.post("/buy-plan")
