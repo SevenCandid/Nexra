@@ -6,6 +6,7 @@ import { Icon } from '../components/ui/Icon.js';
 import { useToast } from '../contexts/ToastContext.js';
 import apiClient from '../api/client.js';
 import { ConfirmModal } from '../components/ui/ConfirmModal.js';
+import { BroadcastCheckoutModal } from '../components/BroadcastCheckoutModal.js';
 
 export const CampaignsPage = () => {
     const { showToast } = useToast();
@@ -13,6 +14,7 @@ export const CampaignsPage = () => {
     const [loading, setLoading] = useState(true);
     const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null });
     const [isDeleting, setIsDeleting] = useState(false);
+    const [checkoutCampaign, setCheckoutCampaign] = useState(null);
 
     useEffect(() => {
         fetchCampaigns();
@@ -47,9 +49,17 @@ export const CampaignsPage = () => {
         }
     };
 
-    const handleBroadcast = async (campaignId) => {
+    const handleBroadcast = (campaign) => {
+        setCheckoutCampaign(campaign);
+    };
+
+    const confirmBroadcast = async (usePayg) => {
+        if (!checkoutCampaign) return;
+        const campaignId = checkoutCampaign.id;
+        setCheckoutCampaign(null);
         try {
-            await apiClient.post(`/campaigns/${campaignId}/broadcast`);
+            showToast('Starting broadcast...', 'info');
+            await apiClient.post(`/campaigns/${campaignId}/broadcast?use_payg=${usePayg}`);
             showToast('Broadcast started successfully!', 'success');
             fetchCampaigns();
         } catch (error) {
@@ -131,7 +141,7 @@ export const CampaignsPage = () => {
                                     ${['draft', 'scheduled'].includes(campaign.status) && html`
                                         <${Button} 
                                             size="sm"
-                                            onClick=${() => handleBroadcast(campaign.id)} 
+                                            onClick=${() => handleBroadcast(campaign)} 
                                             className="px-3"
                                             disabled=${campaign.status === 'scheduled'}
                                             title=${campaign.status === 'scheduled' ? 'This campaign is scheduled for automatic broadcast' : 'Broadcast Now'}
@@ -181,6 +191,13 @@ export const CampaignsPage = () => {
             message="Are you sure you want to delete this campaign? This action cannot be undone."
             confirmText="Delete Campaign"
             variant="danger"
+        />
+
+        <${BroadcastCheckoutModal}
+            isOpen=${!!checkoutCampaign}
+            onClose=${() => setCheckoutCampaign(null)}
+            campaign=${checkoutCampaign}
+            onConfirm=${confirmBroadcast}
         />
     `;
 };

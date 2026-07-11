@@ -64,8 +64,16 @@ async def _async_process_sms(sms_id: int):
                 logger.info(f"[RATE-LIMIT] msg_id={msg.id} re-queued as PENDING, retry at {msg.next_retry_at}")
                 return
 
+            allow_payg = True
+            if msg.campaign_id:
+                camp_stmt = select(Campaign).where(Campaign.id == msg.campaign_id)
+                camp_res = await db.execute(camp_stmt)
+                campaign = camp_res.scalar_one_or_none()
+                if campaign and campaign.meta_data and isinstance(campaign.meta_data, dict):
+                    allow_payg = campaign.meta_data.get("use_payg", True)
+
             success, error = await billing_service.deduct_credits_for_sms(
-                db, org.id, msg.id, cost, msg.user_id
+                db, org.id, msg.id, cost, msg.user_id, allow_payg=allow_payg
             )
 
             if not success:

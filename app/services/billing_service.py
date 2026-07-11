@@ -204,7 +204,8 @@ class BillingService:
         organization_id: int,
         sms_message_id: int,
         cost: Decimal,
-        user_id: Optional[int] = None
+        user_id: Optional[int] = None,
+        allow_payg: bool = True
     ) -> Tuple[bool, str]:
         """
         Deduct credits before sending SMS.
@@ -226,17 +227,24 @@ class BillingService:
             if not wallet:
                 return False, "Wallet not found"
             
-            # Check total balance
-            total_balance = wallet.subscription_credits + wallet.payg_credits
-            if total_balance < cost:
-                return False, f"Insufficient balance. Required: {cost}, Available: {total_balance}"
+            # Check balance based on allow_payg flag
+            if allow_payg:
+                total_balance = wallet.subscription_credits + wallet.payg_credits
+                if total_balance < cost:
+                    return False, f"Insufficient balance. Required: {cost}, Available: {total_balance}"
+            else:
+                if wallet.subscription_credits < cost:
+                    return False, (
+                        f"Insufficient subscription credits. Required: {cost}, "
+                        f"Available: {wallet.subscription_credits} (PAYG fallback disabled)"
+                    )
             
             # Deduct from subscription credits first
             credit_source = "subscription"
             if wallet.subscription_credits >= cost:
                 wallet.subscription_credits -= cost
             else:
-                # Use remaining subscription + PAYG
+                # Use remaining subscription + PAYG (this path is only reached if allow_payg is True)
                 remaining = cost - wallet.subscription_credits
                 wallet.subscription_credits = Decimal('0')
                 wallet.payg_credits -= remaining

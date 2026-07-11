@@ -60,6 +60,8 @@ async def get_balance(
             "payg_credits": 0.00,
             "subscription_sms": 0,
             "payg_sms": 0,
+            "plan_rate": float(plan_rate),
+            "payg_rate": float(payg_rate),
         }
 
     sub_credits = Decimal(str(wallet.subscription_credits or 0))
@@ -78,6 +80,8 @@ async def get_balance(
             "payg_credits": float(effective_payg),
             "subscription_sms": 0,
             "payg_sms": payg_sms,
+            "plan_rate": float(plan_rate),
+            "payg_rate": float(payg_rate),
         }
     else:
         # On a paid plan: each bucket uses its own rate
@@ -92,6 +96,8 @@ async def get_balance(
             "payg_credits": float(payg_credits),
             "subscription_sms": subscription_sms,
             "payg_sms": payg_sms,
+            "plan_rate": float(plan_rate),
+            "payg_rate": float(payg_rate),
         }
 
 

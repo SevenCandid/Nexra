@@ -9,6 +9,7 @@ import { Modal } from '../components/ui/Modal.js';
 import { Badge } from '../components/ui/Badge.js';
 import { SenderIDSelect } from '../components/SenderIDSelect.js';
 import { TemplateSelector } from '../components/ui/TemplateSelector.js';
+import { BroadcastCheckoutModal } from '../components/BroadcastCheckoutModal.js';
 
 export const CreateCampaignPage = () => {
     const { showToast } = useToast();
@@ -31,6 +32,7 @@ export const CreateCampaignPage = () => {
     const [groups, setGroups] = useState([]);
     const [selectedGroups, setSelectedGroups] = useState([]);
     const [previewContact, setPreviewContact] = useState({ first_name: 'John', last_name: 'Doe', phone_number: '233241234567' });
+    const [checkoutCampaign, setCheckoutCampaign] = useState(null);
 
     // Update preview contact based on selection
     useEffect(() => {
@@ -150,7 +152,7 @@ export const CreateCampaignPage = () => {
 
     const selectedContactObjects = contacts.filter(c => selectedContacts.includes(c.id));
 
-    const handleSubmit = async (shouldBroadcast = false) => {
+    const handleSubmit = async (shouldBroadcast = false, redirect = true) => {
         setLoading(true);
         try {
             const payload = {
@@ -176,7 +178,10 @@ export const CreateCampaignPage = () => {
                 showToast('Broadcast initiated successfully!', 'success');
             }
 
-            window.location.href = '#/campaigns';
+            if (redirect) {
+                window.location.href = '#/campaigns';
+            }
+            return campaignId;
         } catch (error) {
             let errorMsg = 'Unknown error';
             if (error.response?.data?.detail) {
@@ -187,6 +192,41 @@ export const CreateCampaignPage = () => {
                 }
             }
             showToast(`Action failed: ` + errorMsg, 'error');
+            return null;
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleBroadcastClick = async () => {
+        const campaignId = await handleSubmit(false, false);
+        if (!campaignId) return;
+
+        const groupRecipients = groups
+            .filter(g => selectedGroups.includes(g.id))
+            .reduce((acc, g) => acc + g.contact_count, 0);
+        const totalRecipients = selectedContacts.length + groupRecipients;
+
+        setCheckoutCampaign({
+            id: campaignId,
+            name: formData.name,
+            template: formData.template,
+            total_recipients: totalRecipients
+        });
+    };
+
+    const confirmBroadcast = async (usePayg) => {
+        if (!checkoutCampaign) return;
+        const campaignId = checkoutCampaign.id;
+        setCheckoutCampaign(null);
+        setLoading(true);
+        try {
+            showToast('Starting broadcast...', 'info');
+            await apiClient.post(`/campaigns/${campaignId}/broadcast?use_payg=${usePayg}`);
+            showToast('Broadcast started successfully!', 'success');
+            window.location.href = '#/campaigns';
+        } catch (error) {
+            showToast('Broadcast failed: ' + (error.response?.data?.detail || 'Unknown error'), 'error');
         } finally {
             setLoading(false);
         }
@@ -564,18 +604,29 @@ export const CreateCampaignPage = () => {
                             </ul>
                         </div>
 
-                        <div className="flex gap-3">
-                            <${Button} variant="secondary" size="md" onClick=${() => setStep(3)} className="flex-1">
+                        <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                            <${Button} variant="secondary" size="md" onClick=${() => setStep(3)} className="flex-1 order-3 sm:order-1">
                                 Back
                             </${Button}>
                             <${Button} 
+                                variant="outline"
                                 size="md"
                                 onClick=${() => handleSubmit(false)} 
-                                className="flex-1 shadow-lg shadow-primary-200 py-3" 
+                                className="flex-1 order-2 sm:order-2 text-primary-600 border-primary-100 dark:border-primary-900/30" 
                                 disabled=${loading}
                             >
-                                ${loading ? 'Saving...' : 'Save Campaign'}
+                                ${formData.scheduled_at ? 'Schedule Campaign' : 'Save as Draft'}
                             </${Button}>
+                            ${!formData.scheduled_at && html`
+                                <${Button} 
+                                    size="md"
+                                    onClick=${handleBroadcastClick} 
+                                    className="flex-1 order-1 sm:order-3 shadow-lg shadow-primary-200 py-3 font-bold" 
+                                    disabled=${loading}
+                                >
+                                    ${loading ? 'Processing...' : 'Broadcast Now'}
+                                </${Button}>
+                            `}
                         </div>
                     </div>
                 `}
@@ -691,6 +742,13 @@ export const CreateCampaignPage = () => {
                     </${Button}>
                 </div>
             </${Modal}>
+
+            <${BroadcastCheckoutModal}
+                isOpen=${!!checkoutCampaign}
+                onClose=${() => setCheckoutCampaign(null)}
+                campaign=${checkoutCampaign}
+                onConfirm=${confirmBroadcast}
+            />
         </div>
     `;
 };

@@ -206,6 +206,7 @@ async def update_campaign(
 @router.post("/{campaign_id}/broadcast")
 async def broadcast_campaign(
     campaign_id: int,
+    use_payg: bool = True,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(deps.get_current_active_user)
 ):
@@ -257,6 +258,11 @@ async def broadcast_campaign(
     else:
         campaign.status = CampaignStatus.SENDING
         logger.info(f"Campaign {campaign.id} starting immediate broadcast")
+
+    # Update meta_data with use_payg preference
+    meta = dict(campaign.meta_data or {})
+    meta["use_payg"] = use_payg
+    campaign.meta_data = meta
 
     await db.commit()
     
