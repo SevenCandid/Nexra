@@ -23,22 +23,31 @@ async def get_balance(
 ):
     """
     Get current organization wallet balance, including SMS count equivalents.
+
+    Rules:
+    - PAYG plan: ALL credits (sub + payg) count as PAYG credits at 0.08 GHS/SMS.
+    - Paid plan (Starter/Pro): subscription_credits use the plan rate; payg_credits use 0.08 GHS/SMS.
     """
     result = await db.execute(select(Wallet).where(Wallet.organization_id == current_user.organization_id))
     wallet = result.scalar_one_or_none()
 
-    # Load org plan to get the sms_rate for subscription credit conversion
+    # Load org plan
     org_stmt = select(Organization).options(selectinload(Organization.plan)).where(Organization.id == current_user.organization_id)
     org_res = await db.execute(org_stmt)
     org = org_res.scalar_one_or_none()
 
-    plan_rate = Decimal(str(org.plan.sms_rate)) if org and org.plan else Decimal("0.08")
-    payg_rate = Decimal("0.08")  # PAYG rate is always 0.08 GHS/SMS
+    plan = org.plan if org else None
+    plan_slug = plan.slug if plan else "payg"
+    is_payg = (plan is None or plan_slug == "payg")
+    plan_rate = Decimal(str(plan.sms_rate)) if plan else Decimal("0.08")
+    payg_rate = Decimal("0.08")
 
     if not wallet:
         return {
             "balance": 0.00,
             "currency": "GHS",
+            "plan_slug": plan_slug,
+            "is_payg": is_payg,
             "subscription_credits": 0.00,
             "payg_credits": 0.00,
             "subscription_sms": 0,
@@ -48,17 +57,36 @@ async def get_balance(
     sub_credits = Decimal(str(wallet.subscription_credits or 0))
     payg_credits = Decimal(str(wallet.payg_credits or 0))
 
-    subscription_sms = int(sub_credits / plan_rate) if plan_rate > 0 else 0
-    payg_sms = int(payg_credits / payg_rate) if payg_rate > 0 else 0
+    if is_payg:
+        # On PAYG, ALL credits (including any leftover sub credits) count as PAYG
+        effective_payg = sub_credits + payg_credits
+        subscription_sms = 0
+        payg_sms = int(effective_payg / payg_rate) if payg_rate > 0 else 0
+        return {
+            "balance": float(wallet.balance or 0),
+            "currency": wallet.currency or "GHS",
+            "plan_slug": plan_slug,
+            "is_payg": True,
+            "subscription_credits": 0.00,
+            "payg_credits": float(effective_payg),
+            "subscription_sms": 0,
+            "payg_sms": payg_sms,
+        }
+    else:
+        # On a paid plan: each bucket uses its own rate
+        subscription_sms = int(sub_credits / plan_rate) if plan_rate > 0 else 0
+        payg_sms = int(payg_credits / payg_rate) if payg_rate > 0 else 0
+        return {
+            "balance": float(wallet.balance or 0),
+            "currency": wallet.currency or "GHS",
+            "plan_slug": plan_slug,
+            "is_payg": False,
+            "subscription_credits": float(sub_credits),
+            "payg_credits": float(payg_credits),
+            "subscription_sms": subscription_sms,
+            "payg_sms": payg_sms,
+        }
 
-    return {
-        "balance": float(wallet.balance or 0),
-        "currency": wallet.currency or "GHS",
-        "subscription_credits": float(sub_credits),
-        "payg_credits": float(payg_credits),
-        "subscription_sms": subscription_sms,
-        "payg_sms": payg_sms,
-    }
 
 @router.get("/pricing")
 async def get_pricing(
@@ -180,12 +208,22 @@ async def assign_org_plan(
     if not plan_slug or plan_slug.lower() == "none" or plan_slug.lower() == "cancel":
         organization.plan_id = default_plan.id
         await db.commit()
+
+        # Migrate any remaining subscription credits -> PAYG credits so user keeps their balance
+        wallet_res = await db.execute(select(Wallet).where(Wallet.organization_id == org_id))
+        wallet = wallet_res.scalar_one_or_none()
+        if wallet and wallet.subscription_credits and wallet.subscription_credits > Decimal("0"):
+            wallet.payg_credits = (wallet.payg_credits or Decimal("0")) + wallet.subscription_credits
+            wallet.subscription_credits = Decimal("0")
+            wallet.balance = wallet.payg_credits + (wallet.subscription_credits or Decimal("0"))
+            await db.commit()
+
         await deps.log_admin_action(
             db, current_user, "cancel_plan", "organization", 
             str(org_id), {}
         )
         await db.commit()
-        return {"message": "Plan reset to Pay As You Go successfully"}
+        return {"message": "Plan reset to Pay As You Go successfully. Remaining credits moved to PAYG wallet."}
 
     normalized_slug = PLAN_ALIASES.get(plan_slug.lower().strip(), plan_slug.lower().strip())
     plan = plans.get(normalized_slug)

@@ -289,16 +289,32 @@ export const PricingPage = () => {
                 </div>
                 
                 <div className="mt-8 pt-6 border-t border-white/5 grid grid-cols-2 md:grid-cols-4 gap-6 relative z-10">
-                    <div>
-                        <p className="text-midnight-400 text-[10px] font-bold uppercase mb-1">Subscription Credits</p>
-                        <p className="font-bold text-xl text-emerald-400">${balance?.subscription_sms ?? Math.floor((balance?.subscription_credits || 0) / 0.07)} <span className="text-sm font-medium text-midnight-500">SMS</span></p>
-                        <p className="text-[10px] text-midnight-600 mt-0.5">GH₵ ${balance?.subscription_credits?.toFixed(2) || '0.00'}</p>
-                    </div>
-                    <div>
-                        <p className="text-midnight-400 text-[10px] font-bold uppercase mb-1">PAYG Credits</p>
-                        <p className="font-bold text-xl text-amber-400">${balance?.payg_sms ?? Math.floor((balance?.payg_credits || 0) / 0.08)} <span className="text-sm font-medium text-midnight-500">SMS</span></p>
-                        <p className="text-[10px] text-midnight-600 mt-0.5">GH₵ ${balance?.payg_credits?.toFixed(2) || '0.00'}</p>
-                    </div>
+                    ${!balance?.is_payg ? html`
+                        <div>
+                            <p className="text-midnight-400 text-[10px] font-bold uppercase mb-1">Subscription Credits</p>
+                            <p className="font-bold text-xl text-emerald-400">${balance?.subscription_sms ?? 0} <span className="text-sm font-medium text-midnight-500">SMS</span></p>
+                            <p className="text-[10px] text-midnight-600 mt-0.5">GH₵ ${balance?.subscription_credits?.toFixed(2) || '0.00'}</p>
+                        </div>
+                    ` : html`
+                        <div>
+                            <p className="text-midnight-400 text-[10px] font-bold uppercase mb-1">Available SMS</p>
+                            <p className="font-bold text-xl text-amber-400">${balance?.payg_sms ?? 0} <span className="text-sm font-medium text-midnight-500">SMS</span></p>
+                            <p className="text-[10px] text-midnight-600 mt-0.5">GH₵ ${balance?.payg_credits?.toFixed(2) || '0.00'} @ 0.08/SMS</p>
+                        </div>
+                    `}
+                    ${!balance?.is_payg ? html`
+                        <div>
+                            <p className="text-midnight-400 text-[10px] font-bold uppercase mb-1">PAYG Credits</p>
+                            <p className="font-bold text-xl text-amber-400">${balance?.payg_sms ?? 0} <span className="text-sm font-medium text-midnight-500">SMS</span></p>
+                            <p className="text-[10px] text-midnight-600 mt-0.5">GH₵ ${balance?.payg_credits?.toFixed(2) || '0.00'}</p>
+                        </div>
+                    ` : html`
+                        <div>
+                            <p className="text-midnight-400 text-[10px] font-bold uppercase mb-1">Credit Type</p>
+                            <p className="font-bold text-sm text-midnight-400 mt-1">Pay As You Go</p>
+                            <p className="text-[10px] text-midnight-600 mt-0.5">No active subscription</p>
+                        </div>
+                    `}
                     <div className="md:col-span-2 md:text-right flex flex-col md:items-end justify-center">
                          <div className="inline-flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full border border-white/10">
                             <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
