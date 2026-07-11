@@ -233,6 +233,9 @@ async def assign_org_plan(
     organization.plan_id = plan.id
     await db.commit()
     
+    # Clear SQLAlchemy identity map cache to force reloading the updated plan relationship
+    db.expire_all()
+    
     # Grant the plan's monthly subscription credits immediately on manual assignment.
     await billing_service.renew_subscription_credits(db, org_id)
     
@@ -287,6 +290,9 @@ async def buy_plan(
     organization = await db.get(Organization, current_user.organization_id)
     organization.plan_id = plan.id
     await db.commit()
+
+    # Clear SQLAlchemy identity map cache to force reloading the updated plan relationship
+    db.expire_all()
 
     # Grant the plan's monthly subscription credits immediately on purchase.
     await billing_service.renew_subscription_credits(db, current_user.organization_id)
