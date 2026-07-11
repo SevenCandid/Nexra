@@ -143,18 +143,23 @@ async def get_ledger(
 @router.post("/topup")
 async def topup_wallet(
     amount: float,
+    organization_id: int = None,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(deps.get_current_active_user)
+    current_user: User = Depends(deps.get_current_active_platform_manager)
 ):
-    """Simulated wallet top-up for development."""
+    """
+    SUPERADMIN ONLY — Manual wallet top-up for testing/support.
+    Real user top-ups go through POST /payments/verify (Paystack).
+    """
+    target_org = organization_id or current_user.organization_id
     await billing_service.add_payg_credits(
         db,
-        current_user.organization_id,
+        target_org,
         Decimal(str(amount)),
-        f"TOPUP-{datetime.utcnow().timestamp()}",
+        f"MANUAL-TOPUP-{datetime.utcnow().timestamp()}",
         current_user.id
     )
-    return {"message": f"Successfully added {amount} credits to your wallet."}
+    return {"message": f"Successfully added {amount} GHS credits to org {target_org}."}
 
 @router.post("/admin/adjust-balance")
 async def admin_adjust_balance(
