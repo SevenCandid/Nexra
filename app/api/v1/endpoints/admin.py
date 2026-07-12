@@ -98,7 +98,7 @@ async def export_users(
         if include_id: row.append(u.id)
         if include_name: row.append(u.full_name or "")
         if include_email: row.append(u.email or "")
-        if include_phone: row.append(u.phone_number or "")
+        if include_phone: row.append(f"'{u.phone_number}" if u.phone_number else "")
         if include_role: row.append(u.role)
         if include_organization: row.append(u.organization.name if u.organization else "N/A")
         writer.writerow(row)
