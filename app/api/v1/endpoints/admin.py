@@ -66,7 +66,12 @@ async def get_users(
 
 @router.get("/users/export")
 async def export_users(
+    include_id: bool = True,
+    include_name: bool = True,
     include_email: bool = True,
+    include_phone: bool = True,
+    include_role: bool = True,
+    include_organization: bool = True,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(deps.get_current_active_superadmin)
 ):
@@ -78,26 +83,24 @@ async def export_users(
     output = io.StringIO()
     writer = csv.writer(output)
     
-    headers = ["ID", "Name"]
-    if include_email:
-        headers.append("Email")
-    headers.extend(["Phone", "Role", "Organization"])
+    headers = []
+    if include_id: headers.append("ID")
+    if include_name: headers.append("Name")
+    if include_email: headers.append("Email")
+    if include_phone: headers.append("Phone")
+    if include_role: headers.append("Role")
+    if include_organization: headers.append("Organization")
     
     writer.writerow(headers)
     
     for u in users:
-        row = [
-            u.id,
-            u.full_name or "",
-        ]
-        if include_email:
-            row.append(u.email or "")
-            
-        row.extend([
-            u.phone_number or "",
-            u.role,
-            u.organization.name if u.organization else "N/A"
-        ])
+        row = []
+        if include_id: row.append(u.id)
+        if include_name: row.append(u.full_name or "")
+        if include_email: row.append(u.email or "")
+        if include_phone: row.append(u.phone_number or "")
+        if include_role: row.append(u.role)
+        if include_organization: row.append(u.organization.name if u.organization else "N/A")
         writer.writerow(row)
         
     filename = f"nexra_users_{datetime.utcnow().strftime('%Y%m%d')}.csv"

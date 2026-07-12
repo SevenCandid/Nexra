@@ -2824,7 +2824,14 @@ const AdminUsersPage = () => {
     const { showToast } = useToast();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [exportWithEmail, setExportWithEmail] = useState(true);
+    const [exportOptions, setExportOptions] = useState({
+        include_id: true,
+        include_name: true,
+        include_email: true,
+        include_phone: true,
+        include_role: true,
+        include_organization: true
+    });
     const [showExportModal, setShowExportModal] = useState(false);
 
     useEffect(() => {
@@ -2844,20 +2851,13 @@ const AdminUsersPage = () => {
         }
     };
 
-    const handleExport = () => {
-        const url = `/api/v1/admin/users/export?include_email=${exportWithEmail}`;
-        const token = localStorage.getItem('token');
-        
-        fetch(url, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        })
-        .then(response => {
-            if (!response.ok) throw new Error('Export failed');
-            return response.blob();
-        })
-        .then(blob => {
+    const handleExport = async () => {
+        try {
+            const response = await apiClient.get('/admin/users/export', {
+                params: exportOptions,
+                responseType: 'blob'
+            });
+            const blob = new Blob([response.data], { type: 'text/csv' });
             const downloadUrl = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = downloadUrl;
@@ -2865,13 +2865,13 @@ const AdminUsersPage = () => {
             document.body.appendChild(a);
             a.click();
             a.remove();
+            window.URL.revokeObjectURL(downloadUrl);
             setShowExportModal(false);
             showToast('Export successful', 'success');
-        })
-        .catch(error => {
+        } catch (error) {
             console.error('Export error:', error);
             showToast('Failed to export users', 'error');
-        });
+        }
     };
 
     if (loading) return html`
@@ -2901,15 +2901,24 @@ const AdminUsersPage = () => {
                                     <${Icon} name="x" size=${16} />
                                 </button>
                             </div>
-                            <div className="p-4 space-y-4">
-                                <label className="flex items-center gap-3 cursor-pointer group">
-                                    <div className="relative flex items-center justify-center">
-                                        <input type="checkbox" checked=${exportWithEmail} onChange=${(e) => setExportWithEmail(e.target.checked)} className="peer sr-only" />
-                                        <div className="w-5 h-5 border-2 border-gray-300 dark:border-midnight-600 rounded bg-white dark:bg-midnight-950 peer-checked:bg-primary-500 peer-checked:border-primary-500 transition-colors"></div>
-                                        <${Icon} name="check" size=${14} className="absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" />
-                                    </div>
-                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Include Email Addresses</span>
-                                </label>
+                            <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
+                                ${Object.entries(exportOptions).map(([key, value]) => html`
+                                    <label key=${key} className="flex items-center gap-3 cursor-pointer group">
+                                        <div className="relative flex items-center justify-center">
+                                            <input 
+                                                type="checkbox" 
+                                                checked=${value} 
+                                                onChange=${(e) => setExportOptions({...exportOptions, [key]: e.target.checked})} 
+                                                className="peer sr-only" 
+                                            />
+                                            <div className="w-5 h-5 border-2 border-gray-300 dark:border-midnight-600 rounded bg-white dark:bg-midnight-950 peer-checked:bg-primary-500 peer-checked:border-primary-500 transition-colors"></div>
+                                            <${Icon} name="check" size=${14} className="absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" />
+                                        </div>
+                                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            Include ${key.replace('include_', '').charAt(0).toUpperCase() + key.replace('include_', '').slice(1)}
+                                        </span>
+                                    </label>
+                                `)}
                                 <${Button} variant="primary" className="w-full" onClick=${handleExport}>
                                     Download CSV
                                 </${Button}>
