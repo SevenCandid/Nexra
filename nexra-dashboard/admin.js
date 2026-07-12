@@ -2323,14 +2323,44 @@ const SystemHealthPage = () => {
 
 const MobileHeader = ({ title }) => {
     const { user } = useAuth();
+    const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
+    
+    useEffect(() => {
+        const handleThemeChange = () => setIsDark(document.documentElement.classList.contains('dark'));
+        window.addEventListener('themechange', handleThemeChange);
+        return () => window.removeEventListener('themechange', handleThemeChange);
+    }, []);
+
+    const toggleTheme = () => {
+        const root = document.documentElement;
+        if (root.classList.contains('dark')) {
+            root.classList.remove('dark');
+            localStorage.setItem('admin_theme', 'light');
+            setIsDark(false);
+        } else {
+            root.classList.add('dark');
+            localStorage.setItem('admin_theme', 'dark');
+            setIsDark(true);
+        }
+        window.dispatchEvent(new Event('themechange'));
+    };
+
     return html`
         <header className="lg:hidden sticky top-0 z-50 bg-white/80 dark:bg-midnight-950/80 backdrop-blur-md border-b border-gray-100 dark:border-midnight-800 px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
                 <img src="assets/NEXRA_IconAbove.png" alt="NEXRA" className="h-8 w-auto" />
                 <h1 className="text-lg font-bold text-gray-900 dark:text-white truncate max-w-[150px] sm:max-w-none">${title}</h1>
             </div>
-            <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-[10px] font-black text-primary-600">
-                ${user?.full_name?.charAt(0)}
+            <div className="flex items-center gap-4">
+                <button
+                    onClick=${toggleTheme}
+                    className="p-2 rounded-full bg-gray-50 dark:bg-midnight-900 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
+                >
+                    <${Icon} name=${isDark ? 'sun' : 'moon'} size=${16} />
+                </button>
+                <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-[10px] font-black text-primary-600">
+                    ${user?.full_name?.charAt(0)}
+                </div>
             </div>
         </header>
     `;
@@ -2399,6 +2429,27 @@ const BottomNav = ({ currentPage, onNavigate }) => {
 
 const AdminSidebar = ({ currentPage, onNavigate }) => {
     const { user, logout } = useAuth();
+    const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
+    
+    useEffect(() => {
+        const handleThemeChange = () => setIsDark(document.documentElement.classList.contains('dark'));
+        window.addEventListener('themechange', handleThemeChange);
+        return () => window.removeEventListener('themechange', handleThemeChange);
+    }, []);
+
+    const toggleTheme = () => {
+        const root = document.documentElement;
+        if (root.classList.contains('dark')) {
+            root.classList.remove('dark');
+            localStorage.setItem('admin_theme', 'light');
+            setIsDark(false);
+        } else {
+            root.classList.add('dark');
+            localStorage.setItem('admin_theme', 'dark');
+            setIsDark(true);
+        }
+        window.dispatchEvent(new Event('themechange'));
+    };
     
     return html`
         <aside className="hidden lg:flex lg:flex-col lg:w-72 bg-white dark:bg-midnight-950 border-r border-gray-200 dark:border-midnight-800 h-screen sticky top-0 transition-colors overflow-hidden">
@@ -2504,13 +2555,22 @@ const AdminSidebar = ({ currentPage, onNavigate }) => {
                     <p className="text-xs font-bold text-gray-900 dark:text-white truncate">${user?.full_name}</p>
                     <p className="text-[10px] text-gray-500 uppercase font-black tracking-tighter mt-0.5">${user?.role === 'superadmin' ? 'PLATFORM SUPERADMIN' : 'OFFICIAL STAFF MEMBER'}</p>
                 </div>
-                <button
-                    onClick=${logout}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
-                >
-                    <${Icon} name="log-out" size=${20} />
-                    <span>Sign Out</span>
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        onClick=${toggleTheme}
+                        className="flex items-center justify-center p-3 rounded-lg text-gray-500 hover:bg-gray-50 dark:hover:bg-midnight-800 transition-colors"
+                        title="Toggle theme"
+                    >
+                        <${Icon} name=${isDark ? 'sun' : 'moon'} size=${20} />
+                    </button>
+                    <button
+                        onClick=${logout}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                    >
+                        <${Icon} name="log-out" size=${20} />
+                        <span className="font-bold">Sign Out</span>
+                    </button>
+                </div>
             </div>
         </aside>
     `;
@@ -2629,6 +2689,19 @@ const AdminBugsPage = () => {
 const AdminApp = () => {
     const { user, loading, logout } = useAuth();
     const [currentPage, setCurrentPage] = useState('approvals');
+
+    useEffect(() => {
+        // Default to dark mode if not explicitly set to light
+        const savedTheme = localStorage.getItem('admin_theme');
+        if (savedTheme === 'light') {
+            document.documentElement.classList.remove('dark');
+        } else {
+            document.documentElement.classList.add('dark');
+            if (!savedTheme) {
+                localStorage.setItem('admin_theme', 'dark');
+            }
+        }
+    }, []);
 
     useEffect(() => {
         const handleHashChange = () => {

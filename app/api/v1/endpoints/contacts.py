@@ -173,12 +173,23 @@ async def upload_contacts(
     }
 
     def get_value(row, internal_key):
-        """Find value in row by trying all possible header variants."""
-        for header, value in row.items():
-            header_lower = str(header).lower().strip()
+        for header_key, value in row.items():
+            if value is None:
+                continue
+            
+            # Excel sometimes parses numbers as floats (e.g. 541234567.0 instead of 0541234567)
+            if isinstance(value, float) and value.is_integer():
+                value = int(value)
+                
+            header_lower = str(header_key).strip().lower()
             if header_lower in header_map[internal_key] or header_lower.replace(' ', '_') in header_map[internal_key]:
                 return value
-        return row.get(internal_key) # Fallback to literal key
+                
+        # Fallback to literal key
+        val = row.get(internal_key)
+        if isinstance(val, float) and val.is_integer():
+            val = int(val)
+        return val
 
     for row in rows:
         phone = get_value(row, 'phone_number')
