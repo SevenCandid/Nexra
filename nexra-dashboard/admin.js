@@ -2523,6 +2523,13 @@ const BottomNav = ({ currentPage, onNavigate }) => {
                         <${Icon} name="users" size=${20} />
                         <span className="text-[10px] uppercase tracking-wider">Staff</span>
                     </button>
+                    <button 
+                        onClick=${() => onNavigate('users')}
+                        className="flex flex-col items-center gap-1 transition-colors ${currentPage === 'users' ? 'text-primary-600 font-bold' : 'text-gray-400'}"
+                    >
+                        <${Icon} name="user-check" size=${20} />
+                        <span className="text-[10px] uppercase tracking-wider">Users</span>
+                    </button>
                 `}
                 
                 <button 
@@ -2626,6 +2633,15 @@ const AdminSidebar = ({ currentPage, onNavigate }) => {
                         >
                             <${Icon} name="users" size=${20} />
                             <span>Staff Management</span>
+                        </button>
+                        <button
+                            onClick=${() => onNavigate('users')}
+                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentPage === 'users'
+                                ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 font-bold'
+                                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}"
+                        >
+                            <${Icon} name="user-check" size=${20} />
+                            <span>Users Directory</span>
                         </button>
                     `}
                      <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 mt-4">God Mode</p>
@@ -2804,6 +2820,159 @@ const AdminBugsPage = () => {
     `;
 };
 
+const AdminUsersPage = () => {
+    const { showToast } = useToast();
+    const [users, setUsers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [exportWithEmail, setExportWithEmail] = useState(true);
+    const [showExportModal, setShowExportModal] = useState(false);
+
+    useEffect(() => {
+        fetchUsers();
+    }, []);
+
+    const fetchUsers = async () => {
+        setLoading(true);
+        try {
+            const response = await apiClient.get('/admin/users');
+            setUsers(response.data);
+        } catch (error) {
+            console.error('Failed to fetch users:', error);
+            showToast('Failed to load users', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleExport = () => {
+        const url = `/api/v1/admin/users/export?include_email=${exportWithEmail}`;
+        const token = localStorage.getItem('token');
+        
+        fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Export failed');
+            return response.blob();
+        })
+        .then(blob => {
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = `nexra_users_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setShowExportModal(false);
+            showToast('Export successful', 'success');
+        })
+        .catch(error => {
+            console.error('Export error:', error);
+            showToast('Failed to export users', 'error');
+        });
+    };
+
+    if (loading) return html`
+        <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary-500 border-t-transparent"></div>
+        </div>
+    `;
+
+    return html`
+        <div className="space-y-6 max-w-6xl mx-auto pb-20 fade-in">
+            <div className="flex items-center justify-between">
+                <div>
+                    <h2 className="text-2xl font-bold dark:text-white">Registered Users</h2>
+                    <p className="text-sm text-gray-500 dark:text-midnight-400 mt-1">View all signed up users.</p>
+                </div>
+                <div className="relative">
+                    <${Button} variant="primary" onClick=${() => setShowExportModal(!showExportModal)}>
+                        <${Icon} name="download" size=${18} className="mr-2" />
+                        Export to CSV
+                    </${Button}>
+
+                    ${showExportModal && html`
+                        <div className="absolute right-0 mt-2 w-64 rounded-xl shadow-xl bg-white dark:bg-midnight-900 ring-1 ring-black/5 dark:ring-white/10 z-50 overflow-hidden">
+                            <div className="p-4 border-b border-gray-100 dark:border-midnight-800 flex justify-between items-center">
+                                <h3 className="font-bold text-sm dark:text-white">Export Options</h3>
+                                <button onClick=${() => setShowExportModal(false)} className="text-gray-400 hover:text-gray-600">
+                                    <${Icon} name="x" size=${16} />
+                                </button>
+                            </div>
+                            <div className="p-4 space-y-4">
+                                <label className="flex items-center gap-3 cursor-pointer group">
+                                    <div className="relative flex items-center justify-center">
+                                        <input type="checkbox" checked=${exportWithEmail} onChange=${(e) => setExportWithEmail(e.target.checked)} className="peer sr-only" />
+                                        <div className="w-5 h-5 border-2 border-gray-300 dark:border-midnight-600 rounded bg-white dark:bg-midnight-950 peer-checked:bg-primary-500 peer-checked:border-primary-500 transition-colors"></div>
+                                        <${Icon} name="check" size=${14} className="absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" />
+                                    </div>
+                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Include Email Addresses</span>
+                                </label>
+                                <${Button} variant="primary" className="w-full" onClick=${handleExport}>
+                                    Download CSV
+                                </${Button}>
+                            </div>
+                        </div>
+                    `}
+                </div>
+            </div>
+
+            <${Card} className="overflow-hidden border border-gray-100 dark:border-midnight-800 bg-white dark:bg-midnight-950">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-gray-50/50 dark:bg-midnight-900/50 border-b border-gray-100 dark:border-midnight-800">
+                                <th className="px-6 py-4 text-xs font-black text-gray-400 dark:text-midnight-400 uppercase tracking-widest">ID</th>
+                                <th className="px-6 py-4 text-xs font-black text-gray-400 dark:text-midnight-400 uppercase tracking-widest">User</th>
+                                <th className="px-6 py-4 text-xs font-black text-gray-400 dark:text-midnight-400 uppercase tracking-widest">Contact</th>
+                                <th className="px-6 py-4 text-xs font-black text-gray-400 dark:text-midnight-400 uppercase tracking-widest">Role</th>
+                                <th className="px-6 py-4 text-xs font-black text-gray-400 dark:text-midnight-400 uppercase tracking-widest">Organization</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 dark:divide-midnight-800/50">
+                            ${users.map(u => html`
+                                <tr key=${u.id} className="hover:bg-gray-50/30 dark:hover:bg-midnight-900/20 transition-colors">
+                                    <td className="px-6 py-4">
+                                        <span className="text-xs font-mono text-gray-400 dark:text-midnight-500">#${u.id}</span>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <div className="font-medium text-gray-900 dark:text-gray-200">${u.full_name || 'N/A'}</div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <div className="text-sm text-gray-600 dark:text-midnight-300">${u.email}</div>
+                                        ${u.phone_number && html`<div className="text-xs text-gray-400 dark:text-midnight-500 mt-0.5">${u.phone_number}</div>`}
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <span className=${`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold uppercase tracking-widest ${
+                                            u.role === 'superadmin' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                                            u.role === 'staff' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                            'bg-gray-100 text-gray-700 dark:bg-midnight-800 dark:text-gray-400'
+                                        }`}>
+                                            ${u.role}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <div className="text-sm text-gray-900 dark:text-gray-300 font-medium">${u.organization_name}</div>
+                                    </td>
+                                </tr>
+                            `)}
+                            ${users.length === 0 && html`
+                                <tr>
+                                    <td colSpan="5" className="px-6 py-12 text-center text-gray-500 dark:text-midnight-400">
+                                        No users found.
+                                    </td>
+                                </tr>
+                            `}
+                        </tbody>
+                    </table>
+                </div>
+            </${Card}>
+        </div>
+    `;
+};
+
 const AdminApp = () => {
     const { user, loading, logout } = useAuth();
     const [currentPage, setCurrentPage] = useState('approvals');
@@ -2845,6 +3014,7 @@ const AdminApp = () => {
             case 'approvals': return html`<${AdminApprovalPage} />`;
             case 'management': return html`<${PlatformManagementPage} />`;
             case 'staff': return html`<${StaffManagementPage} />`;
+            case 'users': return html`<${AdminUsersPage} />`;
             case 'search': return html`<${GlobalSearchPage} />`;
             case 'audit': return html`<${AuditLogPage} />`;
             case 'announcements': return html`<${AnnouncementsPage} />`;
@@ -2876,9 +3046,10 @@ const AdminApp = () => {
     const getPageTitle = () => {
         switch (currentPage) {
             case 'overview': return 'Business Overview';
-            case 'approvals': return 'Approvals';
-            case 'management': return 'Management';
+            case 'approvals': return 'Sender ID Approvals';
+            case 'management': return 'Platform Management';
             case 'staff': return 'Staff Management';
+            case 'users': return 'Users Directory';
             case 'search': return 'Global Search';
             case 'audit': return 'Audit Logs';
             case 'announcements': return 'Announcements';

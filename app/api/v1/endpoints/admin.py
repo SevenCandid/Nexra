@@ -1,6 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, or_
+from sqlalchemy.orm import selectinload
+import io
+import csv
 from app.api import deps
 from app.db.database import get_db
 from app.db.models import (
@@ -33,6 +37,74 @@ def _sort_announcements(announcements):
             getattr(ann, "created_at", datetime.utcnow()),
         ),
         reverse=True,
+    )
+
+# --- USERS ---
+
+@router.get("/users")
+async def get_users(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_superadmin)
+):
+    """Get all registered users for superadmin."""
+    query = select(User).options(selectinload(User.organization)).order_by(User.id.desc())
+    result = await db.execute(query)
+    users = result.scalars().all()
+    
+    return [
+        {
+            "id": u.id,
+            "full_name": u.full_name,
+            "email": u.email,
+            "phone_number": u.phone_number,
+            "role": u.role,
+            "is_active": u.is_active,
+            "organization_name": u.organization.name if u.organization else "N/A"
+        }
+        for u in users
+    ]
+
+@router.get("/users/export")
+async def export_users(
+    include_email: bool = True,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_superadmin)
+):
+    """Export users to CSV."""
+    query = select(User).options(selectinload(User.organization)).order_by(User.id.desc())
+    result = await db.execute(query)
+    users = result.scalars().all()
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    headers = ["ID", "Name"]
+    if include_email:
+        headers.append("Email")
+    headers.extend(["Phone", "Role", "Organization"])
+    
+    writer.writerow(headers)
+    
+    for u in users:
+        row = [
+            u.id,
+            u.full_name or "",
+        ]
+        if include_email:
+            row.append(u.email or "")
+            
+        row.extend([
+            u.phone_number or "",
+            u.role,
+            u.organization.name if u.organization else "N/A"
+        ])
+        writer.writerow(row)
+        
+    filename = f"nexra_users_{datetime.utcnow().strftime('%Y%m%d')}.csv"
+    return StreamingResponse(
+        io.BytesIO(output.getvalue().encode("utf-8")),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
 
 # --- AUDIT LOGS ---
