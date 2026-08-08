@@ -5,9 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from app.api import deps
 from app.core import security
-from app.db.models import User, Organization, Wallet, SubscriptionPlan, StaffInvite, UserRole
+from app.db.models import User, Organization, Wallet, SubscriptionPlan, StaffInvite, UserRole, Contact, ContactGroup
 from datetime import datetime
 from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
 from app.db.database import get_db
 from app.schemas.schemas import Token, User as UserSchema, UserRegister, UserProfileUpdate
 import httpx
@@ -22,6 +23,62 @@ from slowapi.util import get_remote_address
 
 logger = logging.getLogger("uvicorn.error")
 limiter = Limiter(key_func=get_remote_address)
+
+async def sync_user_to_admin_contacts(db: AsyncSession, user: User):
+    """Automatically adds the new user as a contact to the SUPERADMIN's organization."""
+    if not user.phone_number:
+        return
+
+    # Find the first SUPERADMIN
+    stmt = select(User).where(User.role == UserRole.SUPERADMIN).limit(1)
+    admin = (await db.execute(stmt)).scalar_one_or_none()
+    
+    if not admin or not admin.organization_id:
+        return
+        
+    admin_org_id = admin.organization_id
+    
+    # Ensure "Platform Clients" group exists
+    group_name = "Platform Clients"
+    stmt = select(ContactGroup).where(
+        ContactGroup.organization_id == admin_org_id,
+        ContactGroup.name == group_name
+    )
+    client_group = (await db.execute(stmt)).scalar_one_or_none()
+    
+    if not client_group:
+        client_group = ContactGroup(
+            name=group_name,
+            organization_id=admin_org_id,
+            description="Automatically managed list of all signed-up clients"
+        )
+        db.add(client_group)
+        await db.flush()
+        
+    # Check if contact exists
+    stmt = select(Contact).options(selectinload(Contact.groups)).where(
+        Contact.organization_id == admin_org_id,
+        Contact.phone_number == user.phone_number
+    )
+    contact = (await db.execute(stmt)).scalar_one_or_none()
+    
+    if not contact:
+        contact = Contact(
+            phone_number=user.phone_number,
+            first_name=user.full_name or user.email,
+            organization_id=admin_org_id,
+            tags={"source": "system_signup"}
+        )
+        contact.groups.append(client_group)
+        db.add(contact)
+    else:
+        # Update name if it was empty
+        if not contact.first_name and user.full_name:
+            contact.first_name = user.full_name
+            
+        # Ensure it's in the group
+        if not any(g.id == client_group.id for g in contact.groups):
+            contact.groups.append(client_group)
 
 router = APIRouter()
 
@@ -135,6 +192,9 @@ async def register(
         currency="GHS"
     ).on_conflict_do_nothing(index_elements=["organization_id"])
     await db.execute(stmt)
+    
+    await sync_user_to_admin_contacts(db, user)
+    
     await db.commit()
 
     return {
@@ -197,6 +257,8 @@ async def update_users_me(
         current_user.phone_number = profile.phone_number
     if profile.full_name is not None:
         current_user.full_name = profile.full_name
+    
+    await sync_user_to_admin_contacts(db, current_user)
     
     await db.commit()
     await db.refresh(current_user)
@@ -350,6 +412,9 @@ async def google_callback(
                 currency="GHS"
             )
             db.add(wallet)
+            
+            await sync_user_to_admin_contacts(db, user)
+            
             await db.commit()
             await db.refresh(user)
             logger.info(f"OAuth: Account created successfully")
