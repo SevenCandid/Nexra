@@ -654,24 +654,70 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
                                 </div>
 
                                 <!-- Examples side by side -->
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     <div className="p-3 bg-gray-50 dark:bg-midnight-900/50 rounded-xl border border-gray-200 dark:border-midnight-800">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Minimal Example</p>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Minimal CSV Example</p>
                                         <pre className="text-xs text-gray-600 dark:text-midnight-300 font-mono leading-relaxed overflow-x-auto">name,phone
 Kofi Mensah,0241234567
 Ama Owusu,233501234567
 Kweku,+233271234567</pre>
                                     </div>
                                     <div className="p-3 bg-gray-50 dark:bg-midnight-900/50 rounded-xl border border-gray-200 dark:border-midnight-800">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Full Example</p>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Full CSV Example</p>
                                         <pre className="text-xs text-gray-600 dark:text-midnight-300 font-mono leading-relaxed overflow-x-auto">First Name,Last Name,Mobile
 Kofi,Mensah,0241234567
 Ama,Owusu,0501234567
 Kweku,Asante,0271234567</pre>
                                     </div>
                                 </div>
+                                
+                                <!-- Excel Visualization -->
+                                <div className="p-3 bg-white dark:bg-midnight-950 rounded-xl border border-green-200 dark:border-green-900/30 overflow-hidden mt-4">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-green-600 dark:text-green-400 mb-2 flex items-center gap-1.5">
+                                        <${Icon} name="grid" size=${12} />
+                                        How it looks in Excel
+                                    </p>
+                                    <div className="overflow-x-auto rounded border border-gray-200 dark:border-midnight-800">
+                                        <table className="w-full text-left text-xs whitespace-nowrap">
+                                            <thead>
+                                                <tr className="bg-gray-100 dark:bg-midnight-900 text-gray-600 dark:text-midnight-300 border-b border-gray-200 dark:border-midnight-800">
+                                                    <th className="px-2 py-1.5 font-bold border-r border-gray-200 dark:border-midnight-800 text-center w-8 bg-gray-200 dark:bg-midnight-800"></th>
+                                                    <th className="px-3 py-1.5 font-bold border-r border-gray-200 dark:border-midnight-800 text-center w-8 bg-gray-200 dark:bg-midnight-800">A</th>
+                                                    <th className="px-3 py-1.5 font-bold border-r border-gray-200 dark:border-midnight-800 text-center w-8 bg-gray-200 dark:bg-midnight-800">B</th>
+                                                    <th className="px-3 py-1.5 font-bold border-r border-gray-200 dark:border-midnight-800 text-center w-8 bg-gray-200 dark:bg-midnight-800">C</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="text-gray-700 dark:text-midnight-200">
+                                                <tr className="border-b border-gray-100 dark:border-midnight-800/50">
+                                                    <td className="px-2 py-1.5 border-r border-gray-200 dark:border-midnight-800 bg-gray-100 dark:bg-midnight-900 text-center text-gray-500 font-medium">1</td>
+                                                    <td className="px-3 py-1.5 border-r border-gray-100 dark:border-midnight-800/50 font-bold bg-green-50 dark:bg-green-900/10">First Name</td>
+                                                    <td className="px-3 py-1.5 border-r border-gray-100 dark:border-midnight-800/50 font-bold bg-green-50 dark:bg-green-900/10">Last Name</td>
+                                                    <td className="px-3 py-1.5 font-bold bg-green-50 dark:bg-green-900/10">Mobile</td>
+                                                </tr>
+                                                <tr className="border-b border-gray-100 dark:border-midnight-800/50">
+                                                    <td className="px-2 py-1.5 border-r border-gray-200 dark:border-midnight-800 bg-gray-100 dark:bg-midnight-900 text-center text-gray-500 font-medium">2</td>
+                                                    <td className="px-3 py-1.5 border-r border-gray-100 dark:border-midnight-800/50">Kofi</td>
+                                                    <td className="px-3 py-1.5 border-r border-gray-100 dark:border-midnight-800/50">Mensah</td>
+                                                    <td className="px-3 py-1.5 font-mono text-[10px]">0241234567</td>
+                                                </tr>
+                                                <tr className="border-b border-gray-100 dark:border-midnight-800/50">
+                                                    <td className="px-2 py-1.5 border-r border-gray-200 dark:border-midnight-800 bg-gray-100 dark:bg-midnight-900 text-center text-gray-500 font-medium">3</td>
+                                                    <td className="px-3 py-1.5 border-r border-gray-100 dark:border-midnight-800/50">Ama</td>
+                                                    <td className="px-3 py-1.5 border-r border-gray-100 dark:border-midnight-800/50">Owusu</td>
+                                                    <td className="px-3 py-1.5 font-mono text-[10px]">0501234567</td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="px-2 py-1.5 border-r border-gray-200 dark:border-midnight-800 bg-gray-100 dark:bg-midnight-900 text-center text-gray-500 font-medium">4</td>
+                                                    <td className="px-3 py-1.5 border-r border-gray-100 dark:border-midnight-800/50">Kweku</td>
+                                                    <td className="px-3 py-1.5 border-r border-gray-100 dark:border-midnight-800/50">Asante</td>
+                                                    <td className="px-3 py-1.5 font-mono text-[10px]">0271234567</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
 
-                                <p className="text-[11px] text-gray-400 dark:text-midnight-500 text-center">Supports <strong>.csv</strong>, <strong>.xlsx</strong> and <strong>.xls</strong> files. Duplicate phone numbers are automatically skipped.</p>
+                                <p className="text-[11px] text-gray-400 dark:text-midnight-500 text-center mt-6">Supports <strong>.csv</strong>, <strong>.xlsx</strong> and <strong>.xls</strong> files. Duplicate phone numbers are automatically skipped.</p>
 
                             </div>
 
