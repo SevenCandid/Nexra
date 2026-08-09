@@ -172,11 +172,23 @@ export const DashboardPage = () => {
 
     return html`
         <div className="space-y-6 fade-in">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white">Pulse Overview</h2>
-                <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-y-4 gap-x-2">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white flex-1 min-w-[150px] order-1">Pulse Overview</h2>
+                
+                <div className="flex items-center gap-2 order-2 sm:order-3">
+                    <${Button} variant="primary" size="sm" onClick=${() => window.location.href = '#/campaigns/create'}>
+                        <${Icon} name="plus" size=${16} />
+                        <span className="hidden sm:inline">New Campaign</span>
+                    </${Button}>
+                    <${Button} variant="outline" size="sm" onClick=${() => window.location.href = '#/contacts'}>
+                        <${Icon} name="users" size=${16} />
+                        <span className="hidden sm:inline">Contacts</span>
+                    </${Button}>
+                </div>
+
+                <div className="flex items-center gap-2 order-3 sm:order-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
                     ${dateRange === 'custom' && html`
-                        <div className="flex items-center gap-1 bg-white dark:bg-midnight-800 border border-gray-200 dark:border-midnight-700 px-2 py-0.5 rounded-lg">
+                        <div className="flex items-center gap-1 bg-white dark:bg-midnight-800 border border-gray-200 dark:border-midnight-700 px-2 py-0.5 rounded-lg flex-shrink-0">
                             <input 
                                 type="date" 
                                 value=${customStartDate} 
@@ -192,7 +204,7 @@ export const DashboardPage = () => {
                             />
                         </div>
                     `}
-                    <div className="flex items-center gap-1 bg-gray-100 dark:bg-midnight-900 p-1 rounded-lg">
+                    <div className="flex items-center gap-1 bg-gray-100 dark:bg-midnight-900 p-1 rounded-lg flex-shrink-0">
                         ${['24h', '7d', '30d', 'all', 'custom'].map(range => html`
                             <button 
                                 key=${range}
@@ -202,17 +214,6 @@ export const DashboardPage = () => {
                                 ${{ '24h': '24h', '7d': '7d', '30d': '30d', 'all': 'All', 'custom': 'Custom' }[range]}
                             </button>
                         `)}
-                    </div>
-                    
-                    <div className="flex items-center gap-2 ml-auto sm:ml-2">
-                        <${Button} variant="primary" size="sm" onClick=${() => window.location.href = '#/campaigns/create'}>
-                            <${Icon} name="plus" size=${16} />
-                            <span className="hidden sm:inline">New Campaign</span>
-                        </${Button}>
-                        <${Button} variant="outline" size="sm" onClick=${() => window.location.href = '#/contacts'}>
-                            <${Icon} name="users" size=${16} />
-                            <span className="hidden sm:inline">Contacts</span>
-                        </${Button}>
                     </div>
                 </div>
             </div>
@@ -236,7 +237,7 @@ export const DashboardPage = () => {
                         <canvas ref=${activityChartRef}></canvas>
                     </div>
                 </${Card}>
-    <${Card} className="p-4 lg:p-6 overflow-hidden">
+    <${Card} className="hidden lg:block p-4 lg:p-6 overflow-hidden">
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-lg font-bold text-gray-900 dark:text-white">Recent Campaigns</h2>
                     <a href="#/campaigns" className="text-primary-600 hover:text-primary-700 text-sm font-medium">
@@ -327,6 +328,45 @@ export const DashboardPage = () => {
                     </div>
                 </${Card}>
 </div>
+            </div>
+
+            <div className="block lg:hidden w-full mb-4">
+                <${Card} className="p-4 lg:p-6 overflow-hidden">
+                    <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-lg font-bold text-gray-900 dark:text-white">Recent Campaigns</h2>
+                        <a href="#/campaigns" className="text-primary-600 hover:text-primary-700 text-sm font-medium">
+                            View all
+                        </a>
+                    </div>
+
+                    ${campaigns.length === 0 ? html`
+                        <div className="text-center py-8 text-gray-500">
+                            <${Icon} name="inbox" size=${48} className="mx-auto mb-2 text-gray-400" />
+                            <p>No campaigns yet</p>
+                        </div>
+                    ` : html`
+                        <div className="space-y-3">
+                            ${campaigns.map((campaign) => html`
+                                <div key=${campaign.id} className="flex items-center justify-between p-3.5 bg-gray-50/50 dark:bg-midnight-900/50 rounded-xl border border-gray-100/50 dark:border-midnight-800 shadow-sm transition-all hover:border-primary-100 dark:hover:border-primary-900/50 group">
+                                    <div className="flex-1">
+                                        <p className="font-bold text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">${campaign.name}</p>
+                                        <p className="text-[10px] font-bold text-gray-400 dark:text-midnight-500 uppercase tracking-widest mt-0.5">
+                                            ${new Date(campaign.created_at).toLocaleDateString()}
+                                        </p>
+                                    </div>
+    <${Badge} variant=${
+                                        campaign.status === 'completed' ? 'success' :
+                                        campaign.status === 'failed' ? 'danger' :
+                                        campaign.status === 'delivering' || campaign.status === 'sending' ? 'info' :
+                                        campaign.status === 'scheduled' ? 'warning' : 'default'
+                                    }>
+                                        ${{ completed: 'Completed', delivering: 'Delivering', sending: 'Sending', failed: 'Failed', draft: 'Draft', scheduled: 'Scheduled' }[campaign.status] || campaign.status}
+                                    </${Badge}>
+                                </div>
+                            `)}
+                        </div>
+                    `}
+                </${Card}>
             </div>
 
 
