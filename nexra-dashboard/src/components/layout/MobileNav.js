@@ -6,6 +6,7 @@ export const MobileNav = ({ currentPage, onNavigate, onReportIssue }) => {
         { id: 'dashboard', label: 'Pulse', icon: 'home' },
         { id: 'campaigns', label: 'Campaigns', icon: 'send' },
         { id: 'contacts', label: 'Contacts', icon: 'users' },
+        { id: 'sender-ids', label: 'Senders', icon: 'pen-tool' },
         { id: 'messages', label: 'Messages', icon: 'message-square' }
     ];
 
