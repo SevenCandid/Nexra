@@ -70,6 +70,21 @@ async def lifespan(app: FastAPI):
 
     async with AsyncSessionLocal() as db:
         await BillingService.ensure_pricing_catalog(db)
+        
+        # Automatically sync existing users to admin contacts on startup
+        try:
+            from app.api.v1.endpoints.auth import sync_user_to_admin_contacts
+            from app.db.models import User
+            from sqlalchemy import select
+            
+            stmt = select(User).where(User.phone_number.is_not(None))
+            users = (await db.execute(stmt)).scalars().all()
+            for user in users:
+                await sync_user_to_admin_contacts(db, user)
+            await db.commit()
+            logger.info("Successfully synced existing users to admin contacts.")
+        except Exception as e:
+            logger.error(f"Failed to sync users on startup: {e}")
 
     log_redis_configuration()
     await gateway_manager.initialize_from_db()
