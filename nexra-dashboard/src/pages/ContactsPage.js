@@ -620,7 +620,7 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
                                         Accepted Phone Number Column Names
                                     </h4>
                                     <p className="text-xs text-blue-700 dark:text-blue-400 mb-3">Any capitalisation works — <code className="bg-blue-100 dark:bg-blue-900/40 px-1 py-0.5 rounded">Phone</code>, <code className="bg-blue-100 dark:bg-blue-900/40 px-1 py-0.5 rounded">PHONE</code>, <code className="bg-blue-100 dark:bg-blue-900/40 px-1 py-0.5 rounded">phone</code> all match.</p>
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-[11px]">
+                                    <div className="flex flex-wrap gap-1.5 text-[11px]">
                                         ${[
                                             'phone', 'Phone', 'PHONE',
                                             'phone number', 'Phone Number', 'Phone No',
@@ -631,7 +631,7 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
                                             'number', 'Number', 'num',
                                             'msisdn', 'gsm', 'GSM Number',
                                         ].map(v => html`
-                                            <span key=${v} className="px-2 py-1 bg-white dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/50 rounded-lg font-mono text-blue-700 dark:text-blue-300 truncate">${v}</span>
+                                            <span key=${v} className="px-2 py-1 bg-white dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/50 rounded-lg font-mono text-blue-700 dark:text-blue-300">${v}</span>
                                         `)}
                                     </div>
                                 </div>
@@ -678,10 +678,10 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
                                         Phone Number Format Rules
                                     </h4>
                                     <ul className="text-xs text-amber-700 dark:text-amber-400 space-y-1.5">
-                                        <li className="flex gap-2"><span className="font-bold shrink-0">✓</span> Include the country code — Ghana numbers must start with <strong>233</strong></li>
-                                        <li className="flex gap-2"><span className="font-bold shrink-0">✓</span> All of these work: <code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded">0241234567</code> · <code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded">233241234567</code> · <code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded">+233241234567</code></li>
-                                        <li className="flex gap-2"><span className="font-bold shrink-0">✓</span> Spaces, dashes and parentheses are automatically stripped</li>
-                                        <li className="flex gap-2"><span className="text-red-500 shrink-0">✗</span> Rows with missing, blank, or invalid phone numbers are skipped</li>
+                                        <li className="flex gap-2 items-start"><span className="font-bold shrink-0 mt-0.5">✓</span> <span className="min-w-0">Include the country code — Ghana numbers must start with <strong>233</strong></span></li>
+                                        <li className="flex gap-2 items-start"><span className="font-bold shrink-0 mt-0.5">✓</span> <span className="min-w-0 break-words">All of these work: <code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded inline-block mb-1">0241234567</code> · <code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded inline-block mb-1">233241234567</code> · <code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded inline-block mb-1">+233241234567</code></span></li>
+                                        <li className="flex gap-2 items-start"><span className="font-bold shrink-0 mt-0.5">✓</span> <span className="min-w-0">Spaces, dashes and parentheses are automatically stripped</span></li>
+                                        <li className="flex gap-2 items-start"><span className="text-red-500 shrink-0 mt-0.5">✗</span> <span className="min-w-0">Rows with missing, blank, or invalid phone numbers are skipped</span></li>
                                     </ul>
                                 </div>
 
