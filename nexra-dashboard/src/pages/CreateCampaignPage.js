@@ -323,6 +323,7 @@ export const CreateCampaignPage = () => {
                 `}
 
                 ${step === 2 && html`
+                    <div className="space-y-4">
                         <${RecipientSelector} 
                             selectedContacts=${selectedContacts} 
                             setSelectedContacts=${setSelectedContacts}

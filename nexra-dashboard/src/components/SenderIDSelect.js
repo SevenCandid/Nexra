@@ -11,10 +11,6 @@ export const SenderIDSelect = ({ value, onChange }) => {
     const isSuperAdmin = user?.role?.toUpperCase() === 'SUPERADMIN';
 
     const fetchSenderIds = async () => {
-        if (isSuperAdmin) {
-            setLoading(false);
-            return;
-        }
         setLoading(true);
         try {
             const res = await apiClient.get('/sender-ids');
@@ -28,20 +24,27 @@ export const SenderIDSelect = ({ value, onChange }) => {
 
     useEffect(() => {
         fetchSenderIds();
-    }, [isSuperAdmin]);
+    }, []);
 
     if (loading) return html`<div className="h-10 animate-pulse bg-gray-100 dark:bg-midnight-900 rounded-lg"></div>`;
 
     if (isSuperAdmin) {
+        const uniqueId = `admin-sender-ids-${Math.random().toString(36).substr(2, 9)}`;
         return html`
-            <input 
-                type="text" 
-                value=${value} 
-                onChange=${(e) => onChange(e.target.value)}
-                placeholder="Enter any Sender ID (Admin)"
-                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-sm text-gray-900 dark:text-white outline-none transition-all"
-                maxLength="11"
-            />
+            <div className="relative">
+                <input 
+                    type="text" 
+                    list=${uniqueId}
+                    value=${value} 
+                    onChange=${(e) => onChange(e.target.value)}
+                    placeholder="Enter or select Sender ID (Admin)"
+                    className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-sm text-gray-900 dark:text-white outline-none transition-all"
+                    maxLength="11"
+                />
+                <datalist id=${uniqueId}>
+                    ${senderIds.map(s => html`<option key=${s.id} value=${s.sender_id}></option>`)}
+                </datalist>
+            </div>
         `;
     }
 

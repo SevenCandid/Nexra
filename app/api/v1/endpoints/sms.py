@@ -104,6 +104,24 @@ async def send_sms(
     if not organization or not wallet:
         raise HTTPException(status_code=404, detail="Organization wallet not found.")
 
+    from app.db.models import SenderID, SenderIDStatus, UserRole
+    if current_user.role == UserRole.SUPERADMIN:
+        s_query = select(SenderID).where(
+            SenderID.sender_id == sms_in.sender,
+            SenderID.organization_id == current_user.organization_id
+        )
+        s_result = await db.execute(s_query)
+        if not s_result.scalar_one_or_none():
+            new_sender = SenderID(
+                sender_id=sms_in.sender,
+                organization_id=current_user.organization_id,
+                status=SenderIDStatus.APPROVED,
+                purpose="Auto-saved by SuperAdmin",
+                requested_by=current_user.id
+            )
+            db.add(new_sender)
+            await db.flush()
+
     cost = await billing_service.calculate_sms_cost(db, normalized_recipient, sms_in.message, organization)
 
     if wallet.balance < cost:
@@ -197,7 +215,23 @@ async def quick_send_sms(
     if not organization or not wallet:
         raise HTTPException(status_code=404, detail="Organization wallet not found.")
 
-
+    from app.db.models import SenderID, SenderIDStatus, UserRole
+    if current_user.role == UserRole.SUPERADMIN:
+        s_query = select(SenderID).where(
+            SenderID.sender_id == sms_in.sender,
+            SenderID.organization_id == current_user.organization_id
+        )
+        s_result = await db.execute(s_query)
+        if not s_result.scalar_one_or_none():
+            new_sender = SenderID(
+                sender_id=sms_in.sender,
+                organization_id=current_user.organization_id,
+                status=SenderIDStatus.APPROVED,
+                purpose="Auto-saved by SuperAdmin",
+                requested_by=current_user.id
+            )
+            db.add(new_sender)
+            await db.flush()
 
     # Determine Provider
     provider_name = await gateway_manager.route_message(normalized_recipient)

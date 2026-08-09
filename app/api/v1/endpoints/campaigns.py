@@ -64,7 +64,6 @@ async def create_campaign(
     """
     Create a new campaign and store contact associations for later broadcast.
     """
-    # 0. Validate Sender ID (Must be approved for this org, unless SUPERADMIN)
     from app.db.models import SenderID, SenderIDStatus, UserRole
     if current_user.role != UserRole.SUPERADMIN:
         s_query = select(SenderID).where(
@@ -78,6 +77,23 @@ async def create_campaign(
                 status_code=400, 
                 detail=f"Sender ID '{campaign_in.sender}' is not approved. Please request approval in settings."
             )
+    else:
+        # SUPERADMIN: auto-save the sender ID if it doesn't exist
+        s_query = select(SenderID).where(
+            SenderID.sender_id == campaign_in.sender,
+            SenderID.organization_id == current_user.organization_id
+        )
+        s_result = await db.execute(s_query)
+        if not s_result.scalar_one_or_none():
+            new_sender = SenderID(
+                sender_id=campaign_in.sender,
+                organization_id=current_user.organization_id,
+                status=SenderIDStatus.APPROVED,
+                purpose="Auto-saved by SuperAdmin",
+                requested_by=current_user.id
+            )
+            db.add(new_sender)
+            await db.flush()
 
     # 0.5 Process raw_contacts based on persistence choice
     if campaign_in.raw_contacts and campaign_in.contact_persistence in ["save_group", "save_contacts"]:
