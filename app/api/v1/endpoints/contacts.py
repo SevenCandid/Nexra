@@ -118,191 +118,191 @@ async def upload_contacts(
         rows = []
 
         if is_xlsx:
-        import io
-        from openpyxl import load_workbook
-        try:
-            wb = load_workbook(filename=io.BytesIO(content), read_only=True)
-            sheet = wb.active
-            
-            # Read header row
-            header_row = next(sheet.iter_rows(values_only=True), None)
-            if not header_row:
-                raise HTTPException(status_code=400, detail="Excel file is empty.")
-            
-            headers = [str(h).strip() if h is not None else "" for h in header_row]
-            
-            # Read content rows
-            for row in sheet.iter_rows(min_row=2, values_only=True):
-                # If row is completely empty, skip
-                if not any(val is not None for val in row):
-                    continue
-                row_dict = {}
-                for idx, val in enumerate(row):
-                    if idx < len(headers) and headers[idx]:
-                        row_dict[headers[idx]] = val
-                rows.append(row_dict)
-        except HTTPException:
-            raise
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Failed to parse Excel file: {str(e)}")
-    else:
-        try:
-            decoded = content.decode('utf-8-sig')
-        except UnicodeDecodeError:
+            import io
+            from openpyxl import load_workbook
             try:
-                decoded = content.decode('latin-1')
-            except:
-                raise HTTPException(status_code=400, detail="Could not decode file. Please use UTF-8 or Latin-1 encoding.")
+                wb = load_workbook(filename=io.BytesIO(content), read_only=True)
+                sheet = wb.active
                 
-        reader = csv.DictReader(io.StringIO(decoded))
-        rows = list(reader)
+                # Read header row
+                header_row = next(sheet.iter_rows(values_only=True), None)
+                if not header_row:
+                    raise HTTPException(status_code=400, detail="Excel file is empty.")
+                
+                headers = [str(h).strip() if h is not None else "" for h in header_row]
+                
+                # Read content rows
+                for row in sheet.iter_rows(min_row=2, values_only=True):
+                    # If row is completely empty, skip
+                    if not any(val is not None for val in row):
+                        continue
+                    row_dict = {}
+                    for idx, val in enumerate(row):
+                        if idx < len(headers) and headers[idx]:
+                            row_dict[headers[idx]] = val
+                    rows.append(row_dict)
+            except HTTPException:
+                raise
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Failed to parse Excel file: {str(e)}")
+        else:
+            try:
+                decoded = content.decode('utf-8-sig')
+            except UnicodeDecodeError:
+                try:
+                    decoded = content.decode('latin-1')
+                except:
+                    raise HTTPException(status_code=400, detail="Could not decode file. Please use UTF-8 or Latin-1 encoding.")
+                    
+            reader = csv.DictReader(io.StringIO(decoded))
+            rows = list(reader)
+        
+        created_count = 0
+        skipped_count = 0
+        group_added_count = 0
+        
+        from app.db.models import contact_group_association
+        
+        # We will accumulate contacts to add to the group
+        contacts_to_add_to_group = []
     
-    created_count = 0
-    skipped_count = 0
-    group_added_count = 0
+        # Define header mappings (all lowercase — headers are lowercased before comparison)
+        # Covers every realistic user-created column name variation
+        header_map = {
+            'first_name': [
+                # "name" as a single column (treated as first name)
+                'name',
+                # first_name variations
+                'first_name', 'first name', 'firstname', 'first-name',
+                # fname variations
+                'fname', 'f name', 'f_name',
+                # given name
+                'given name', 'given_name', 'givenname',
+                # other common labels
+                'forename', 'fore name', 'fore_name',
+                'customer name', 'customer_name', 'customername',
+                'client name', 'client_name', 'clientname',
+                'full name', 'full_name', 'fullname',
+            ],
+            'last_name': [
+                # last_name variations
+                'last_name', 'last name', 'lastname', 'last-name',
+                # lname variations
+                'lname', 'l name', 'l_name',
+                # surname variations
+                'surname', 'sur name', 'sur_name',
+                'family name', 'family_name', 'familyname',
+                'second name', 'second_name', 'secondname',
+            ],
+            'phone_number': [
+                # phone variations
+                'phone', 'phone_number', 'phone number', 'phonenumber', 'phone-number',
+                'phone no', 'phone_no', 'phoneno',
+                'phone #', 'phone#',
+                # contact number variations
+                'contact', 'contact number', 'contact_number', 'contactnumber', 'contact-number',
+                'contact no', 'contact_no', 'contactno',
+                # mobile variations
+                'mobile', 'mobile number', 'mobile_number', 'mobilenumber', 'mobile-number',
+                'mobile no', 'mobile_no', 'mobileno',
+                'mobile phone', 'mobile_phone', 'mobilephone',
+                'cell', 'cell number', 'cell_number', 'cellnumber',
+                'cell no', 'cell_no', 'cellno',
+                'cellphone', 'cell phone', 'cell_phone',
+                # telephone variations
+                'tel', 'telephone', 'tel number', 'tel_number', 'telnumber',
+                'telephone number', 'telephone_number', 'telephonenumber',
+                # number variations
+                'number', 'num', 'no',
+                # other
+                'msisdn', 'gsm', 'gsm number', 'gsm_number',
+                'whatsapp', 'whatsapp number', 'whatsapp_number',
+                'recipient', 'recipient number', 'recipient_number',
+            ]
+        }
     
-    from app.db.models import contact_group_association
+        def get_value(row, internal_key):
+            for header_key, value in row.items():
+                if value is None:
+                    continue
+                
+                # Excel sometimes parses numbers as floats (e.g. 541234567.0 instead of 0541234567)
+                if isinstance(value, float) and value.is_integer():
+                    value = int(value)
+                    
+                header_lower = str(header_key).strip().lower()
+                # Match directly or with spaces↔underscores normalized
+                normalized = header_lower.replace(' ', '_').replace('-', '_')
+                if header_lower in header_map[internal_key] or normalized in header_map[internal_key]:
+                    return value
+                    
+            # Fallback to literal key
+            val = row.get(internal_key)
+            if isinstance(val, float) and val.is_integer():
+                val = int(val)
+            return val
     
-    # We will accumulate contacts to add to the group
-    contacts_to_add_to_group = []
-
-    # Define header mappings (all lowercase — headers are lowercased before comparison)
-    # Covers every realistic user-created column name variation
-    header_map = {
-        'first_name': [
-            # "name" as a single column (treated as first name)
-            'name',
-            # first_name variations
-            'first_name', 'first name', 'firstname', 'first-name',
-            # fname variations
-            'fname', 'f name', 'f_name',
-            # given name
-            'given name', 'given_name', 'givenname',
-            # other common labels
-            'forename', 'fore name', 'fore_name',
-            'customer name', 'customer_name', 'customername',
-            'client name', 'client_name', 'clientname',
-            'full name', 'full_name', 'fullname',
-        ],
-        'last_name': [
-            # last_name variations
-            'last_name', 'last name', 'lastname', 'last-name',
-            # lname variations
-            'lname', 'l name', 'l_name',
-            # surname variations
-            'surname', 'sur name', 'sur_name',
-            'family name', 'family_name', 'familyname',
-            'second name', 'second_name', 'secondname',
-        ],
-        'phone_number': [
-            # phone variations
-            'phone', 'phone_number', 'phone number', 'phonenumber', 'phone-number',
-            'phone no', 'phone_no', 'phoneno',
-            'phone #', 'phone#',
-            # contact number variations
-            'contact', 'contact number', 'contact_number', 'contactnumber', 'contact-number',
-            'contact no', 'contact_no', 'contactno',
-            # mobile variations
-            'mobile', 'mobile number', 'mobile_number', 'mobilenumber', 'mobile-number',
-            'mobile no', 'mobile_no', 'mobileno',
-            'mobile phone', 'mobile_phone', 'mobilephone',
-            'cell', 'cell number', 'cell_number', 'cellnumber',
-            'cell no', 'cell_no', 'cellno',
-            'cellphone', 'cell phone', 'cell_phone',
-            # telephone variations
-            'tel', 'telephone', 'tel number', 'tel_number', 'telnumber',
-            'telephone number', 'telephone_number', 'telephonenumber',
-            # number variations
-            'number', 'num', 'no',
-            # other
-            'msisdn', 'gsm', 'gsm number', 'gsm_number',
-            'whatsapp', 'whatsapp number', 'whatsapp_number',
-            'recipient', 'recipient number', 'recipient_number',
-        ]
-    }
-
-    def get_value(row, internal_key):
-        for header_key, value in row.items():
-            if value is None:
+        for row in rows:
+            phone_raw = get_value(row, 'phone_number')
+            if not phone_raw:
+                skipped_count += 1
+                continue
+    
+            # Normalize and validate phone number to E.164
+            from app.core.phone_utils import normalize_phone_number, validate_ghana_number
+            try:
+                phone = normalize_phone_number(str(phone_raw).strip())
+            except Exception:
+                skipped_count += 1
+                continue
+    
+            if not validate_ghana_number(phone):
+                skipped_count += 1
                 continue
             
-            # Excel sometimes parses numbers as floats (e.g. 541234567.0 instead of 0541234567)
-            if isinstance(value, float) and value.is_integer():
-                value = int(value)
+            # Check if exists
+            query = select(Contact).where(
+                Contact.organization_id == current_user.organization_id,
+                Contact.phone_number == phone
+            )
+            existing_contact = (await db.execute(query)).scalar_one_or_none()
+            
+            if existing_contact:
+                skipped_count += 1
+                if group_id:
+                    contacts_to_add_to_group.append(existing_contact.id)
+                continue
                 
-            header_lower = str(header_key).strip().lower()
-            # Match directly or with spaces↔underscores normalized
-            normalized = header_lower.replace(' ', '_').replace('-', '_')
-            if header_lower in header_map[internal_key] or normalized in header_map[internal_key]:
-                return value
-                
-        # Fallback to literal key
-        val = row.get(internal_key)
-        if isinstance(val, float) and val.is_integer():
-            val = int(val)
-        return val
-
-    for row in rows:
-        phone_raw = get_value(row, 'phone_number')
-        if not phone_raw:
-            skipped_count += 1
-            continue
-
-        # Normalize and validate phone number to E.164
-        from app.core.phone_utils import normalize_phone_number, validate_ghana_number
-        try:
-            phone = normalize_phone_number(str(phone_raw).strip())
-        except Exception:
-            skipped_count += 1
-            continue
-
-        if not validate_ghana_number(phone):
-            skipped_count += 1
-            continue
-        
-        # Check if exists
-        query = select(Contact).where(
-            Contact.organization_id == current_user.organization_id,
-            Contact.phone_number == phone
-        )
-        existing_contact = (await db.execute(query)).scalar_one_or_none()
-        
-        if existing_contact:
-            skipped_count += 1
+            first_name_val = get_value(row, 'first_name')
+            last_name_val = get_value(row, 'last_name')
+            
+            from app.core.phone_utils import detect_network
+            network_provider, _ = detect_network(phone)
+    
+            db_obj = Contact(
+                phone_number=phone,
+                first_name=str(first_name_val).strip() if first_name_val is not None else None,
+                last_name=str(last_name_val).strip() if last_name_val is not None else None,
+                organization_id=current_user.organization_id,
+                network=network_provider.value if network_provider else None
+            )
+            db.add(db_obj)
+            await db.flush() # flush to get the id
+            created_count += 1
+            
             if group_id:
-                contacts_to_add_to_group.append(existing_contact.id)
-            continue
+                contacts_to_add_to_group.append(db_obj.id)
+                
+        if group_id and contacts_to_add_to_group:
+            # Check existing group members to avoid duplicates in association
+            assoc_query = select(contact_group_association.c.contact_id).where(
+                contact_group_association.c.group_id == group_id
+            )
+            existing_group_ids = {row[0] for row in (await db.execute(assoc_query)).all()}
             
-        first_name_val = get_value(row, 'first_name')
-        last_name_val = get_value(row, 'last_name')
-        
-        from app.core.phone_utils import detect_network
-        network_provider, _ = detect_network(phone)
-
-        db_obj = Contact(
-            phone_number=phone,
-            first_name=str(first_name_val).strip() if first_name_val is not None else None,
-            last_name=str(last_name_val).strip() if last_name_val is not None else None,
-            organization_id=current_user.organization_id,
-            network=network_provider.value if network_provider else None
-        )
-        db.add(db_obj)
-        await db.flush() # flush to get the id
-        created_count += 1
-        
-        if group_id:
-            contacts_to_add_to_group.append(db_obj.id)
-            
-    if group_id and contacts_to_add_to_group:
-        # Check existing group members to avoid duplicates in association
-        assoc_query = select(contact_group_association.c.contact_id).where(
-            contact_group_association.c.group_id == group_id
-        )
-        existing_group_ids = {row[0] for row in (await db.execute(assoc_query)).all()}
-        
-        for cid in set(contacts_to_add_to_group):
-            if cid not in existing_group_ids:
-                await db.execute(
+            for cid in set(contacts_to_add_to_group):
+                if cid not in existing_group_ids:
+                    await db.execute(
                     contact_group_association.insert().values(contact_id=cid, group_id=group_id)
                 )
                 group_added_count += 1
