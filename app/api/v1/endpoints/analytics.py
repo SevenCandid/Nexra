@@ -49,173 +49,178 @@ async def get_analytics_stats(
         if start_date < now - timedelta(days=30):
             start_date = now - timedelta(days=7)
 
-    # Determine Cache Key AFTER parsing and clamping dates
-    cache_key = None
-    if redis_client:
-        # Round to nearest minute to allow cache hits
-        s_str = start_date.strftime('%Y%m%d%H%M')
-        e_str = end_date.strftime('%Y%m%d%H%M')
-        cache_key = f"org:{current_user.organization_id}:analytics:stats:start_{s_str}:end_{e_str}"
-
-        try:
-            cached_data = await redis_client.get(cache_key)
-            if cached_data:
-                return json.loads(cached_data)
-        except Exception as e:
-            import logging
-            logging.getLogger(__name__).warning(f"Redis cache error on get: {e}")
+    import traceback
+    try:
+        # Determine Cache Key AFTER parsing and clamping dates
+        cache_key = None
+        if redis_client:
+            # Round to nearest minute to allow cache hits
+            s_str = start_date.strftime('%Y%m%d%H%M')
+            e_str = end_date.strftime('%Y%m%d%H%M')
+            cache_key = f"org:{current_user.organization_id}:analytics:stats:start_{s_str}:end_{e_str}"
     
-    delta = end_date - start_date
-    is_24h_view = delta.total_seconds() <= 90000  # 25 hours
-
-    # 1. Activity (Messages per time bucket)
-    if is_24h_view:
-        # Group by hour for 24h view
-        activity_query = (
+            try:
+                cached_data = await redis_client.get(cache_key)
+                if cached_data:
+                    return json.loads(cached_data)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Redis cache error on get: {e}")
+        
+        delta = end_date - start_date
+        is_24h_view = delta.total_seconds() <= 90000  # 25 hours
+    
+        # 1. Activity (Messages per time bucket)
+        if is_24h_view:
+            # Group by hour for 24h view
+            activity_query = (
+                select(
+                    func.date_trunc('hour', SMSMessage.created_at).label("time_bucket"),
+                    func.count(SMSMessage.id).label("count")
+                )
+                .where(
+                    SMSMessage.organization_id == current_user.organization_id,
+                    SMSMessage.created_at >= start_date,
+                    SMSMessage.created_at <= end_date
+                )
+                .group_by(func.date_trunc('hour', SMSMessage.created_at))
+                .order_by(func.date_trunc('hour', SMSMessage.created_at))
+            )
+            activity_result = await db.execute(activity_query)
+            db_counts = {}
+            for row in activity_result:
+                if row.time_bucket:
+                    key = row.time_bucket.isoformat() if hasattr(row.time_bucket, 'isoformat') else str(row.time_bucket)
+                    db_counts[key] = row.count
+            
+            # Pad missing hours
+            activity_data = []
+            current_hour = start_date.replace(minute=0, second=0, microsecond=0)
+            end_hour = end_date.replace(minute=0, second=0, microsecond=0)
+            while current_hour <= end_hour:
+                iso_key = current_hour.isoformat()
+                label = current_hour.strftime("%H:00")
+                activity_data.append({
+                    "day": label,
+                    "count": db_counts.get(iso_key, 0)
+                })
+                current_hour += timedelta(hours=1)
+        else:
+            # Group by day for >24h view
+            activity_query = (
+                select(
+                    cast(SMSMessage.created_at, Date).label("time_bucket"),
+                    func.count(SMSMessage.id).label("count")
+                )
+                .where(
+                    SMSMessage.organization_id == current_user.organization_id,
+                    SMSMessage.created_at >= start_date,
+                    SMSMessage.created_at <= end_date
+                )
+                .group_by(cast(SMSMessage.created_at, Date))
+                .order_by(cast(SMSMessage.created_at, Date))
+            )
+            activity_result = await db.execute(activity_query)
+            db_counts = {}
+            for row in activity_result:
+                if row.time_bucket:
+                    key = row.time_bucket.isoformat() if hasattr(row.time_bucket, 'isoformat') else str(row.time_bucket)
+                    db_counts[key] = row.count
+            
+            # Pad missing days
+            activity_data = []
+            current_day = start_date.date()
+            end_day = end_date.date()
+            while current_day <= end_day:
+                iso_key = current_day.isoformat()
+                # For UI display, we'll format it as a short date like "Jun 08" or just keep iso
+                label = current_day.strftime("%b %d")
+                activity_data.append({
+                    "day": label,
+                    "count": db_counts.get(iso_key, 0)
+                })
+                current_day += timedelta(days=1)
+    
+        # 2. Success Rate (Delivered vs Failed) within the range
+        success_query = (
             select(
-                func.date_trunc('hour', SMSMessage.created_at).label("time_bucket"),
-                func.count(SMSMessage.id).label("count")
+                SMSMessage.status,
+                func.count(SMSMessage.id).label("count")  # type: ignore
             )
             .where(
                 SMSMessage.organization_id == current_user.organization_id,
                 SMSMessage.created_at >= start_date,
                 SMSMessage.created_at <= end_date
             )
-            .group_by(func.date_trunc('hour', SMSMessage.created_at))
-            .order_by(func.date_trunc('hour', SMSMessage.created_at))
+            .group_by(SMSMessage.status)
         )
-        activity_result = await db.execute(activity_query)
-        db_counts = {}
-        for row in activity_result:
-            if row.time_bucket:
-                key = row.time_bucket.isoformat() if hasattr(row.time_bucket, 'isoformat') else str(row.time_bucket)
-                db_counts[key] = row.count
-        
-        # Pad missing hours
-        activity_data = []
-        current_hour = start_date.replace(minute=0, second=0, microsecond=0)
-        end_hour = end_date.replace(minute=0, second=0, microsecond=0)
-        while current_hour <= end_hour:
-            iso_key = current_hour.isoformat()
-            label = current_hour.strftime("%H:00")
-            activity_data.append({
-                "day": label,
-                "count": db_counts.get(iso_key, 0)
-            })
-            current_hour += timedelta(hours=1)
-    else:
-        # Group by day for >24h view
-        activity_query = (
+        success_result = await db.execute(success_query)
+        success_stats = {row.status: row.count for row in success_result}
+    
+        # 3. Network Breakdown within the range
+        network_query = (
             select(
-                cast(SMSMessage.created_at, Date).label("time_bucket"),
-                func.count(SMSMessage.id).label("count")
+                SMSMessage.provider_name,
+                func.count(SMSMessage.id).label("count")  # type: ignore
             )
             .where(
                 SMSMessage.organization_id == current_user.organization_id,
                 SMSMessage.created_at >= start_date,
                 SMSMessage.created_at <= end_date
             )
-            .group_by(cast(SMSMessage.created_at, Date))
-            .order_by(cast(SMSMessage.created_at, Date))
+            .group_by(SMSMessage.provider_name)
         )
-        activity_result = await db.execute(activity_query)
-        db_counts = {}
-        for row in activity_result:
-            if row.time_bucket:
-                key = row.time_bucket.isoformat() if hasattr(row.time_bucket, 'isoformat') else str(row.time_bucket)
-                db_counts[key] = row.count
-        
-        # Pad missing days
-        activity_data = []
-        current_day = start_date.date()
-        end_day = end_date.date()
-        while current_day <= end_day:
-            iso_key = current_day.isoformat()
-            # For UI display, we'll format it as a short date like "Jun 08" or just keep iso
-            label = current_day.strftime("%b %d")
-            activity_data.append({
-                "day": label,
-                "count": db_counts.get(iso_key, 0)
-            })
-            current_day += timedelta(days=1)
-
-    # 2. Success Rate (Delivered vs Failed) within the range
-    success_query = (
-        select(
-            SMSMessage.status,
-            func.count(SMSMessage.id).label("count")  # type: ignore
-        )
-        .where(
-            SMSMessage.organization_id == current_user.organization_id,
-            SMSMessage.created_at >= start_date,
-            SMSMessage.created_at <= end_date
-        )
-        .group_by(SMSMessage.status)
-    )
-    success_result = await db.execute(success_query)
-    success_stats = {row.status: row.count for row in success_result}
-
-    # 3. Network Breakdown within the range
-    network_query = (
-        select(
-            SMSMessage.provider_name,
-            func.count(SMSMessage.id).label("count")  # type: ignore
-        )
-        .where(
-            SMSMessage.organization_id == current_user.organization_id,
-            SMSMessage.created_at >= start_date,
-            SMSMessage.created_at <= end_date
-        )
-        .group_by(SMSMessage.provider_name)
-    )
-    network_result = await db.execute(network_query)
-    network_data = {row.provider_name: row.count for row in network_result}
-
-    # 4. Delivery Speed — avg seconds between sent_at and delivered_at (PostgreSQL only)
-    speed_query = (
-        select(
-            func.avg(
-                func.extract('epoch', SMSMessage.delivered_at - SMSMessage.sent_at)
+        network_result = await db.execute(network_query)
+        network_data = {row.provider_name: row.count for row in network_result}
+    
+        # 4. Delivery Speed — avg seconds between sent_at and delivered_at (PostgreSQL only)
+        speed_query = (
+            select(
+                func.avg(
+                    func.extract('epoch', SMSMessage.delivered_at - SMSMessage.sent_at)
+                )
+            )
+            .where(
+                SMSMessage.organization_id == current_user.organization_id,
+                SMSMessage.status == MessageStatus.DELIVERED,
+                SMSMessage.created_at >= start_date,
+                SMSMessage.created_at <= end_date,
+                SMSMessage.delivered_at.is_not(None),
+                SMSMessage.sent_at.is_not(None)
             )
         )
-        .where(
-            SMSMessage.organization_id == current_user.organization_id,
-            SMSMessage.status == MessageStatus.DELIVERED,
-            SMSMessage.created_at >= start_date,
-            SMSMessage.created_at <= end_date,
-            SMSMessage.delivered_at.is_not(None),
-            SMSMessage.sent_at.is_not(None)
-        )
-    )
-    speed_result = await db.execute(speed_query)
-    avg_speed = speed_result.scalar() or 0
-    if hasattr(avg_speed, 'total_seconds'):
-        avg_speed = avg_speed.total_seconds()
-        
-    response_data = {
-        "activity": activity_data,
-        "success_rate": {
-            "delivering": (
-                success_stats.get(MessageStatus.PENDING, 0)
-                + success_stats.get(MessageStatus.PROCESSING, 0)
-            ),
-            "submitted": success_stats.get(MessageStatus.SUBMITTED, 0),
-            "delivered": success_stats.get(MessageStatus.DELIVERED, 0),
-            "not_delivered": success_stats.get(MessageStatus.NOT_DELIVERED, 0),
-            "failed": success_stats.get(MessageStatus.FAILED, 0),
-        },
-        "networks": network_data,
-        "avg_delivery_time": round(float(avg_speed), 2)
-    }
-
-    if redis_client and cache_key:
-        try:
-            await redis_client.setex(cache_key, 120, json.dumps(response_data))
-        except Exception as e:
-            import logging
-            logging.getLogger(__name__).warning(f"Redis cache error on set: {e}")
-
-    return response_data
+        speed_result = await db.execute(speed_query)
+        avg_speed = speed_result.scalar() or 0
+        if hasattr(avg_speed, 'total_seconds'):
+            avg_speed = avg_speed.total_seconds()
+            
+        response_data = {
+            "activity": activity_data,
+            "success_rate": {
+                "delivering": (
+                    success_stats.get(MessageStatus.PENDING, 0)
+                    + success_stats.get(MessageStatus.PROCESSING, 0)
+                ),
+                "submitted": success_stats.get(MessageStatus.SUBMITTED, 0),
+                "delivered": success_stats.get(MessageStatus.DELIVERED, 0),
+                "not_delivered": success_stats.get(MessageStatus.NOT_DELIVERED, 0),
+                "failed": success_stats.get(MessageStatus.FAILED, 0),
+            },
+            "networks": network_data,
+            "avg_delivery_time": round(float(avg_speed), 2)
+        }
+    
+        if redis_client and cache_key:
+            try:
+                await redis_client.setex(cache_key, 120, json.dumps(response_data))
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Redis cache error on set: {e}")
+    
+        return response_data
+    except Exception as e:
+        tb = traceback.format_exc()
+        raise HTTPException(status_code=400, detail=f"Stats Error: {str(e)} | Trace: {tb}")
 
 @router.get("/export/messages")
 async def export_messages_csv(
