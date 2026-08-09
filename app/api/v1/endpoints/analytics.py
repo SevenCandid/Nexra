@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc
+from sqlalchemy import select, func, desc, cast, Date
 from app.api import deps
 from app.db.database import get_db
 from app.db.models import User, SMSMessage, MessageStatus, BillingLedger, Wallet, LedgerType, UserRole
@@ -103,7 +103,7 @@ async def get_analytics_stats(
         # Group by day for >24h view
         activity_query = (
             select(
-                func.date(SMSMessage.created_at).label("time_bucket"),
+                cast(SMSMessage.created_at, Date).label("time_bucket"),
                 func.count(SMSMessage.id).label("count")
             )
             .where(
@@ -111,8 +111,8 @@ async def get_analytics_stats(
                 SMSMessage.created_at >= start_date,
                 SMSMessage.created_at <= end_date
             )
-            .group_by(func.date(SMSMessage.created_at))
-            .order_by(func.date(SMSMessage.created_at))
+            .group_by(cast(SMSMessage.created_at, Date))
+            .order_by(cast(SMSMessage.created_at, Date))
         )
         activity_result = await db.execute(activity_query)
         db_counts = {row.time_bucket.isoformat(): row.count for row in activity_result}
@@ -434,15 +434,15 @@ async def get_admin_overview(
     # SMS Volume Trend
     sms_trend_q = (
         select(
-            func.date(SMSMessage.created_at).label("day"),
+            cast(SMSMessage.created_at, Date).label("day"),
             func.count(SMSMessage.id).label("count")
         )
         .where(
             SMSMessage.created_at >= trend_start,
             SMSMessage.created_at <= trend_end
         )
-        .group_by(func.date(SMSMessage.created_at))
-        .order_by(func.date(SMSMessage.created_at))
+        .group_by(cast(SMSMessage.created_at, Date))
+        .order_by(cast(SMSMessage.created_at, Date))
     )
     sms_trend_result = await db.execute(sms_trend_q)
     sms_trend = {
@@ -454,7 +454,7 @@ async def get_admin_overview(
     # Revenue Trend
     rev_trend_q = (
         select(
-            func.date(BillingLedger.created_at).label("day"),
+            cast(BillingLedger.created_at, Date).label("day"),
             func.sum(BillingLedger.amount).label("total")
         )
         .where(
@@ -463,8 +463,8 @@ async def get_admin_overview(
             BillingLedger.category == "topup",
             BillingLedger.type == LedgerType.CREDIT
         )
-        .group_by(func.date(BillingLedger.created_at))
-        .order_by(func.date(BillingLedger.created_at))
+        .group_by(cast(BillingLedger.created_at, Date))
+        .order_by(cast(BillingLedger.created_at, Date))
     )
     rev_trend_result = await db.execute(rev_trend_q)
     rev_trend = {
