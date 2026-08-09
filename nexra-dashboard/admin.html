@@ -16,8 +16,17 @@
         }
     </style>
 
+    <!-- Suppress Tailwind CDN Warning -->
+    <script>
+        const _originalWarn = console.warn;
+        console.warn = function(...args) {
+            if (args[0] && typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com should not be used in production')) return;
+            _originalWarn.apply(console, args);
+        };
+    </script>
+
     <!-- Tailwind CSS (Local) -->
-    <script src="vendor/tailwind.min.js" defer></script>
+    <script src="vendor/tailwind.min.js"></script>
 
     <!-- Tailwind Config -->
     <script>
