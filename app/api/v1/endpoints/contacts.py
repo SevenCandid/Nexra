@@ -112,11 +112,12 @@ async def upload_contacts(
         if not group:
             raise HTTPException(status_code=404, detail="Group not found")
 
-    content = await file.read()
-    is_xlsx = file.filename.lower().endswith(('.xlsx', '.xls'))
-    rows = []
+    try:
+        content = await file.read()
+        is_xlsx = bool(file.filename and file.filename.lower().endswith(('.xlsx', '.xls')))
+        rows = []
 
-    if is_xlsx:
+        if is_xlsx:
         import io
         from openpyxl import load_workbook
         try:
@@ -146,7 +147,7 @@ async def upload_contacts(
             raise HTTPException(status_code=400, detail=f"Failed to parse Excel file: {str(e)}")
     else:
         try:
-            decoded = content.decode('utf-8')
+            decoded = content.decode('utf-8-sig')
         except UnicodeDecodeError:
             try:
                 decoded = content.decode('latin-1')
@@ -306,13 +307,20 @@ async def upload_contacts(
                 )
                 group_added_count += 1
 
-    await db.commit()
-    return {
-        "message": f"Successfully imported {created_count} contacts.",
-        "created": created_count,
-        "skipped": skipped_count,
-        "group_added": group_added_count
-    }
+        await db.commit()
+        return {
+            "message": f"Successfully imported {created_count} contacts.",
+            "created": created_count,
+            "skipped": skipped_count,
+            "group_added": group_added_count
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(error_details)
+        raise HTTPException(status_code=400, detail=f"An unexpected error occurred during processing: {str(e)}")
 
 @router.delete("/{contact_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_contact(
