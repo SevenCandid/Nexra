@@ -213,6 +213,23 @@ class Campaign(Base):
     
     organization = relationship("Organization", back_populates="campaigns")
     messages = relationship("SMSMessage", back_populates="campaign")
+    temporary_recipients = relationship("TemporaryRecipient", back_populates="campaign", cascade="all, delete-orphan")
+
+class TemporaryRecipient(Base):
+    """Temporary recipients used for one-off campaigns without polluting the Contact book."""
+    __tablename__ = "temporary_recipients"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    phone_number: Mapped[str] = mapped_column(String(20), index=True)
+    first_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    last_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, index=True)
+    
+    campaign_id: Mapped[int] = mapped_column(Integer, ForeignKey("campaigns.id", ondelete="CASCADE"), index=True)
+    organization_id: Mapped[int] = mapped_column(Integer, ForeignKey("organizations.id"), index=True)
+    
+    campaign = relationship("Campaign", back_populates="temporary_recipients")
 
 class MessageTemplate(Base):
     """Reusable SMS message templates."""

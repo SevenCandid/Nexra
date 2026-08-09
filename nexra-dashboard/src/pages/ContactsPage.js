@@ -31,9 +31,16 @@ const GroupsSidebar = ({ selectedGroupId, onOpenSegment, onRefresh }) => {
     const [groups, setGroups] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
-    const [newGroup, setNewGroup] = useState({ name: '', description: '' });
+    const [newGroup, setNewGroup] = useState(() => {
+        const saved = sessionStorage.getItem('contacts_sidebar_newGroup');
+        return saved ? JSON.parse(saved) : { name: '', description: '' };
+    });
     const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null });
     const [isDeleting, setIsDeleting] = useState(false);
+
+    useEffect(() => {
+        sessionStorage.setItem('contacts_sidebar_newGroup', JSON.stringify(newGroup));
+    }, [newGroup]);
 
     useEffect(() => {
         fetchGroups();
@@ -57,6 +64,7 @@ const GroupsSidebar = ({ selectedGroupId, onOpenSegment, onRefresh }) => {
             showToast('Segment created!', 'success');
             setShowCreateModal(false);
             setNewGroup({ name: '', description: '' });
+            sessionStorage.removeItem('contacts_sidebar_newGroup');
             fetchGroups();
             if (onRefresh) onRefresh();
             onOpenSegment(res.data);
@@ -170,8 +178,15 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
     const [isListExpanded, setIsListExpanded] = useState(false);
     
     // Add Manually State
-    const [newContact, setNewContact] = useState({ first_name: '', last_name: '', phone_number: '' });
+    const [newContact, setNewContact] = useState(() => {
+        const saved = sessionStorage.getItem('segment_detail_newContact');
+        return saved ? JSON.parse(saved) : { first_name: '', last_name: '', phone_number: '' };
+    });
     const [isSavingManual, setIsSavingManual] = useState(false);
+
+    useEffect(() => {
+        sessionStorage.setItem('segment_detail_newContact', JSON.stringify(newContact));
+    }, [newContact]);
 
     // Upload CSV State
     const [uploadFile, setUploadFile] = useState(null);
@@ -239,9 +254,14 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
             const res = await apiClient.post('/contacts', newContact);
             const createdContact = res.data;
             // Add to group
-            await apiClient.post(`/groups/${segment.id}/contacts/${createdContact.id}`);
-            showToast('Contact created and added to segment!', 'success');
+            if (segment && segment.id) {
+                await apiClient.post(`/groups/${segment.id}/contacts/${createdContact.id}`);
+                showToast('Contact created and added to segment!', 'success');
+            } else {
+                showToast('Contact created successfully!', 'success');
+            }
             setNewContact({ first_name: '', last_name: '', phone_number: '' });
+            sessionStorage.removeItem('segment_detail_newContact');
             fetchMembers();
             onSegmentUpdated();
             setActiveTab('members');
@@ -692,7 +712,14 @@ export const ContactsPage = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [openSegment, setOpenSegment] = useState(null);
     const [showCreateModal, setShowCreateModal] = useState(false);
-    const [newGroup, setNewGroup] = useState({ name: '', description: '' });
+    const [newGroup, setNewGroup] = useState(() => {
+        const saved = sessionStorage.getItem('contacts_main_newGroup');
+        return saved ? JSON.parse(saved) : { name: '', description: '' };
+    });
+
+    useEffect(() => {
+        sessionStorage.setItem('contacts_main_newGroup', JSON.stringify(newGroup));
+    }, [newGroup]);
 
     useEffect(() => {
         fetchGroups();
@@ -718,6 +745,7 @@ export const ContactsPage = () => {
             showToast('Segment created!', 'success');
             setShowCreateModal(false);
             setNewGroup({ name: '', description: '' });
+            sessionStorage.removeItem('contacts_main_newGroup');
             fetchGroups();
             setOpenSegment(res.data);
         } catch (error) {

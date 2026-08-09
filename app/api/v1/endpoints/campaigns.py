@@ -79,8 +79,51 @@ async def create_campaign(
                 detail=f"Sender ID '{campaign_in.sender}' is not approved. Please request approval in settings."
             )
 
-    # 0.5 Resolve groups to contacts if any
-    all_contact_ids = set(campaign_in.contact_ids)
+    # 0.5 Process raw_contacts based on persistence choice
+    if campaign_in.raw_contacts and campaign_in.contact_persistence in ["save_group", "save_contacts"]:
+        phones = [rc.phone for rc in campaign_in.raw_contacts]
+        existing_stmt = select(Contact).where(Contact.phone_number.in_(phones), Contact.organization_id == current_user.organization_id)
+        existing_res = await db.execute(existing_stmt)
+        existing_contacts = {c.phone_number: c for c in existing_res.scalars().all()}
+        
+        new_group = None
+        if campaign_in.contact_persistence == "save_group":
+            new_group = ContactGroup(
+                name=campaign_in.group_name or f"Imported Contacts {datetime.utcnow().strftime('%Y-%m-%d')}",
+                organization_id=current_user.organization_id
+            )
+            db.add(new_group)
+            await db.flush()
+            if not campaign_in.group_ids:
+                campaign_in.group_ids = []
+            campaign_in.group_ids.append(new_group.id)
+
+        if not campaign_in.contact_ids:
+            campaign_in.contact_ids = []
+
+        for rc in campaign_in.raw_contacts:
+            contact = existing_contacts.get(rc.phone)
+            if not contact:
+                contact = Contact(
+                    phone_number=rc.phone,
+                    first_name=rc.name,
+                    organization_id=current_user.organization_id
+                )
+                db.add(contact)
+                await db.flush()
+            if new_group:
+                # Add to group if not already in it
+                stmt = select(contact_group_association).where(
+                    contact_group_association.c.contact_id == contact.id,
+                    contact_group_association.c.group_id == new_group.id
+                )
+                if not (await db.execute(stmt)).first():
+                    await db.execute(contact_group_association.insert().values(contact_id=contact.id, group_id=new_group.id))
+            
+            campaign_in.contact_ids.append(contact.id)
+
+    # 0.6 Resolve groups to contacts if any
+    all_contact_ids = set(campaign_in.contact_ids or [])
     if campaign_in.group_ids:
         # Resolve contacts from valid groups
         group_stmt = select(contact_group_association.c.contact_id).join(
@@ -95,6 +138,11 @@ async def create_campaign(
             
     unique_contact_ids = list(all_contact_ids)
 
+    # Count total recipients including temporary
+    total_recipients = len(unique_contact_ids)
+    if campaign_in.raw_contacts and campaign_in.contact_persistence == "temporary":
+        total_recipients += len(campaign_in.raw_contacts)
+
     # Create Campaign record (SCHEDULED if time provided, else DRAFT)
     status = CampaignStatus.SCHEDULED if campaign_in.scheduled_at else CampaignStatus.DRAFT
     db_obj = Campaign(
@@ -107,7 +155,7 @@ async def create_campaign(
         contact_ids=unique_contact_ids, # Save the resolved unique IDs
         group_ids=campaign_in.group_ids,   # Save the original group selection
         status=status,
-        total_recipients=len(unique_contact_ids)
+        total_recipients=total_recipients
     )
     db.add(db_obj)
     await db.flush() # Get the ID before creating messages
@@ -119,9 +167,34 @@ async def create_campaign(
     )
     result = await db.execute(stmt)
     contacts = result.scalars().all()
+
+    class UnifiedContact:
+        def __init__(self, first_name, last_name, phone_number):
+            self.first_name = first_name
+            self.last_name = last_name
+            self.phone_number = phone_number
+            
+    unified_contacts = [UnifiedContact(c.first_name, c.last_name, c.phone_number) for c in contacts]
+    
+    if campaign_in.raw_contacts and campaign_in.contact_persistence == "temporary":
+        # Save temporary recipients to DB
+        from app.db.models import TemporaryRecipient
+        retention_days = 1 # Configurable via env ideally
+        expires_at = datetime.utcnow() + timedelta(days=retention_days)
+        
+        for rc in campaign_in.raw_contacts:
+            temp_rec = TemporaryRecipient(
+                phone_number=rc.phone,
+                first_name=rc.name,
+                expires_at=expires_at,
+                campaign_id=db_obj.id,
+                organization_id=current_user.organization_id
+            )
+            db.add(temp_rec)
+            unified_contacts.append(UnifiedContact(rc.name, None, rc.phone))
     
     # 2. Create individual PENDING SMSMessage records upfront
-    for contact in contacts:
+    for contact in unified_contacts:
         # Personalize message 
         f_name = (contact.first_name or "").strip()
         l_name = (contact.last_name or "").strip()
@@ -147,7 +220,7 @@ async def create_campaign(
             provider_name="Arkesel"
         )
         db.add(msg)
-    
+        
     await db.commit()
     await db.refresh(db_obj)
     return db_obj

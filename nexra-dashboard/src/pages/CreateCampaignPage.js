@@ -10,6 +10,7 @@ import { Badge } from '../components/ui/Badge.js';
 import { SenderIDSelect } from '../components/SenderIDSelect.js';
 import { TemplateSelector } from '../components/ui/TemplateSelector.js';
 import { BroadcastCheckoutModal } from '../components/BroadcastCheckoutModal.js';
+import { RecipientSelector } from '../components/RecipientSelector.js';
 
 const getNetworkBadge = (network) => {
     if (!network) return null;
@@ -31,26 +32,49 @@ const getNetworkBadge = (network) => {
 
 export const CreateCampaignPage = () => {
     const { showToast } = useToast();
-    const [step, setStep] = useState(1);
-    const [formData, setFormData] = useState({
-        name: '',
-        sender: '',
-        template: '',
-        scheduled_at: '',
+    const [step, setStep] = useState(() => parseInt(sessionStorage.getItem('cc_step')) || 1);
+    const [formData, setFormData] = useState(() => {
+        const saved = sessionStorage.getItem('cc_formData');
+        return saved ? JSON.parse(saved) : { name: '', sender: '', template: '', scheduled_at: '' };
     });
     const [contacts, setContacts] = useState([]);
-    const [selectedContacts, setSelectedContacts] = useState([]);
+    const [selectedContacts, setSelectedContacts] = useState(() => {
+        const saved = sessionStorage.getItem('cc_selectedContacts');
+        return saved ? JSON.parse(saved) : [];
+    });
+    const [rawContacts, setRawContacts] = useState(() => {
+        const saved = sessionStorage.getItem('cc_rawContacts');
+        return saved ? JSON.parse(saved) : [];
+    });
+    const [contactPersistence, setContactPersistence] = useState(() => sessionStorage.getItem('cc_persistence') || 'temporary');
+    const [groupName, setGroupName] = useState(() => sessionStorage.getItem('cc_groupName') || '');
     const [loading, setLoading] = useState(false);
-    const [recipientMode, setRecipientMode] = useState('none'); // 'none', 'select', or 'manual'
+    const [recipientMode, setRecipientMode] = useState('none');
     const [searchQuery, setSearchQuery] = useState('');
     const [newContact, setNewContact] = useState({ first_name: '', last_name: '', phone_number: '' });
     const [isSavingContact, setIsSavingContact] = useState(false);
     const [showContactModal, setShowContactModal] = useState(false);
     const [showGroupModal, setShowGroupModal] = useState(false);
     const [groups, setGroups] = useState([]);
-    const [selectedGroups, setSelectedGroups] = useState([]);
+    const [selectedGroups, setSelectedGroups] = useState(() => {
+        const saved = sessionStorage.getItem('cc_selectedGroups');
+        return saved ? JSON.parse(saved) : [];
+    });
     const [previewContact, setPreviewContact] = useState({ first_name: 'John', last_name: 'Doe', phone_number: '233241234567' });
     const [checkoutCampaign, setCheckoutCampaign] = useState(null);
+
+    // Save state to sessionStorage whenever it changes
+    useEffect(() => {
+        if (!isEditMode) {
+            sessionStorage.setItem('cc_step', step);
+            sessionStorage.setItem('cc_formData', JSON.stringify(formData));
+            sessionStorage.setItem('cc_selectedContacts', JSON.stringify(selectedContacts));
+            sessionStorage.setItem('cc_rawContacts', JSON.stringify(rawContacts));
+            sessionStorage.setItem('cc_persistence', contactPersistence);
+            sessionStorage.setItem('cc_groupName', groupName);
+            sessionStorage.setItem('cc_selectedGroups', JSON.stringify(selectedGroups));
+        }
+    }, [step, formData, selectedContacts, rawContacts, contactPersistence, groupName, selectedGroups]);
 
     // Update preview contact based on selection
     useEffect(() => {
@@ -170,6 +194,10 @@ export const CreateCampaignPage = () => {
 
     const selectedContactObjects = contacts.filter(c => selectedContacts.includes(c.id));
 
+    const clearSessionState = () => {
+        ['cc_step', 'cc_formData', 'cc_selectedContacts', 'cc_rawContacts', 'cc_persistence', 'cc_groupName', 'cc_selectedGroups'].forEach(k => sessionStorage.removeItem(k));
+    };
+
     const handleSubmit = async (shouldBroadcast = false, redirect = true) => {
         setLoading(true);
         try {
@@ -178,6 +206,9 @@ export const CreateCampaignPage = () => {
                 scheduled_at: formData.scheduled_at || null,
                 contact_ids: selectedContacts,
                 group_ids: selectedGroups,
+                raw_contacts: rawContacts,
+                contact_persistence: contactPersistence,
+                group_name: groupName
             };
             
             let campaignId = editId;
@@ -197,6 +228,7 @@ export const CreateCampaignPage = () => {
             }
 
             if (redirect) {
+                clearSessionState();
                 window.location.href = '#/campaigns';
             }
             return campaignId;
@@ -223,7 +255,7 @@ export const CreateCampaignPage = () => {
         const groupRecipients = groups
             .filter(g => selectedGroups.includes(g.id))
             .reduce((acc, g) => acc + g.contact_count, 0);
-        const totalRecipients = selectedContacts.length + groupRecipients;
+        const totalRecipients = selectedContacts.length + groupRecipients + rawContacts.length;
 
         setCheckoutCampaign({
             id: campaignId,
@@ -242,6 +274,7 @@ export const CreateCampaignPage = () => {
             showToast('Starting broadcast...', 'info');
             await apiClient.post(`/campaigns/${campaignId}/broadcast?use_payg=${usePayg}`);
             showToast('Broadcast started successfully!', 'success');
+            clearSessionState();
             window.location.href = '#/campaigns';
         } catch (error) {
             showToast('Broadcast failed: ' + (error.response?.data?.detail || 'Unknown error'), 'error');
@@ -290,132 +323,28 @@ export const CreateCampaignPage = () => {
                 `}
 
                 ${step === 2 && html`
-                    <div className="space-y-6">
-                        <div className="flex items-center justify-between">
-                            <h2 className="text-lg font-semibold">Step 2: Add Recipients</h2>
-                            <div className="flex gap-2">
-                                <${Button} variant=${selectedGroups.length > 0 ? 'primary' : 'outline'} size="sm" onClick=${() => setShowGroupModal(true)}>
-                                    <${Icon} name="tag" size=${14} />
-                                    <span className="hidden sm:inline ml-1.5">Segments</span>
-                                </${Button}>
-                                <${Button} variant=${selectedContacts.length > 0 ? 'primary' : 'outline'} size="sm" onClick=${() => setShowContactModal(true)}>
-                                    <${Icon} name="users" size=${14} />
-                                    <span className="hidden sm:inline ml-1.5">Contacts</span>
-                                </${Button}>
-                                <${Button} 
-                                    variant=${recipientMode === 'manual' ? 'primary' : 'outline'} 
-                                    size="sm" 
-                                    onClick=${() => setRecipientMode(recipientMode === 'manual' ? 'none' : 'manual')}
-                                >
-                                    <${Icon} name="plus" size=${14} />
-                                    <span className="hidden sm:inline ml-1.5">Manual</span>
-                                </${Button}>
-                            </div>
-                        </div>
-
-                        ${recipientMode === 'manual' && html`
-                            <div className="p-5 bg-primary-50/50 dark:bg-midnight-900/50 rounded-2xl border border-primary-100 dark:border-midnight-800 space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div className="grid grid-cols-2 gap-3">
-                                    <${Input}
-                                        label="First Name"
-                                        value=${newContact.first_name}
-                                        onChange=${(e) => setNewContact({ ...newContact, first_name: e.target.value })}
-                                        placeholder="John"
-                                    />
-                                    <${Input}
-                                        label="Last Name"
-                                        value=${newContact.last_name}
-                                        onChange=${(e) => setNewContact({ ...newContact, last_name: e.target.value })}
-                                        placeholder="Doe"
-                                    />
-                                </div>
-                                <${Input}
-                                    label="Phone Number"
-                                    value=${newContact.phone_number}
-                                    onChange=${(e) => setNewContact({ ...newContact, phone_number: e.target.value })}
-                                    placeholder="233241234567"
-                                    required
-                                />
-                                <${Button}
-                                    onClick=${handleAddManualContact}
-                                    className="w-full"
-                                    disabled=${!newContact.phone_number || isSavingContact}
-                                >
-                                    ${isSavingContact ? 'Saving...' : 'Add & Select Contact'}
-                                </${Button}>
-                            </div>
-                        `}
-
-                        <div className="space-y-4">
-                            <h3 className="text-[10px] font-black text-gray-400 dark:text-midnight-500 uppercase tracking-widest px-1">Selected Segments (${selectedGroups.length})</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                ${selectedGroups.length > 0 ? groups.filter(g => selectedGroups.includes(g.id)).map(group => html`
-                                    <div key=${group.id} className="flex items-center justify-between p-3 bg-primary-500/5 border border-primary-500/10 rounded-2xl group transition-all">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-primary-500/10 text-primary-600 flex items-center justify-center">
-                                                <${Icon} name="tag" size=${14} />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-bold text-gray-900 dark:text-white">${group.name}</p>
-                                                <p className="text-[10px] text-primary-600 font-bold">${group.contact_count} contacts</p>
-                                            </div>
-                                        </div>
-                                        <button onClick=${() => setSelectedGroups(selectedGroups.filter(id => id !== group.id))} className="p-2 text-gray-400 hover:text-red-500 transition-colors">
-                                            <${Icon} name="x" size=${16} />
-                                        </button>
-                                    </div>
-                                `) : html`
-                                    <div className="col-span-full py-6 text-center border-2 border-dashed border-gray-100 dark:border-midnight-800 rounded-2xl">
-                                        <p className="text-xs text-gray-400 italic">No segments selected yet</p>
-                                    </div>
-                                `}
-                            </div>
-                        </div>
-
-                        <div className="space-y-4">
-                            <h3 className="text-[10px] font-black text-gray-400 dark:text-midnight-500 uppercase tracking-widest px-1">
-                                Individual Recipients (${selectedContacts.length})
-                            </h3>
-                            
-                            <div className="max-h-64 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-                                ${selectedContactObjects.length > 0 ? selectedContactObjects.map((contact) => html`
-                                    <div key=${contact.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-midnight-900/50 border border-gray-100 dark:border-midnight-800 rounded-xl">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-600 flex items-center justify-center font-bold text-xs uppercase">
-                                                ${(contact.first_name?.[0] || contact.phone_number?.[0] || '?').toUpperCase()}
-                                            </div>
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <p className="font-semibold text-gray-900 dark:text-white text-sm">
-                                                        ${contact.first_name || ''} ${contact.last_name || ''}
-                                                    </p>
-                                                </div>
-                                                <div className="flex items-center gap-2 mt-0.5">
-                                                    <p className="text-xs text-gray-500 dark:text-midnight-400 font-medium font-mono">${contact.phone_number}</p>
-                                                    ${getNetworkBadge(contact.network)}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <button 
-                                            onClick=${() => setSelectedContacts(selectedContacts.filter(id => id !== contact.id))}
-                                            className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
-                                        >
-                                            <${Icon} name="x" size=${16} />
-                                        </button>
-                                    </div>
-                                `) : html`
-                                    <div className="text-center py-6 border-2 border-dashed border-gray-50 dark:border-midnight-900 rounded-2xl">
-                                        <p className="text-xs text-gray-400 italic font-medium">No individual contacts selected</p>
-                                    </div>
-                                `}
-                            </div>
-                        </div>
+                        <${RecipientSelector} 
+                            selectedContacts=${selectedContacts} 
+                            setSelectedContacts=${setSelectedContacts}
+                            selectedGroups=${selectedGroups} 
+                            setSelectedGroups=${setSelectedGroups}
+                            rawContacts=${rawContacts} 
+                            setRawContacts=${setRawContacts}
+                            contactPersistence=${contactPersistence} 
+                            setContactPersistence=${setContactPersistence}
+                            groupName=${groupName} 
+                            setGroupName=${setGroupName}
+                            contacts=${contacts} 
+                            groups=${groups}
+                            setShowContactModal=${setShowContactModal}
+                            setShowGroupModal=${setShowGroupModal}
+                        />
 
                         <div className="pt-4 flex gap-3 border-t border-gray-100 dark:border-midnight-800">
                             <${Button} variant="secondary" size="md" onClick=${() => setStep(1)} className="flex-1 py-3 px-4">
                                 Back
                             </${Button}>
-                            <${Button} size="md" onClick=${() => setStep(3)} className="flex-1 py-3 px-4" disabled=${selectedContacts.length === 0 && selectedGroups.length === 0}>
+                            <${Button} size="md" onClick=${() => setStep(3)} className="flex-1 py-3 px-4" disabled=${selectedContacts.length === 0 && selectedGroups.length === 0 && rawContacts.length === 0}>
                                 Next
                             </${Button}>
                         </div>

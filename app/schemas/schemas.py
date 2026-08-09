@@ -100,13 +100,20 @@ class MessageListResponse(BaseModel):
     total: int
 
 # Campaign Schemas
+class RawContact(BaseModel):
+    name: Optional[str] = None
+    phone: str
+
 class CampaignCreate(BaseModel):
     name: str
     sender: str
     template: str
     scheduled_at: Optional[datetime] = None
-    contact_ids: List[int]
+    contact_ids: Optional[List[int]] = []
     group_ids: Optional[List[int]] = []
+    raw_contacts: Optional[List[RawContact]] = []
+    contact_persistence: Optional[str] = None
+    group_name: Optional[str] = None
 
 class CampaignResponse(BaseModel):
     id: int
