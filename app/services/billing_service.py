@@ -250,8 +250,8 @@ class BillingService:
                 wallet.payg_credits -= remaining
                 credit_source = "payg" if wallet.subscription_credits == 0 else "hybrid"
             
-            # Update wallet balance
-            wallet.balance = wallet.subscription_credits + wallet.payg_credits
+            # Update wallet balance (main balance only reflects PAYG)
+            wallet.balance = wallet.payg_credits
             
             # Create ledger entry
             ledger = BillingLedger(
@@ -411,10 +411,10 @@ class BillingService:
                 wallet.subscription_credits += refund_amount
             elif sms.credit_source == "payg":
                 wallet.payg_credits += refund_amount
+                wallet.balance += refund_amount
             else:  # hybrid - refund to PAYG
                 wallet.payg_credits += refund_amount
-            
-            wallet.balance += refund_amount
+                wallet.balance += refund_amount
             
             # Create refund ledger entry
             ledger = BillingLedger(
@@ -492,7 +492,7 @@ class BillingService:
             existing_payg = Decimal(str(wallet.payg_credits or 0))
             wallet.subscription_credits = new_credits
             wallet.payg_credits = existing_payg
-            wallet.balance = new_credits + existing_payg
+            wallet.balance = existing_payg
             wallet.last_subscription_renewal = datetime.utcnow()
             
             # Create ledger entry
@@ -607,7 +607,7 @@ class BillingService:
                 wallet.payg_credits = Decimal('0')
                 wallet.subscription_credits -= remaining
                 
-            wallet.balance = wallet.payg_credits + wallet.subscription_credits
+            wallet.balance = wallet.payg_credits
             
             ledger = BillingLedger(
                 organization_id=organization_id,

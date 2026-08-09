@@ -230,8 +230,11 @@ async def assign_org_plan(
                 (wallet.payg_credits or Decimal("0")) + wallet.subscription_credits
             )
             wallet.subscription_credits = Decimal("0")
-            wallet.balance = wallet.payg_credits + (wallet.subscription_credits or Decimal("0"))
+            wallet.balance = wallet.payg_credits
             await db.commit()
+
+        # Expire only the organization to force reloading the updated plan relationship
+        db.expire(organization)
 
         await deps.log_admin_action(
             db, current_user, "cancel_plan", "organization",
