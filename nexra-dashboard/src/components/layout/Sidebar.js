@@ -17,9 +17,9 @@ export const Sidebar = ({ currentPage, onNavigate, onReportIssue }) => {
 
     return html`
         <aside className="hidden lg:flex lg:flex-col lg:w-72 bg-white dark:bg-midnight-950 border-r border-gray-200 dark:border-midnight-800 h-screen sticky top-0 transition-colors">
-            <div className="p-6 border-b border-gray-200 dark:border-midnight-800 flex justify-center">
+            <div className="p-4 border-b border-gray-200 dark:border-midnight-800 flex justify-center">
                 <div className="dark:bg-white/5 dark:p-1 dark:rounded-xl dark:border dark:border-white/5 transition-all">
-                    <img src="assets/NEXRA_IconBeside.png" alt="NEXRA Logo" className="h-14 lg:h-16 object-contain dark:contrast-125" />
+                    <img src="assets/NEXRA_IconBeside.png" alt="NEXRA Logo" className="h-10 lg:h-12 object-contain dark:contrast-125" />
                 </div>
             </div>
 

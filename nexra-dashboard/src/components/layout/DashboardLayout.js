@@ -146,8 +146,8 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
                     onReportIssue=${() => setIsBugReportOpen(true)}
                 />
                 
-                <main className="flex-1 p-4 lg:p-6 pb-28 lg:pb-6 pt-24 lg:pt-6 overflow-y-auto custom-scrollbar">
-                    <div className="mb-4 lg:hidden">
+                <main className="flex-1 p-4 lg:p-6 pb-28 lg:pb-6 pt-20 lg:pt-4 overflow-y-auto custom-scrollbar">
+                    <div className="mb-2 lg:hidden">
                         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">${title}</h1>
                         ${subtitle && html`<p className="text-gray-600 dark:text-midnight-400 mt-0.5 text-sm">${subtitle}</p>`}
                     </div>
