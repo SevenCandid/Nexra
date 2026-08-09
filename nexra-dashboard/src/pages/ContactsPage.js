@@ -579,7 +579,39 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
                                 <p className="text-sm text-gray-500">Bulk import contacts into this segment from any spreadsheet. The system is flexible — use whatever column names you already have.</p>
                             </div>
 
-                            <div className="space-y-4 mb-6">
+                            ${uploadError && html`
+                                <div className="mb-5 p-4 rounded-2xl border border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-900/15 flex gap-3 animate-pop-in">
+                                    <div className="shrink-0 mt-0.5">
+                                        <${Icon} name="alert-triangle" size=${18} className="text-red-500" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="font-bold text-sm text-red-700 dark:text-red-400 mb-1">Upload Failed</p>
+                                        <p className="text-xs text-red-600 dark:text-red-400/80 leading-relaxed">${uploadError}</p>
+                                        <button
+                                            onClick=${() => setUploadError(null)}
+                                            className="mt-2 text-[10px] font-bold text-red-500 hover:text-red-700 uppercase tracking-wider transition-colors"
+                                        >Dismiss</button>
+                                    </div>
+                                </div>
+                            `}
+                            
+                            <input
+                                type="file"
+                                accept=".csv,.xlsx,.xls"
+                                onChange=${(e) => { setUploadFile(e.target.files[0]); setUploadError(null); }}
+                                className="block w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-6 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 dark:file:bg-primary-900/20 dark:file:text-primary-400 dark:hover:file:bg-primary-900/30 mb-6 cursor-pointer transition-colors"
+                            />
+                            
+                            <${Button} onClick=${handleUpload} disabled=${!uploadFile || isUploading} variant="primary" className="w-full rounded-2xl shadow-glow py-3.5 text-sm font-bold mb-8">
+                                ${isUploading ? html`
+                                    <span className="flex items-center justify-center gap-2">
+                                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                                        Uploading & Processing...
+                                    </span>
+                                ` : 'Upload and Add to Segment'}
+                            </${Button}>
+
+                            <div className="space-y-4 mb-6 pt-4 border-t border-gray-100 dark:border-midnight-800/50">
 
                                 <!-- Phone column names -->
                                 <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-2xl p-4">
@@ -720,38 +752,6 @@ Kweku,Asante,0271234567</pre>
                                 <p className="text-[11px] text-gray-400 dark:text-midnight-500 text-center mt-6">Supports <strong>.csv</strong>, <strong>.xlsx</strong> and <strong>.xls</strong> files. Duplicate phone numbers are automatically skipped.</p>
 
                             </div>
-
-                            ${uploadError && html`
-                                <div className="mb-5 p-4 rounded-2xl border border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-900/15 flex gap-3 animate-pop-in">
-                                    <div className="shrink-0 mt-0.5">
-                                        <${Icon} name="alert-triangle" size=${18} className="text-red-500" />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="font-bold text-sm text-red-700 dark:text-red-400 mb-1">Upload Failed</p>
-                                        <p className="text-xs text-red-600 dark:text-red-400/80 leading-relaxed">${uploadError}</p>
-                                        <button
-                                            onClick=${() => setUploadError(null)}
-                                            className="mt-2 text-[10px] font-bold text-red-500 hover:text-red-700 uppercase tracking-wider transition-colors"
-                                        >Dismiss</button>
-                                    </div>
-                                </div>
-                            `}
-                            
-                            <input
-                                type="file"
-                                accept=".csv,.xlsx,.xls"
-                                onChange=${(e) => { setUploadFile(e.target.files[0]); setUploadError(null); }}
-                                className="block w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-6 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 dark:file:bg-primary-900/20 dark:file:text-primary-400 dark:hover:file:bg-primary-900/30 mb-6 cursor-pointer transition-colors"
-                            />
-                            
-                            <${Button} onClick=${handleUpload} disabled=${!uploadFile || isUploading} variant="primary" className="w-full rounded-2xl shadow-glow py-3.5 text-sm font-bold">
-                                ${isUploading ? html`
-                                    <span className="flex items-center justify-center gap-2">
-                                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                                        Uploading & Processing...
-                                    </span>
-                                ` : 'Upload and Add to Segment'}
-                            </${Button}>
                         </${Card}>
                     </div>
                 `}
