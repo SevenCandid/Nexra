@@ -316,6 +316,7 @@ export const DashboardPage = () => {
                     </div>
                 </${Card}>
 </div>
+            </div>
 
             <div className="grid grid-cols-2 gap-3 mb-4">
                 <${Button} variant="primary" size="sm" className="w-full" onClick=${() => window.location.href = '#/campaigns/create'}>
