@@ -79,7 +79,7 @@ export const CreateCampaignPage = () => {
     // Update preview contact based on selection
     useEffect(() => {
         const updatePreview = async () => {
-            // Priority 1: Specifically selected individual contacts
+            // Priority 1: Specifically selected individual contacts (from saved contacts DB)
             if (selectedContacts.length > 0) {
                 const contact = contacts.find(c => c.id === selectedContacts[0]);
                 if (contact) {
@@ -102,13 +102,27 @@ export const CreateCampaignPage = () => {
                 }
             }
 
-            // Fallback: Default placeholder if nothing else is available
-            if (selectedContacts.length === 0 && selectedGroups.length === 0) {
-                setPreviewContact({ first_name: 'John', last_name: 'Doe', phone_number: '233241234567' });
+            // Priority 3: Phone / raw contacts (from device contact picker or manual quick-add)
+            if (rawContacts.length > 0) {
+                const rc = rawContacts[0];
+                const fullName = (rc.name || '').trim();
+                const nameParts = fullName.split(' ');
+                const firstName = nameParts[0] || '';
+                const lastName = nameParts.slice(1).join(' ') || '';
+                setPreviewContact({
+                    first_name: firstName,
+                    last_name: lastName,
+                    phone_number: rc.phone || ''
+                });
+                return;
             }
+
+            // Fallback: Default placeholder if nothing else is available
+            setPreviewContact({ first_name: 'John', last_name: 'Doe', phone_number: '233241234567' });
         };
         updatePreview();
-    }, [selectedContacts, selectedGroups, contacts]);
+    }, [selectedContacts, selectedGroups, rawContacts, contacts]);
+
 
     // Edit Mode Support
     const editId = new URLSearchParams(window.location.hash.split('?')[1] || '').get('edit');

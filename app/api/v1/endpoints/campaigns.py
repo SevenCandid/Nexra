@@ -120,9 +120,14 @@ async def create_campaign(
         for rc in campaign_in.raw_contacts:
             contact = existing_contacts.get(rc.phone)
             if not contact:
+                # Split full name into first/last parts for proper personalization
+                _name_parts = (rc.name or '').strip().split(' ', 1)
+                _rc_first = _name_parts[0] if _name_parts else ''
+                _rc_last = _name_parts[1] if len(_name_parts) > 1 else ''
                 contact = Contact(
                     phone_number=rc.phone,
-                    first_name=rc.name,
+                    first_name=_rc_first,
+                    last_name=_rc_last,
                     organization_id=current_user.organization_id
                 )
                 db.add(contact)
@@ -199,15 +204,19 @@ async def create_campaign(
         expires_at = datetime.utcnow() + timedelta(days=retention_days)
         
         for rc in campaign_in.raw_contacts:
+            # Split full name into first/last parts so {first_name}, {last_name} personalization works correctly
+            _parts = (rc.name or '').strip().split(' ', 1)
+            _first = _parts[0] if _parts else ''
+            _last = _parts[1] if len(_parts) > 1 else ''
             temp_rec = TemporaryRecipient(
                 phone_number=rc.phone,
-                first_name=rc.name,
+                first_name=_first,
                 expires_at=expires_at,
                 campaign_id=db_obj.id,
                 organization_id=current_user.organization_id
             )
             db.add(temp_rec)
-            unified_contacts.append(UnifiedContact(rc.name, None, rc.phone))
+            unified_contacts.append(UnifiedContact(_first, _last, rc.phone))
     
     # 2. Create individual PENDING SMSMessage records upfront
     for contact in unified_contacts:
