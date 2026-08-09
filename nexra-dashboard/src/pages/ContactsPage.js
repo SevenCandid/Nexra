@@ -406,9 +406,9 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
                     <${Icon} name="arrow-left" size=${18} className="text-gray-600 dark:text-gray-300" />
                 </button>
                 <div className="flex-1">
-                    <h1 className="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
-                        <${Icon} name="tag" size=${20} className="text-primary-500" />
-                        ${segment.name}
+                    <h1 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
+                        <${Icon} name="tag" size=${20} className="text-primary-500 shrink-0" />
+                        <span className="truncate">${segment.name}</span>
                     </h1>
                     <p className="text-xs font-bold text-gray-400 dark:text-midnight-500 uppercase tracking-widest mt-1">
                         ${members.length} member${members.length !== 1 ? 's' : ''} ${segment.description ? '· ' + segment.description : ''}
@@ -429,49 +429,33 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
             </div>
 
 
-            <div className="flex bg-gray-100 dark:bg-midnight-900 p-1 rounded-2xl w-full max-w-2xl mx-auto shadow-inner overflow-x-auto">
+            <div className="flex flex-col lg:flex-row bg-transparent lg:bg-gray-100 lg:dark:bg-midnight-900 lg:p-1.5 rounded-2xl w-full max-w-4xl mx-auto lg:shadow-inner gap-3 lg:gap-0 fade-in">
                 <button 
                     onClick=${() => setActiveTab('members')}
-                    className="flex-1 min-w-[100px] py-2.5 px-4 rounded-xl text-sm font-bold transition-all ${activeTab === 'members' ? 'bg-white dark:bg-midnight-800 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}"
+                    className="w-full lg:w-auto lg:flex-1 py-3.5 lg:py-2.5 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'members' ? 'bg-white dark:bg-midnight-800 text-gray-900 dark:text-white shadow-sm ring-1 ring-gray-200 dark:ring-midnight-700 lg:ring-0' : 'bg-gray-50 dark:bg-midnight-900 lg:bg-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}"
                 >
-                    Members
+                    <${Icon} name="list" size=${16} className=${activeTab === 'members' ? 'text-primary-500' : 'text-gray-400'} />
+                    Directory Members
                 </button>
-                <div className="w-px bg-gray-300 dark:bg-midnight-800 my-2 mx-1 hidden sm:block"></div>
-                ${['existing', 'manual', 'upload'].map(tab => html`
-                    <button 
-                        key=${tab}
-                        onClick=${() => setActiveTab(tab)}
-                        className="flex-1 min-w-[100px] py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === tab ? 'bg-primary-600 text-white shadow-glow' : 'text-gray-500 hover:bg-gray-200/50 dark:hover:bg-midnight-800/50 hover:text-gray-700 dark:hover:text-gray-300'}"
-                    >
-                        <${Icon} name="plus" size=${12} className=${activeTab === tab ? 'text-white' : ''} />
-                        ${tab === 'existing' ? 'Existing' : tab === 'manual' ? 'Manual' : 'Upload'}
-                    </button>
-                `)}
+                
+                <div className="hidden lg:block w-px bg-gray-300 dark:bg-midnight-800 my-2 mx-2"></div>
+                
+                <div className="grid grid-cols-3 gap-2 lg:gap-1 lg:flex lg:flex-1">
+                    ${['existing', 'manual', 'upload'].map(tab => html`
+                        <button 
+                            key=${tab}
+                            onClick=${() => setActiveTab(tab)}
+                            className="lg:flex-1 py-3 lg:py-2.5 px-1 sm:px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex flex-col lg:flex-row items-center justify-center gap-1.5 sm:gap-2 ${activeTab === tab ? 'bg-primary-600 text-white shadow-glow ring-1 ring-primary-500/50' : 'bg-gray-50 dark:bg-midnight-900 lg:bg-transparent text-gray-500 hover:bg-gray-200/50 dark:hover:bg-midnight-800/50 hover:text-gray-700 dark:hover:text-gray-300'}"
+                        >
+                            <${Icon} name=${tab === 'existing' ? 'users' : tab === 'manual' ? 'user-plus' : 'upload-cloud'} size=${16} className=${activeTab === tab ? 'text-white' : 'text-gray-400 dark:text-gray-500'} />
+                            <span className="text-[10px] sm:text-xs tracking-wide uppercase lg:normal-case">${tab === 'existing' ? 'From Existing' : tab === 'manual' ? 'Add Manually' : 'Upload CSV'}</span>
+                        </button>
+                    `)}
+                </div>
             </div>
 
             <div className="flex-1 min-h-[400px]">
                 ${activeTab === 'members' && html`
-                    <div className="flex flex-wrap gap-2 mb-5">
-                        <button 
-                            onClick=${() => setActiveTab('upload')} 
-                            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-xl text-sm font-bold shadow-glow hover:bg-primary-500 transition-colors"
-                        >
-                            <${Icon} name="upload-cloud" size=${15} /> Upload CSV
-                        </button>
-                        <button 
-                            onClick=${() => setActiveTab('manual')} 
-                            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-midnight-800 text-gray-900 dark:text-white border border-gray-200 dark:border-midnight-700 rounded-xl text-sm font-bold hover:bg-gray-50 dark:hover:bg-midnight-700 transition-colors"
-                        >
-                            <${Icon} name="user-plus" size=${15} /> Add Manually
-                        </button>
-                        <button 
-                            onClick=${() => setActiveTab('existing')} 
-                            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-midnight-800 text-gray-900 dark:text-white border border-gray-200 dark:border-midnight-700 rounded-xl text-sm font-bold hover:bg-gray-50 dark:hover:bg-midnight-700 transition-colors"
-                        >
-                            <${Icon} name="users" size=${15} /> From Existing
-                        </button>
-                    </div>
-
                     ${loading ? html`
                         <div className="flex justify-center py-12"><${Icon} name="loader-2" size=${32} className="animate-spin text-primary-500" /></div>
                     ` : members.length === 0 ? html`
