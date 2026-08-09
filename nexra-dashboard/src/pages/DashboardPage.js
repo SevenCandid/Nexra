@@ -203,6 +203,17 @@ export const DashboardPage = () => {
                             </button>
                         `)}
                     </div>
+                    
+                    <div className="flex items-center gap-2 ml-auto sm:ml-2">
+                        <${Button} variant="primary" size="sm" onClick=${() => window.location.href = '#/campaigns/create'}>
+                            <${Icon} name="plus" size=${16} />
+                            <span className="hidden sm:inline">New Campaign</span>
+                        </${Button}>
+                        <${Button} variant="outline" size="sm" onClick=${() => window.location.href = '#/contacts'}>
+                            <${Icon} name="users" size=${16} />
+                            <span className="hidden sm:inline">Contacts</span>
+                        </${Button}>
+                    </div>
                 </div>
             </div>
 
@@ -318,16 +329,7 @@ export const DashboardPage = () => {
 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 mb-4">
-                <${Button} variant="primary" size="sm" className="w-full" onClick=${() => window.location.href = '#/campaigns/create'}>
-                    <${Icon} name="plus" size=${16} />
-                    New Campaign
-                </${Button}>
-                <${Button} variant="outline" size="sm" className="w-full" onClick=${() => window.location.href = '#/contacts'}>
-                    <${Icon} name="users" size=${16} />
-                    Contacts
-                </${Button}>
-            </div>
+
 
             <${TourModal} />
         </div>
