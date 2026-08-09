@@ -2,10 +2,13 @@ import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy import select, func, cast, Date
 from sqlalchemy.sql import text
-import os
+import ssl
 
 DATABASE_URL = "postgresql+asyncpg://neondb_owner:npg_XIg9vFDGiMn5@ep-orange-cake-anvgz7pb.c-6.us-east-1.aws.neon.tech/neondb"
-engine = create_async_engine(DATABASE_URL, echo=True)
+ctx = ssl.create_default_context()
+ctx.check_hostname = False
+ctx.verify_mode = ssl.CERT_NONE
+engine = create_async_engine(DATABASE_URL, connect_args={"ssl": ctx}, echo=True)
 
 async def main():
     async with engine.connect() as conn:

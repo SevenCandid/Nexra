@@ -85,7 +85,11 @@ async def get_analytics_stats(
             .order_by(func.date_trunc('hour', SMSMessage.created_at))
         )
         activity_result = await db.execute(activity_query)
-        db_counts = {row.time_bucket.isoformat(): row.count for row in activity_result}
+        db_counts = {}
+        for row in activity_result:
+            if row.time_bucket:
+                key = row.time_bucket.isoformat() if hasattr(row.time_bucket, 'isoformat') else str(row.time_bucket)
+                db_counts[key] = row.count
         
         # Pad missing hours
         activity_data = []
@@ -115,7 +119,11 @@ async def get_analytics_stats(
             .order_by(cast(SMSMessage.created_at, Date))
         )
         activity_result = await db.execute(activity_query)
-        db_counts = {row.time_bucket.isoformat(): row.count for row in activity_result}
+        db_counts = {}
+        for row in activity_result:
+            if row.time_bucket:
+                key = row.time_bucket.isoformat() if hasattr(row.time_bucket, 'isoformat') else str(row.time_bucket)
+                db_counts[key] = row.count
         
         # Pad missing days
         activity_data = []
@@ -181,7 +189,9 @@ async def get_analytics_stats(
     )
     speed_result = await db.execute(speed_query)
     avg_speed = speed_result.scalar() or 0
-
+    if hasattr(avg_speed, 'total_seconds'):
+        avg_speed = avg_speed.total_seconds()
+        
     response_data = {
         "activity": activity_data,
         "success_rate": {
