@@ -58,9 +58,13 @@ async def get_message_stats(
 
     cache_key = f"org:{current_user.organization_id}:messages:stats"
     if redis_client:
-        cached_data = await redis_client.get(cache_key)
-        if cached_data:
-            return MessageStats(**json.loads(cached_data))
+        try:
+            cached_data = await redis_client.get(cache_key)
+            if cached_data:
+                return MessageStats(**json.loads(cached_data))
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Redis cache error on get: {e}")
 
     # Helper to count messages by status
     async def get_count(status: str = None):
@@ -89,7 +93,11 @@ async def get_message_stats(
     }
 
     if redis_client:
-        await redis_client.setex(cache_key, 120, json.dumps(stats_data))
+        try:
+            await redis_client.setex(cache_key, 120, json.dumps(stats_data))
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Redis cache error on set: {e}")
 
     return MessageStats(**stats_data)
 

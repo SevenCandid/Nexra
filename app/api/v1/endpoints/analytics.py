@@ -57,9 +57,13 @@ async def get_analytics_stats(
         e_str = end_date.strftime('%Y%m%d%H%M')
         cache_key = f"org:{current_user.organization_id}:analytics:stats:start_{s_str}:end_{e_str}"
 
-        cached_data = await redis_client.get(cache_key)
-        if cached_data:
-            return json.loads(cached_data)
+        try:
+            cached_data = await redis_client.get(cache_key)
+            if cached_data:
+                return json.loads(cached_data)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Redis cache error on get: {e}")
     
     delta = end_date - start_date
     is_24h_view = delta.total_seconds() <= 90000  # 25 hours
@@ -195,7 +199,11 @@ async def get_analytics_stats(
     }
 
     if redis_client and cache_key:
-        await redis_client.setex(cache_key, 120, json.dumps(response_data))
+        try:
+            await redis_client.setex(cache_key, 120, json.dumps(response_data))
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Redis cache error on set: {e}")
 
     return response_data
 
@@ -295,9 +303,13 @@ async def get_admin_overview(
         cache_key += f":{start_date}:{end_date}"
 
     if redis_client:
-        cached_data = await redis_client.get(cache_key)
-        if cached_data:
-            return json.loads(cached_data)
+        try:
+            cached_data = await redis_client.get(cache_key)
+            if cached_data:
+                return json.loads(cached_data)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Redis cache error on get: {e}")
 
     # 1. Total Revenue: Sum of all topup credits ever received
     revenue_filters = [
@@ -514,6 +526,10 @@ async def get_admin_overview(
     }
     
     if redis_client:
-        await redis_client.setex(cache_key, 120, json.dumps(response_data))
+        try:
+            await redis_client.setex(cache_key, 120, json.dumps(response_data))
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Redis cache error on set: {e}")
         
     return response_data
