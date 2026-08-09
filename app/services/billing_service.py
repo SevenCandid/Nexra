@@ -489,8 +489,10 @@ class BillingService:
             
             # Reset subscription credits
             new_credits = Decimal(str(org.plan.monthly_credits))
+            existing_payg = Decimal(str(wallet.payg_credits or 0))
             wallet.subscription_credits = new_credits
-            wallet.balance = wallet.subscription_credits + wallet.payg_credits
+            wallet.payg_credits = existing_payg
+            wallet.balance = new_credits + existing_payg
             wallet.last_subscription_renewal = datetime.utcnow()
             
             # Create ledger entry
@@ -501,7 +503,7 @@ class BillingService:
                 category="subscription_renewal",
                 credit_source="subscription",
                 description=f"Monthly subscription renewal - {org.plan.name}",
-                balance_after=wallet.balance,
+                balance_after=float(wallet.balance),
                 extra_data={
                     "plan_name": org.plan.name,
                     "plan_id": org.plan_id
@@ -510,11 +512,12 @@ class BillingService:
             db.add(ledger)
             
             await db.commit()
-            logger.info(f"Renewed subscription credits for org {organization_id}: {new_credits}")
+            logger.info(f"Renewed subscription credits for org {organization_id}: {new_credits} (payg retained: {existing_payg})")
             
         except Exception as e:
             await db.rollback()
-            logger.error(f"Error renewing subscription for org {organization_id}: {str(e)}")
+            logger.error(f"Error renewing subscription for org {organization_id}: {str(e)}", exc_info=True)
+            raise  # Re-raise so callers can handle/report the failure
     
     @staticmethod
     async def add_payg_credits(

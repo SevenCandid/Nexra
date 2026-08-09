@@ -257,7 +257,20 @@ async def assign_org_plan(
     db.expire(organization)
 
     # Grant the plan's monthly subscription credits immediately on manual assignment.
-    await billing_service.renew_subscription_credits(db, org_id)
+    try:
+        await billing_service.renew_subscription_credits(db, org_id)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(
+            f"assign_org_plan: credit grant failed for org {org_id}: {e}", exc_info=True
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"Plan '{plan_slug}' was assigned, but subscription credits could not be "
+                f"granted automatically. Please adjust the wallet manually. Error: {str(e)}"
+            )
+        )
 
     await deps.log_admin_action(
         db, current_user, "assign_plan", "organization",

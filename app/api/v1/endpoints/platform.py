@@ -168,7 +168,8 @@ async def list_all_organizations(
             "slug": org.slug,
             "is_active": org.is_active,
             "created_at": org.created_at,
-            "plan_name": org.plan.name if org.plan else "N/A"
+            "plan_name": org.plan.name if org.plan else "N/A",
+            "plan_slug": org.plan.slug if org.plan else "payg"
         })
         
     return {"items": items, "total": total}
