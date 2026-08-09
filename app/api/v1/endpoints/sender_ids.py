@@ -163,8 +163,8 @@ async def admin_add_sender_id(
         sender_id=sender_in.sender_id,
         status=SenderIDStatus.APPROVED.value,
         organization_id=current_user.organization_id,
-        purpose="Manually added by Admin",
-        requested_by=current_user.id
+        use_case="Manually added by Admin",
+        company_name="Admin"
     )
     db.add(db_obj)
     await db.commit()
