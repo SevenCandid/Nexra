@@ -191,6 +191,8 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
     // Upload CSV State
     const [uploadFile, setUploadFile] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
+    const [uploadError, setUploadError] = useState(null);
+    const [uploadResult, setUploadResult] = useState(null);
 
     // From Existing State
     const [allContacts, setAllContacts] = useState([]);
@@ -290,6 +292,8 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
     const handleUpload = async () => {
         if (!uploadFile) return;
         setIsUploading(true);
+        setUploadError(null);
+        setUploadResult(null);
         const formData = new FormData();
         formData.append('file', uploadFile);
         formData.append('group_id', segment.id);
@@ -298,13 +302,31 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             const { created, group_added, skipped } = response.data;
-            showToast(`Upload complete! ${group_added} added to segment (${created} new, ${skipped} skipped).`, 'success');
+            setUploadResult({ created, group_added, skipped });
+            showToast(`Upload complete! ${group_added} added to segment.`, 'success');
             setUploadFile(null);
             fetchMembers();
             onSegmentUpdated();
             setActiveTab('members');
         } catch (error) {
-            showToast('Upload failed', 'error');
+            // Detect CORS / network error (server unreachable, cold-start crash, etc.)
+            const isNetworkError = !error.response;
+            let message;
+            if (isNetworkError) {
+                message = 'Could not reach the server. This is usually a temporary cold-start issue — please wait 10–15 seconds and try again. If it persists, check your connection.';
+            } else {
+                // Extract the real error from the API response
+                const detail = error.response?.data?.detail;
+                if (Array.isArray(detail)) {
+                    message = detail.map(d => d.msg || JSON.stringify(d)).join(' | ');
+                } else if (typeof detail === 'string') {
+                    message = detail;
+                } else {
+                    message = `Server error (${error.response?.status || 'unknown'}). Please check your file format and try again.`;
+                }
+            }
+            setUploadError(message);
+            showToast('Upload failed — see details below.', 'error');
         } finally {
             setIsUploading(false);
         }
@@ -591,16 +613,37 @@ John Doe,233541234567
 Jane Smith,233501234567</pre>
                                 </div>
                             </div>
+
+                            ${uploadError && html`
+                                <div className="mb-5 p-4 rounded-2xl border border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-900/15 flex gap-3 animate-pop-in">
+                                    <div className="shrink-0 mt-0.5">
+                                        <${Icon} name="alert-triangle" size=${18} className="text-red-500" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="font-bold text-sm text-red-700 dark:text-red-400 mb-1">Upload Failed</p>
+                                        <p className="text-xs text-red-600 dark:text-red-400/80 leading-relaxed">${uploadError}</p>
+                                        <button
+                                            onClick=${() => setUploadError(null)}
+                                            className="mt-2 text-[10px] font-bold text-red-500 hover:text-red-700 uppercase tracking-wider transition-colors"
+                                        >Dismiss</button>
+                                    </div>
+                                </div>
+                            `}
                             
                             <input
                                 type="file"
                                 accept=".csv,.xlsx,.xls"
-                                onChange=${(e) => setUploadFile(e.target.files[0])}
+                                onChange=${(e) => { setUploadFile(e.target.files[0]); setUploadError(null); }}
                                 className="block w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-6 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 dark:file:bg-primary-900/20 dark:file:text-primary-400 dark:hover:file:bg-primary-900/30 mb-6 cursor-pointer transition-colors"
                             />
                             
                             <${Button} onClick=${handleUpload} disabled=${!uploadFile || isUploading} variant="primary" className="w-full rounded-2xl shadow-glow py-3.5 text-sm font-bold">
-                                ${isUploading ? 'Uploading & Processing...' : 'Upload and Add to Segment'}
+                                ${isUploading ? html`
+                                    <span className="flex items-center justify-center gap-2">
+                                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                                        Uploading & Processing...
+                                    </span>
+                                ` : 'Upload and Add to Segment'}
                             </${Button}>
                         </${Card}>
                     </div>
