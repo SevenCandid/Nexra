@@ -125,15 +125,15 @@ const AnnouncementBanner = () => {
                         />
                     </div>
 
-                    <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2">
-                        <div className=${`text-[11px] sm:text-[12px] leading-snug sm:leading-relaxed opacity-95 ${expanded ? 'whitespace-pre-wrap' : 'line-clamp-2'}`}>
-                            <span className="font-bold mr-2 text-[12px] sm:text-[13px]">${activeAnnouncement.title}</span>
+                    <div className="flex-1 min-w-0 flex flex-row items-center sm:items-baseline gap-1.5 sm:gap-2">
+                        <div className=${`text-[11px] sm:text-[12px] leading-snug sm:leading-relaxed opacity-95 ${expanded ? 'whitespace-pre-wrap' : 'line-clamp-1 sm:line-clamp-2'}`}>
+                            <span className="font-bold mr-1 sm:mr-2 text-[11px] sm:text-[13px]">${activeAnnouncement.title}</span>
                             <span>${activeAnnouncement.content}</span>
                         </div>
                         ${isLongContent && html`
                             <button 
                                 onClick=${() => setExpanded(!expanded)} 
-                                className="text-[10px] sm:text-[11px] font-bold opacity-70 hover:opacity-100 underline decoration-dotted underline-offset-2 transition-opacity shrink-0 self-start sm:self-auto mt-0.5 sm:mt-0"
+                                className="text-[10px] sm:text-[11px] font-bold opacity-70 hover:opacity-100 underline decoration-dotted underline-offset-2 transition-opacity shrink-0 whitespace-nowrap"
                             >
                                 ${expanded ? 'Show less' : 'Read more'}
                             </button>
