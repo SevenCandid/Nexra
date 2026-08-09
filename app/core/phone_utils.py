@@ -23,11 +23,12 @@ NETWORK_PREFIXES = {
     "20": Network.VODAFONE,
     "50": Network.VODAFONE,
     
-    # AirtelTigo (AT)
+    # AirtelTigo (AT) / Glo
     "26": Network.AIRTELTIGO,
     "27": Network.AIRTELTIGO,
     "56": Network.AIRTELTIGO,
     "57": Network.AIRTELTIGO,
+    "23": Network.AIRTELTIGO,
 }
 
 def normalize_phone_number(phone: str) -> str:
