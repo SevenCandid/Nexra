@@ -192,14 +192,19 @@ async def upload_contacts(
         return val
 
     for row in rows:
-        phone = get_value(row, 'phone_number')
-        if not phone:
+        phone_raw = get_value(row, 'phone_number')
+        if not phone_raw:
             skipped_count += 1
             continue
-            
+
         # Normalize and validate phone number to E.164
         from app.core.phone_utils import normalize_phone_number, validate_ghana_number
-        phone = normalize_phone_number(phone_str)
+        try:
+            phone = normalize_phone_number(str(phone_raw).strip())
+        except Exception:
+            skipped_count += 1
+            continue
+
         if not validate_ghana_number(phone):
             skipped_count += 1
             continue
