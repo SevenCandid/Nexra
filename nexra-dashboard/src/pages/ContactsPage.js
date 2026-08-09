@@ -569,49 +569,110 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
                 `}
 
                 ${activeTab === 'upload' && html`
-                    <div className="max-w-xl mx-auto fade-in">
+                    <div className="max-w-2xl mx-auto fade-in">
                         <${Card} className="p-6 sm:p-8">
-                            <div className="text-center mb-8">
+                            <div className="text-center mb-6">
                                 <div className="w-16 h-16 rounded-full bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center mx-auto mb-4">
                                     <${Icon} name="upload-cloud" size=${28} className="text-primary-600" />
                                 </div>
-                                <h3 className="font-black text-xl mb-2">Upload CSV</h3>
-                                <p className="text-sm text-gray-500">Bulk import contacts into this segment from a spreadsheet.</p>
+                                <h3 className="font-black text-xl mb-2">Upload CSV or Excel</h3>
+                                <p className="text-sm text-gray-500">Bulk import contacts into this segment from any spreadsheet. The system is flexible — use whatever column names you already have.</p>
                             </div>
-                            
-                            <div className="bg-gray-50 dark:bg-midnight-900/50 p-4 sm:p-6 rounded-2xl mb-8 border border-gray-100 dark:border-midnight-800">
-                                <h4 className="font-bold text-sm mb-3 flex items-center gap-2 text-gray-900 dark:text-white">
-                                    <${Icon} name="help-circle" size=${16} className="text-primary-500" />
-                                    How to format your CSV file
-                                </h4>
-                                <ol className="text-sm text-gray-600 dark:text-midnight-300 space-y-3 pl-2">
-                                    <li className="flex gap-3">
-                                        <span className="font-bold text-gray-400">1.</span>
-                                        <span>Create a new spreadsheet in Excel or Google Sheets.</span>
-                                    </li>
-                                    <li className="flex gap-3">
-                                        <span className="font-bold text-gray-400">2.</span>
-                                        <span>Create at least a name and a phone number column. The system is flexible! You can use:<br/>
-                                        <code className="inline-block mt-1 bg-white dark:bg-midnight-950 px-2 py-0.5 rounded border border-gray-200 dark:border-midnight-800 text-xs font-bold text-primary-600 dark:text-primary-400">name</code> or <code className="inline-block mt-1 bg-white dark:bg-midnight-950 px-2 py-0.5 rounded border border-gray-200 dark:border-midnight-800 text-xs font-bold text-primary-600 dark:text-primary-400">first_name</code>
-                                        <code className="inline-block mt-1 bg-white dark:bg-midnight-950 px-2 py-0.5 rounded border border-gray-200 dark:border-midnight-800 text-xs font-bold text-primary-600 dark:text-primary-400 ml-1">last_name</code>
-                                        <code className="inline-block mt-1 bg-white dark:bg-midnight-950 px-2 py-0.5 rounded border border-gray-200 dark:border-midnight-800 text-xs font-bold text-primary-600 dark:text-primary-400 ml-1">number</code> or <code className="inline-block mt-1 bg-white dark:bg-midnight-950 px-2 py-0.5 rounded border border-gray-200 dark:border-midnight-800 text-xs font-bold text-primary-600 dark:text-primary-400">phone</code></span>
-                                    </li>
-                                    <li className="flex gap-3">
-                                        <span className="font-bold text-gray-400">3.</span>
-                                        <span>Add your contacts row by row. Ensure phone numbers include the country code (e.g. 233).</span>
-                                    </li>
-                                    <li className="flex gap-3">
-                                        <span className="font-bold text-gray-400">4.</span>
-                                        <span>Save or Download the file as <strong>.csv</strong> (Comma Separated Values).</span>
-                                    </li>
-                                </ol>
-                                
-                                <div className="mt-4 p-3 bg-white dark:bg-midnight-950 rounded-xl border border-gray-200 dark:border-midnight-800 overflow-x-auto">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Example</p>
-                                    <pre className="text-xs text-gray-600 dark:text-midnight-300 font-mono leading-relaxed">name,number
-John Doe,233541234567
-Jane Smith,233501234567</pre>
+
+                            <div className="space-y-4 mb-6">
+
+                                <!-- Phone column names -->
+                                <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-2xl p-4">
+                                    <h4 className="font-bold text-sm mb-3 flex items-center gap-2 text-blue-800 dark:text-blue-300">
+                                        <${Icon} name="phone" size=${14} />
+                                        Accepted Phone Number Column Names
+                                    </h4>
+                                    <p className="text-xs text-blue-700 dark:text-blue-400 mb-3">Any capitalisation works — <code className="bg-blue-100 dark:bg-blue-900/40 px-1 py-0.5 rounded">Phone</code>, <code className="bg-blue-100 dark:bg-blue-900/40 px-1 py-0.5 rounded">PHONE</code>, <code className="bg-blue-100 dark:bg-blue-900/40 px-1 py-0.5 rounded">phone</code> all match.</p>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-[11px]">
+                                        ${[
+                                            'phone', 'Phone', 'PHONE',
+                                            'phone number', 'Phone Number', 'Phone No',
+                                            'contact', 'contact number', 'Contact Number',
+                                            'mobile', 'Mobile', 'mobile number',
+                                            'Mobile Number', 'cell', 'Cell Number',
+                                            'tel', 'telephone', 'Telephone',
+                                            'number', 'Number', 'num',
+                                            'msisdn', 'gsm', 'GSM Number',
+                                        ].map(v => html`
+                                            <span key=${v} className="px-2 py-1 bg-white dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/50 rounded-lg font-mono text-blue-700 dark:text-blue-300 truncate">${v}</span>
+                                        `)}
+                                    </div>
                                 </div>
+
+                                <!-- Name column names -->
+                                <div className="bg-purple-50 dark:bg-purple-900/10 border border-purple-100 dark:border-purple-900/30 rounded-2xl p-4">
+                                    <h4 className="font-bold text-sm mb-3 flex items-center gap-2 text-purple-800 dark:text-purple-300">
+                                        <${Icon} name="user" size=${14} />
+                                        Accepted Name Column Names
+                                    </h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-purple-500 mb-2">First / Full Name</p>
+                                            <div className="flex flex-wrap gap-1.5 text-[11px]">
+                                                ${[
+                                                    'name', 'Name', 'first name', 'First Name',
+                                                    'firstname', 'FirstName', 'fname', 'Fname',
+                                                    'given name', 'Given Name', 'full name', 'Full Name',
+                                                    'customer name', 'client name',
+                                                ].map(v => html`
+                                                    <span key=${v} className="px-2 py-1 bg-white dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800/50 rounded-lg font-mono text-purple-700 dark:text-purple-300">${v}</span>
+                                                `)}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-purple-500 mb-2">Last / Surname</p>
+                                            <div className="flex flex-wrap gap-1.5 text-[11px]">
+                                                ${[
+                                                    'last name', 'Last Name', 'lastname', 'LastName',
+                                                    'lname', 'Lname', 'surname', 'Surname',
+                                                    'family name', 'Family Name',
+                                                ].map(v => html`
+                                                    <span key=${v} className="px-2 py-1 bg-white dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800/50 rounded-lg font-mono text-purple-700 dark:text-purple-300">${v}</span>
+                                                `)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Phone number format -->
+                                <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-2xl p-4">
+                                    <h4 className="font-bold text-sm mb-3 flex items-center gap-2 text-amber-800 dark:text-amber-300">
+                                        <${Icon} name="info" size=${14} />
+                                        Phone Number Format Rules
+                                    </h4>
+                                    <ul className="text-xs text-amber-700 dark:text-amber-400 space-y-1.5">
+                                        <li className="flex gap-2"><span className="font-bold shrink-0">✓</span> Include the country code — Ghana numbers must start with <strong>233</strong></li>
+                                        <li className="flex gap-2"><span className="font-bold shrink-0">✓</span> All of these work: <code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded">0241234567</code> · <code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded">233241234567</code> · <code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded">+233241234567</code></li>
+                                        <li className="flex gap-2"><span className="font-bold shrink-0">✓</span> Spaces, dashes and parentheses are automatically stripped</li>
+                                        <li className="flex gap-2"><span className="text-red-500 shrink-0">✗</span> Rows with missing, blank, or invalid phone numbers are skipped</li>
+                                    </ul>
+                                </div>
+
+                                <!-- Examples side by side -->
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div className="p-3 bg-gray-50 dark:bg-midnight-900/50 rounded-xl border border-gray-200 dark:border-midnight-800">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Minimal Example</p>
+                                        <pre className="text-xs text-gray-600 dark:text-midnight-300 font-mono leading-relaxed overflow-x-auto">name,phone
+Kofi Mensah,0241234567
+Ama Owusu,233501234567
+Kweku,+233271234567</pre>
+                                    </div>
+                                    <div className="p-3 bg-gray-50 dark:bg-midnight-900/50 rounded-xl border border-gray-200 dark:border-midnight-800">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Full Example</p>
+                                        <pre className="text-xs text-gray-600 dark:text-midnight-300 font-mono leading-relaxed overflow-x-auto">First Name,Last Name,Mobile
+Kofi,Mensah,0241234567
+Ama,Owusu,0501234567
+Kweku,Asante,0271234567</pre>
+                                    </div>
+                                </div>
+
+                                <p className="text-[11px] text-gray-400 dark:text-midnight-500 text-center">Supports <strong>.csv</strong>, <strong>.xlsx</strong> and <strong>.xls</strong> files. Duplicate phone numbers are automatically skipped.</p>
+
                             </div>
 
                             ${uploadError && html`

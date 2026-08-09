@@ -165,11 +165,59 @@ async def upload_contacts(
     # We will accumulate contacts to add to the group
     contacts_to_add_to_group = []
 
-    # Define header mappings
+    # Define header mappings (all lowercase — headers are lowercased before comparison)
+    # Covers every realistic user-created column name variation
     header_map = {
-        'first_name': ['first_name', 'firstname', 'first name', 'given name', 'given_name', 'fname', 'name'],
-        'last_name': ['last_name', 'lastname', 'last name', 'surname', 'lname'],
-        'phone_number': ['phone_number', 'phone', 'phonenumber', 'phone number', 'mobile', 'mobile number', 'msisdn', 'number', 'contact']
+        'first_name': [
+            # "name" as a single column (treated as first name)
+            'name',
+            # first_name variations
+            'first_name', 'first name', 'firstname', 'first-name',
+            # fname variations
+            'fname', 'f name', 'f_name',
+            # given name
+            'given name', 'given_name', 'givenname',
+            # other common labels
+            'forename', 'fore name', 'fore_name',
+            'customer name', 'customer_name', 'customername',
+            'client name', 'client_name', 'clientname',
+            'full name', 'full_name', 'fullname',
+        ],
+        'last_name': [
+            # last_name variations
+            'last_name', 'last name', 'lastname', 'last-name',
+            # lname variations
+            'lname', 'l name', 'l_name',
+            # surname variations
+            'surname', 'sur name', 'sur_name',
+            'family name', 'family_name', 'familyname',
+            'second name', 'second_name', 'secondname',
+        ],
+        'phone_number': [
+            # phone variations
+            'phone', 'phone_number', 'phone number', 'phonenumber', 'phone-number',
+            'phone no', 'phone_no', 'phoneno',
+            'phone #', 'phone#',
+            # contact number variations
+            'contact', 'contact number', 'contact_number', 'contactnumber', 'contact-number',
+            'contact no', 'contact_no', 'contactno',
+            # mobile variations
+            'mobile', 'mobile number', 'mobile_number', 'mobilenumber', 'mobile-number',
+            'mobile no', 'mobile_no', 'mobileno',
+            'mobile phone', 'mobile_phone', 'mobilephone',
+            'cell', 'cell number', 'cell_number', 'cellnumber',
+            'cell no', 'cell_no', 'cellno',
+            'cellphone', 'cell phone', 'cell_phone',
+            # telephone variations
+            'tel', 'telephone', 'tel number', 'tel_number', 'telnumber',
+            'telephone number', 'telephone_number', 'telephonenumber',
+            # number variations
+            'number', 'num', 'no',
+            # other
+            'msisdn', 'gsm', 'gsm number', 'gsm_number',
+            'whatsapp', 'whatsapp number', 'whatsapp_number',
+            'recipient', 'recipient number', 'recipient_number',
+        ]
     }
 
     def get_value(row, internal_key):
@@ -182,7 +230,9 @@ async def upload_contacts(
                 value = int(value)
                 
             header_lower = str(header_key).strip().lower()
-            if header_lower in header_map[internal_key] or header_lower.replace(' ', '_') in header_map[internal_key]:
+            # Match directly or with spaces↔underscores normalized
+            normalized = header_lower.replace(' ', '_').replace('-', '_')
+            if header_lower in header_map[internal_key] or normalized in header_map[internal_key]:
                 return value
                 
         # Fallback to literal key
