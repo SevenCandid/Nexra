@@ -28,26 +28,6 @@ export const SenderIDSelect = ({ value, onChange }) => {
 
     if (loading) return html`<div className="h-10 animate-pulse bg-gray-100 dark:bg-midnight-900 rounded-lg"></div>`;
 
-    if (isSuperAdmin) {
-        const uniqueId = `admin-sender-ids-${Math.random().toString(36).substr(2, 9)}`;
-        return html`
-            <div className="relative">
-                <input 
-                    type="text" 
-                    list=${uniqueId}
-                    value=${value} 
-                    onChange=${(e) => onChange(e.target.value)}
-                    placeholder="Enter or select Sender ID (Admin)"
-                    className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-sm text-gray-900 dark:text-white outline-none transition-all"
-                    maxLength="11"
-                />
-                <datalist id=${uniqueId}>
-                    ${senderIds.map(s => html`<option key=${s.id} value=${s.sender_id}></option>`)}
-                </datalist>
-            </div>
-        `;
-    }
-
     const approvedIds = senderIds.filter(s => s.status === 'approved');
 
     return html`

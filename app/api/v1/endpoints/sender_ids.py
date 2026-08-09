@@ -134,6 +134,45 @@ async def request_sender_id(
     return db_obj
 
 
+from pydantic import BaseModel
+class AdminSenderIDAdd(BaseModel):
+    sender_id: str
+
+@router.post("/admin-add", response_model=SenderIDResponse)
+async def admin_add_sender_id(
+    sender_in: AdminSenderIDAdd,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user),
+):
+    """
+    Instantly add an approved Sender ID (SuperAdmin only).
+    """
+    from app.db.models import UserRole
+    if current_user.role != UserRole.SUPERADMIN:
+        raise HTTPException(status_code=403, detail="Only admins can perform this action.")
+
+    query = select(SenderID).where(
+        SenderID.sender_id == sender_in.sender_id,
+        SenderID.organization_id == current_user.organization_id,
+    )
+    result = await db.execute(query)
+    if result.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Sender ID already exists.")
+
+    db_obj = SenderID(
+        sender_id=sender_in.sender_id,
+        status=SenderIDStatus.APPROVED.value,
+        organization_id=current_user.organization_id,
+        purpose="Manually added by Admin",
+        requested_by=current_user.id
+    )
+    db.add(db_obj)
+    await db.commit()
+    await db.refresh(db_obj)
+    return db_obj
+
+
+
 @router.get("", response_model=List[SenderIDResponse])
 async def list_sender_ids(
     db: AsyncSession = Depends(get_db),

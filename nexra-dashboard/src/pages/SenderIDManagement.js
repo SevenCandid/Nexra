@@ -39,7 +39,8 @@ const isAdminRole = (role) => ['staff', 'superadmin'].includes((role || '').toLo
 export const SenderIDManagement = () => {
     const { showToast } = useToast();
     const { user } = useAuth();
-    const adminMode = isAdminRole(user?.role);
+    const adminMode = false; // Disable adminMode on the public app
+    const isSuperAdmin = user?.role?.toUpperCase() === 'SUPERADMIN';
 
     const [senderIds, setSenderIds] = useState([]);
     const [pendingRequests, setPendingRequests] = useState([]);
@@ -184,6 +185,29 @@ export const SenderIDManagement = () => {
         }
     };
 
+    const handleAdminAdd = async (e) => {
+        e.preventDefault();
+        const cleanId = requestForm.sender_id.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (!cleanId || cleanId.length < 3) {
+            showToast('Sender ID must be at least 3 alphanumeric characters', 'error');
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            await apiClient.post('/sender-ids/admin-add', {
+                sender_id: cleanId
+            });
+            showToast('Sender ID added successfully!', 'success');
+            setRequestForm(prev => ({ ...prev, sender_id: '' }));
+            fetchSenderIds();
+        } catch (error) {
+            showToast(error.response?.data?.detail || 'Add failed', 'error');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     const updateSenderStatus = async (id, status) => {
         try {
             await apiClient.patch(`/sender-ids/${id}/status`, {
@@ -259,7 +283,43 @@ export const SenderIDManagement = () => {
         `;
     };
 
-    const renderUserRequestForm = () => html`
+    const renderUserRequestForm = () => {
+        if (isSuperAdmin) {
+            return html`
+                <${Card} className="p-6 overflow-hidden relative transition-all">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-primary-600"></div>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                        <div>
+                            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Add Sender ID (Admin)</h2>
+                            <p className="text-sm text-gray-500 dark:text-midnight-400 mt-1">
+                                Instantly add an approved Sender ID for your organization.
+                            </p>
+                        </div>
+                    </div>
+                    <form onSubmit=${handleAdminAdd} className="space-y-5">
+                        <div className="max-w-md">
+                            <${Input}
+                                label="Sender ID"
+                                hint="Max 11 chars"
+                                placeholder="e.g. MYBRAND"
+                                value=${requestForm.sender_id}
+                                onChange=${(e) => handleChange('sender_id', e.target.value.toUpperCase())}
+                                maxLength=${11}
+                                className="text-lg font-black tracking-widest text-primary-700 dark:text-primary-400"
+                                required
+                            />
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            <${Button} type="submit" disabled=${isSubmitting} className="sm:px-8">
+                                ${isSubmitting ? 'Adding...' : 'Add Sender ID'}
+                            </${Button}>
+                        </div>
+                    </form>
+                </${Card}>
+            `;
+        }
+
+        return html`
         <${Card} className="p-6 overflow-hidden relative transition-all">
             <div className="absolute top-0 left-0 w-full h-1 bg-primary-600"></div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -370,7 +430,8 @@ export const SenderIDManagement = () => {
                 </div>
             </form>
         </${Card}>
-    `;
+        `;
+    };
 
     const renderStatusSummary = (items) => {
         const counts = STATUS_FILTERS.reduce((acc, filter) => {
