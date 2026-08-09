@@ -118,7 +118,6 @@ async def upload_contacts(
         rows = []
 
         if is_xlsx:
-            import io
             from openpyxl import load_workbook
             try:
                 wb = load_workbook(filename=io.BytesIO(content), read_only=True)
