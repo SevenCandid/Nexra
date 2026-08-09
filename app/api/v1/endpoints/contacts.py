@@ -270,6 +270,14 @@ async def upload_contacts(
                 skipped_count += 1
                 if group_id:
                     contacts_to_add_to_group.append(existing_contact.id)
+                    
+                # Backfill network if missing
+                if not existing_contact.network:
+                    network_provider, _ = detect_network(phone)
+                    if network_provider:
+                        existing_contact.network = network_provider.value
+                        db.add(existing_contact)
+                        
                 continue
                 
             first_name_val = get_value(row, 'first_name')
