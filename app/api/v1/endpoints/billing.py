@@ -227,15 +227,12 @@ async def assign_org_plan(
         organization.plan_id = default_plan.id
         await db.commit()
 
-        # Migrate any remaining subscription credits -> PAYG credits so user keeps their balance
+        # Wipe out any remaining subscription credits when cancelling a plan
         wallet_res = await db.execute(
             select(Wallet).where(Wallet.organization_id == org_id)
         )
         wallet = wallet_res.scalar_one_or_none()
         if wallet and wallet.subscription_credits and wallet.subscription_credits > Decimal("0"):
-            wallet.payg_credits = (
-                (wallet.payg_credits or Decimal("0")) + wallet.subscription_credits
-            )
             wallet.subscription_credits = Decimal("0")
             wallet.balance = wallet.payg_credits
             await db.commit()
