@@ -44,9 +44,8 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
             socket.onmessage = (event) => {
                 try {
                     const msg = JSON.parse(event.data);
-                    if (msg.type === 'message_updated') {
-                        fetchWallet();
-                        fetchNotifications();
+                    if (['message_updated', 'plan_updated', 'balance_updated'].includes(msg.type)) {
+                        fetchUserData();
                         // Broadcast to child pages
                         window.dispatchEvent(new CustomEvent('nexra:update', { detail: msg }));
                     }

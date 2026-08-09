@@ -199,6 +199,13 @@ async def admin_adjust_balance(
         str(organization_id), {"amount": amount, "description": description}
     )
     await db.commit()
+    
+    try:
+        from app.core.websocket import manager
+        await manager.broadcast_to_org(organization_id, {"type": "balance_updated"})
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"WS broadcast failed: {e}")
 
 @router.post("/admin/assign-plan")
 async def assign_org_plan(
@@ -241,6 +248,14 @@ async def assign_org_plan(
             str(org_id), {}
         )
         await db.commit()
+        
+        try:
+            from app.core.websocket import manager
+            await manager.broadcast_to_org(org_id, {"type": "plan_updated"})
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"WS broadcast failed: {e}")
+            
         return {
             "message": (
                 "Plan reset to Pay As You Go successfully. "
@@ -280,6 +295,14 @@ async def assign_org_plan(
         str(org_id), {"plan_slug": plan_slug}
     )
     await db.commit()
+    
+    try:
+        from app.core.websocket import manager
+        await manager.broadcast_to_org(org_id, {"type": "plan_updated"})
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"WS broadcast failed: {e}")
+        
     return {
         "message": (
             f"Plan {plan_slug} assigned successfully and monthly subscription credits granted."
