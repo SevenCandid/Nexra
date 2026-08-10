@@ -140,8 +140,18 @@ async def _async_process_sms(sms_id: int):
                 await refresh_campaign_delivery_status(db, msg.campaign_id)
             await db.commit()
             
-            # Dispatch Webhook for error
+            from app.core.websocket import manager
             from app.services.webhook_service import webhook_service
+            
+            # BROADCAST UPDATE (WebSocket & Webhook)
+            await manager.broadcast_to_org(msg.organization_id, {
+                "type": "message_updated",
+                "data": {
+                    "id": msg.id,
+                    "status": msg.status,
+                    "recipient": msg.recipient
+                }
+            })
             asyncio.create_task(webhook_service.dispatch_message_event(msg.id, "message.failed"))
 
 async def process_campaign_batch(campaign_id: int):

@@ -1,16 +1,22 @@
 """Billing endpoints — wallet balance, pricing catalog, ledger, top-up, and plan management."""
 from decimal import Decimal
-from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import datetime, timedelta, timezone
+from typing import Optional
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy.orm import selectinload
+from sqlalchemy import desc
+from sqlalchemy.orm import selectinload, joinedload
 from app.api import deps
-from app.db.models import User, Wallet, BillingLedger, Organization
+from app.db.models import User, Wallet, BillingLedger, Organization, UserRole
 from app.db.database import get_db
 from app.schemas.schemas import BillingLedgerResponse
 from app.services.billing_service import billing_service, BillingService
+from app.core.config import settings
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 PLAN_ALIASES = {
     "custom": "payg",
@@ -360,3 +366,152 @@ async def buy_plan(
     await billing_service.renew_subscription_credits(db, current_user.organization_id)
 
     return {"message": f"Plan {plan.name} activated successfully"}
+
+
+@router.get("/admin/transactions")
+async def get_admin_transactions(
+    days: int = Query(default=30, ge=1, le=3650, description="Number of days to look back"),
+    all_time: bool = Query(default=False, description="Fetch all transactions regardless of date"),
+    start_date: Optional[str] = Query(default=None, description="ISO format start date"),
+    end_date: Optional[str] = Query(default=None, description="ISO format end date"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """
+    SUPERADMIN ONLY — Unified transaction ledger combining:
+    1. All Paystack payments fetched live from the Paystack API.
+    2. All admin-sourced ledger entries (manual top-ups, balance adjustments,
+       plan assignments, subscription renewals) stored in our database.
+    Pass all_time=true to bypass the date filter entirely.
+    """
+    if current_user.role != UserRole.SUPERADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Superadmin access required."
+        )
+
+    since = None
+    until = None
+    since_str = None
+    until_str = None
+
+    if start_date or end_date:
+        if start_date:
+            try:
+                since = datetime.fromisoformat(start_date.replace("Z", "+00:00"))
+                since_str = since.isoformat()
+            except ValueError:
+                pass
+        if end_date:
+            try:
+                until = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
+                until_str = until.isoformat()
+            except ValueError:
+                pass
+    elif not all_time:
+        since = datetime.now(timezone.utc) - timedelta(days=days)
+        since_str = since.isoformat()
+
+    paystack_transactions = []
+    paystack_error = None
+
+    # --- 1. Fetch from Paystack API ---
+    if settings.PAYSTACK_SECRET_KEY:
+        try:
+            params: dict = {"perPage": 100}
+            if since_str:
+                params["from"] = since_str
+            if until_str:
+                params["to"] = until_str
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(
+                    "https://api.paystack.co/transaction",
+                    headers={"Authorization": f"Bearer {settings.PAYSTACK_SECRET_KEY}"},
+                    params=params
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    for tx in data.get("data", []):
+                        paystack_transactions.append({
+                            "source": "paystack",
+                            "id": f"ps-{tx.get('id')}",
+                            "reference": tx.get("reference"),
+                            "amount": tx.get("amount", 0) / 100,  # convert pesewas → GHS
+                            "currency": tx.get("currency", "GHS"),
+                            "status": tx.get("status", "").lower(),
+                            "type": "credit",
+                            "category": "paystack_topup",
+                            "customer_email": tx.get("customer", {}).get("email"),
+                            "customer_name": (
+                                tx.get("customer", {}).get("first_name", "") + " " +
+                                tx.get("customer", {}).get("last_name", "")
+                            ).strip() or None,
+                            "description": f"Paystack payment — {tx.get('reference')}",
+                            "created_at": tx.get("created_at"),
+                            "organization_id": None,
+                            "organization_name": None,
+                            "gateway_channel": tx.get("channel"),
+                        })
+                else:
+                    paystack_error = f"Paystack API error: HTTP {resp.status_code}"
+                    logger.warning(paystack_error)
+        except Exception as e:
+            paystack_error = f"Could not reach Paystack: {str(e)}"
+            logger.error(paystack_error)
+    else:
+        paystack_error = "PAYSTACK_SECRET_KEY not configured."
+
+    # --- 2. Fetch admin-sourced ledger entries from DB ---
+    admin_categories = ["topup", "manual_deduction", "subscription_renewal"]
+    ledger_filters = [BillingLedger.category.in_(admin_categories)]
+    if since:
+        ledger_filters.append(BillingLedger.created_at >= since)
+    if until:
+        ledger_filters.append(BillingLedger.created_at <= until)
+
+    ledger_stmt = (
+        select(BillingLedger, Organization.name.label("org_name"))
+        .join(Organization, BillingLedger.organization_id == Organization.id)
+        .where(*ledger_filters)
+        .order_by(desc(BillingLedger.created_at))
+        .limit(2000)
+    )
+    ledger_result = await db.execute(ledger_stmt)
+    ledger_rows = ledger_result.all()
+
+    db_transactions = []
+    for ledger, org_name in ledger_rows:
+        db_transactions.append({
+            "source": "admin",
+            "id": f"db-{ledger.id}",
+            "reference": ledger.reference_id or f"LEDGER-{ledger.id}",
+            "amount": float(ledger.amount),
+            "currency": "GHS",
+            "status": "success",
+            "type": ledger.type if isinstance(ledger.type, str) else ledger.type.value,
+            "category": ledger.category,
+            "customer_email": None,
+            "customer_name": None,
+            "description": ledger.description,
+            "created_at": ledger.created_at.isoformat() if ledger.created_at else None,
+            "organization_id": ledger.organization_id,
+            "organization_name": org_name,
+            "gateway_channel": "manual",
+            "credit_source": ledger.credit_source,
+            "balance_after": float(ledger.balance_after) if ledger.balance_after is not None else None,
+        })
+
+    # --- 3. Merge & sort by date ---
+    all_transactions = paystack_transactions + db_transactions
+    all_transactions.sort(key=lambda x: x.get("created_at") or "", reverse=True)
+
+    return {
+        "transactions": all_transactions,
+        "paystack_count": len(paystack_transactions),
+        "admin_count": len(db_transactions),
+        "total": len(all_transactions),
+        "days": days,
+        "all_time": all_time,
+        "since": since_str,
+        "paystack_error": paystack_error,
+    }

@@ -280,6 +280,10 @@ class BillingService:
                 sms.cost = cost
                 sms.credit_source = credit_source
                 sms.ledger_entry_id = ledger.id
+                sms.is_refunded = False
+                sms.refund_amount = None
+                sms.refunded_at = None
+                sms.refund_ledger_entry_id = None
             
             # Check for low balance
             await BillingService._check_and_notify_low_balance(db, wallet)

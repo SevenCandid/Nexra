@@ -124,7 +124,7 @@ async def send_sms(
 
     cost = await billing_service.calculate_sms_cost(db, normalized_recipient, sms_in.message, organization)
 
-    if wallet.balance < cost:
+    if (wallet.subscription_credits + wallet.payg_credits) < cost:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail="Insufficient credits. Please top up your wallet."
@@ -259,7 +259,7 @@ async def quick_send_sms(
 
     cost = await billing_service.calculate_sms_cost(db, normalized_recipient, content, organization)
 
-    if wallet.balance < cost:
+    if (wallet.subscription_credits + wallet.payg_credits) < cost:
         raise HTTPException(status_code=402, detail="Insufficient credits.")
 
     # Log PENDING message

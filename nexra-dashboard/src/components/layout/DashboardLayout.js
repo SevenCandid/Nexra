@@ -118,6 +118,7 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
         help: { title: 'Help Center', subtitle: 'Everything you need to know about NEXRA' },
         'api-docs': { title: 'Developer API', subtitle: 'Integrate NEXRA into your own applications' },
         'admin-reports': { title: 'Business Overview', subtitle: 'Platform-wide financial health and metrics' },
+        'admin-transactions': { title: 'Transaction Ledger', subtitle: 'All Paystack payments and admin-credited transactions' },
     };
 
     const routeKey = currentPage === 'sender-ids' && window.location.hash.includes('/verify/')
