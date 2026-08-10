@@ -4,14 +4,14 @@ import { useAuth } from '../../contexts/AuthContext.js';
 
 export const Sidebar = ({ currentPage, onNavigate, onReportIssue }) => {
     const { user } = useAuth();
-    const isSuperAdmin = user?.role === 'superadmin';
     const navItems = [
         { id: 'dashboard', label: 'Pulse', icon: 'home' },
         { id: 'campaigns', label: 'Campaigns', icon: 'send' },
         { id: 'contacts', label: 'Contacts', icon: 'users' },
         { id: 'messages', label: 'Messages', icon: 'message-square' },
         { id: 'pricing', label: 'Wallet & Credits', icon: 'credit-card' },
-        { id: 'settings', label: 'Settings', icon: 'settings' }
+        { id: 'settings', label: 'Settings', icon: 'settings' },
+        { id: 'admin-transactions', label: 'Transaction Ledger', icon: 'dollar-sign' }
     ];
 
     // Admin Reports link moved to dedicated admin.js dashboard
@@ -61,15 +61,6 @@ export const Sidebar = ({ currentPage, onNavigate, onReportIssue }) => {
                     <${Icon} name="code" size=${20} />
                     <span>API Docs</span>
                 </button>
-                ${isSuperAdmin ? html`
-                <button
-                    onClick=${() => onNavigate('admin-transactions')}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${currentPage === 'admin-transactions' ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400' : ''}"
-                >
-                    <${Icon} name="dollar-sign" size=${20} />
-                    <span>Transaction Ledger</span>
-                </button>
-                ` : null}
                 <button
                     onClick=${onReportIssue}
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors mt-2"
