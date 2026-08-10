@@ -3027,10 +3027,12 @@ const AdminApp = () => {
         return html`<${AdminLoginPage} />`;
     }
 
+    const { showToast } = useToast();
+
     const renderPage = () => {
         switch (currentPage) {
             case 'overview': return html`<${BusinessOverviewPage} />`;
-            case 'admin-transactions': return html`<${AdminTransactionsPage} />`;
+            case 'admin-transactions': return html`<${AdminTransactionsPage} showToast=${showToast} />`;
             case 'approvals': return html`<${AdminApprovalPage} />`;
             case 'management': return html`<${PlatformManagementPage} />`;
             case 'staff': return html`<${StaffManagementPage} />`;

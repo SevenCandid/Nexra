@@ -10,8 +10,7 @@ export const Sidebar = ({ currentPage, onNavigate, onReportIssue }) => {
         { id: 'contacts', label: 'Contacts', icon: 'users' },
         { id: 'messages', label: 'Messages', icon: 'message-square' },
         { id: 'pricing', label: 'Wallet & Credits', icon: 'credit-card' },
-        { id: 'settings', label: 'Settings', icon: 'settings' },
-        { id: 'admin-transactions', label: 'Transaction Ledger', icon: 'dollar-sign' }
+        { id: 'settings', label: 'Settings', icon: 'settings' }
     ];
 
     // Admin Reports link moved to dedicated admin.js dashboard

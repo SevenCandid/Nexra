@@ -1,7 +1,6 @@
 import { html, useState, useEffect, useCallback } from '../utils/htm.js';
 import apiClient from '../api/client.js';
 import { Modal } from '../components/ui/Modal.js';
-import { useToast } from '../contexts/ToastContext.js';
 
 const SOURCE_LABELS = {
     paystack: { label: 'Paystack', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' },
@@ -37,8 +36,7 @@ function StatCard({ label, value, sub, accent }) {
     `;
 }
 
-const AdjustBalanceModal = ({ isOpen, onClose, onSuccess }) => {
-    const { addToast } = useToast();
+const AdjustBalanceModal = ({ isOpen, onClose, onSuccess, showToast }) => {
     const [organizations, setOrganizations] = useState([]);
     const [loadingOrgs, setLoadingOrgs] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -61,7 +59,7 @@ const AdjustBalanceModal = ({ isOpen, onClose, onSuccess }) => {
             const res = await apiClient.get('/platform/organizations?limit=200');
             setOrganizations(res.data.items || []);
         } catch (err) {
-            addToast('Failed to load organizations', 'error');
+            showToast && showToast('Failed to load organizations', 'error');
         } finally {
             setLoadingOrgs(false);
         }
@@ -70,18 +68,18 @@ const AdjustBalanceModal = ({ isOpen, onClose, onSuccess }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!formData.organization_id || !formData.amount || !formData.description) {
-            addToast('Please fill all fields', 'error');
+            showToast && showToast('Please fill all fields', 'error');
             return;
         }
 
         setSubmitting(true);
         try {
             await apiClient.post(`/billing/admin/adjust-balance?organization_id=${formData.organization_id}&amount=${formData.amount}&description=${encodeURIComponent(formData.description)}`);
-            addToast('Balance adjusted successfully', 'success');
+            showToast && showToast('Balance adjusted successfully', 'success');
             onSuccess();
             onClose();
         } catch (err) {
-            addToast(err?.response?.data?.detail || 'Failed to adjust balance', 'error');
+            showToast && showToast(err?.response?.data?.detail || 'Failed to adjust balance', 'error');
         } finally {
             setSubmitting(false);
         }
@@ -151,7 +149,7 @@ const AdjustBalanceModal = ({ isOpen, onClose, onSuccess }) => {
     `;
 };
 
-export const AdminTransactionsPage = () => {
+export const AdminTransactionsPage = ({ showToast }) => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -383,7 +381,7 @@ export const AdminTransactionsPage = () => {
                     </div>
                 `}
             </div>
-            <${AdjustBalanceModal} isOpen=${isModalOpen} onClose=${() => setIsModalOpen(false)} onSuccess=${fetchTransactions} />
+            <${AdjustBalanceModal} isOpen=${isModalOpen} onClose=${() => setIsModalOpen(false)} onSuccess=${fetchTransactions} showToast=${showToast} />
         </div>
     `;
 };
