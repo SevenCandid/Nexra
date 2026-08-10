@@ -1,4 +1,5 @@
 import { ConfirmModal } from './src/components/ui/ConfirmModal.js';
+import { AdminTransactionsPage } from './src/pages/AdminTransactionsPage.js';
 const { useState, useEffect, createContext, useContext, useRef, useMemo } = React;
 const { createRoot } = ReactDOM;
 
@@ -2594,6 +2595,15 @@ const AdminSidebar = ({ currentPage, onNavigate }) => {
                         <${Icon} name="trending-up" size=${20} />
                         <span>Business Overview</span>
                     </button>
+                    <button
+                        onClick=${() => onNavigate('admin-transactions')}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${currentPage === 'admin-transactions'
+                            ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 font-bold'
+                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}"
+                    >
+                        <${Icon} name="dollar-sign" size=${20} />
+                        <span>Transaction Ledger</span>
+                    </button>
                      <p className="px-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 mt-4">Management</p>
                      <button
                         onClick=${() => onNavigate('approvals')}
@@ -3020,6 +3030,7 @@ const AdminApp = () => {
     const renderPage = () => {
         switch (currentPage) {
             case 'overview': return html`<${BusinessOverviewPage} />`;
+            case 'admin-transactions': return html`<${AdminTransactionsPage} />`;
             case 'approvals': return html`<${AdminApprovalPage} />`;
             case 'management': return html`<${PlatformManagementPage} />`;
             case 'staff': return html`<${StaffManagementPage} />`;
@@ -3055,6 +3066,7 @@ const AdminApp = () => {
     const getPageTitle = () => {
         switch (currentPage) {
             case 'overview': return 'Business Overview';
+            case 'admin-transactions': return 'Transaction Ledger';
             case 'approvals': return 'Sender ID Approvals';
             case 'management': return 'Platform Management';
             case 'staff': return 'Staff Management';
