@@ -1,5 +1,5 @@
-import { html, useState, useEffect } from '../utils/htm.js';
-import { useAuth, useToast } from '../context/index.js';
+import { html, useState, useEffect } from '../../utils/htm.js';
+import { useAuth, useToast } from '../../context/index.js';
 import { API_BASE_URL } from '../../api/client.js';
 import { CommandPalette } from './CommandPalette.js';
 import { AdminSidebar, MobileHeader, BottomNav } from './index.js';
