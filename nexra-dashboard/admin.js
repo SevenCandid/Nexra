@@ -13,11 +13,11 @@ const hideSplashScreen = () => {
 const rootElement = document.getElementById('root');
 const root = createRoot(rootElement);
 root.render(html`
-    <${AuthProvider}>
-        <${ToastProvider}>
+    <${ToastProvider}>
+        <${AuthProvider}>
             <${AdminApp} />
-        </${ToastProvider}>
-    </${AuthProvider}>
+        </${AuthProvider}>
+    </${ToastProvider}>
 `);
 
 // Hide splash screen after brief delay to ensure styles are loaded
