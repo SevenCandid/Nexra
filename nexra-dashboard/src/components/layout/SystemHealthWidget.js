@@ -1,7 +1,7 @@
 import { html, useState, useEffect, useRef, useMemo, useCallback } from '../../utils/htm.js';
 import { Icon, Button, Badge, Card, Modal, Skeleton, Input, Dropdown } from '../ui/index.js';
 import { useAuth } from '../../context/index.js';
-
+import apiClient from '../../api/client.js';
 export const SystemHealthWidget = () => {
     const [health, setHealth] = useState(null);
 
