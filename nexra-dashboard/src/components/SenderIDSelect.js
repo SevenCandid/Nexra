@@ -1,7 +1,7 @@
 import { html, useState, useEffect } from '../utils/htm.js';
 import { Icon } from './ui/Icon.js';
 import apiClient from '../api/client.js';
-import { useAuth } from '../context/AuthContext.js';
+import { useAuth } from '../contexts/AuthContext.js';
 
 export const SenderIDSelect = ({ value, onChange }) => {
     const { user } = useAuth();

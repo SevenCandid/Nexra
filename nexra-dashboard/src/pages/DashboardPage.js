@@ -1,5 +1,5 @@
 import { html, useEffect, useRef, useState } from '../utils/htm.js';
-import { useAuth } from '../context/AuthContext.js';
+import { useAuth } from '../contexts/AuthContext.js';
 import { Card } from '../components/ui/Card.js';
 import { Button } from '../components/ui/Button.js';
 import { Icon } from '../components/ui/Icon.js';

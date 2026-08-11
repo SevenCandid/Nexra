@@ -3,7 +3,7 @@ import { Card } from '../components/ui/Card.js';
 import { Button } from '../components/ui/Button.js';
 import { Badge } from '../components/ui/Badge.js';
 import { Icon } from '../components/ui/Icon.js';
-import { useToast } from '../context/ToastContext.js';
+import { useToast } from '../contexts/ToastContext.js';
 import apiClient from '../api/client.js';
 import { ConfirmModal } from '../components/ui/ConfirmModal.js';
 import { BroadcastCheckoutModal } from '../components/BroadcastCheckoutModal.js';

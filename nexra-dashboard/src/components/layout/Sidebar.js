@@ -1,6 +1,6 @@
 import { html } from '../../utils/htm.js';
 import { Icon } from '../ui/Icon.js';
-import { useAuth } from '../../context/AuthContext.js';
+import { useAuth } from '../../contexts/AuthContext.js';
 
 export const Sidebar = ({ currentPage, onNavigate, onReportIssue }) => {
     const { user } = useAuth();

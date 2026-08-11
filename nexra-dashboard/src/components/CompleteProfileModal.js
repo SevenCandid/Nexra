@@ -1,7 +1,7 @@
 import { html, useState, useEffect } from '../utils/htm.js';
 import { Icon } from './ui/Icon.js';
 import { Button } from './ui/Button.js';
-import { useToast } from '../context/ToastContext.js';
+import { useToast } from '../contexts/ToastContext.js';
 import apiClient from '../api/client.js';
 
 export const CompleteProfileModal = ({ user, onComplete }) => {

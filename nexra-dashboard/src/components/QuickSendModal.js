@@ -3,7 +3,7 @@ import { Icon } from './ui/Icon.js';
 import { Button } from './ui/Button.js';
 import { TemplateSelector } from './ui/TemplateSelector.js';
 import { SenderIDSelect } from './SenderIDSelect.js';
-import { useToast } from '../context/ToastContext.js';
+import { useToast } from '../contexts/ToastContext.js';
 import apiClient from '../api/client.js';
 
 export const QuickSendModal = ({ isOpen, onClose, user, onSent }) => {

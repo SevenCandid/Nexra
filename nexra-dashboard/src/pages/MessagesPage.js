@@ -1,6 +1,6 @@
 import { html, useState, useEffect } from '../utils/htm.js';
 import apiClient from '../api/client.js';
-import { useToast } from '../context/ToastContext.js';
+import { useToast } from '../contexts/ToastContext.js';
 import { Button } from '../components/ui/Button.js';
 import { Card } from '../components/ui/Card.js';
 import { Icon } from '../components/ui/Icon.js';
