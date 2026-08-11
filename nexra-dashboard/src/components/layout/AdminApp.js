@@ -15,6 +15,7 @@ import { AdminApprovalPage } from '../../pages/AdminApprovalPage.js';
 import { AdminLoginPage } from '../../pages/AdminLoginPage.js';
 import { AdminRegisterPage } from '../../pages/AdminRegisterPage.js';
 import { AdminTransactionsPage } from '../../pages/AdminTransactionsPage.js';
+import { GlobalSearchPage } from '../../pages/GlobalSearchPage.js';
 
 export const AdminApp = () => {
     const { user, loading, logout } = useAuth();
