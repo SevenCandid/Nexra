@@ -176,13 +176,13 @@ export const DashboardPage = () => {
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white flex-1 min-w-[150px] order-1">Pulse Overview</h2>
                 
                 <div className="flex items-center gap-2 order-2 sm:order-3">
-                    <${Button} variant="primary" size="sm" onClick=${() => window.location.href = '#/campaigns/create'}>
-                        <${Icon} name="plus" size=${16} />
-                        <span className="hidden sm:inline">New Campaign</span>
+                    <${Button} variant="primary" className="rounded-2xl px-3 sm:px-6 py-2 sm:py-3.5 shadow-glow" onClick=${() => window.location.hash = '/campaigns/create'}>
+                        <${Icon} name="plus" size=${16} className="mr-1.5 sm:mr-2" />
+                        <span className="text-[10px] sm:text-sm font-bold">New Campaign</span>
                     </${Button}>
-                    <${Button} variant="outline" size="sm" onClick=${() => window.location.href = '#/contacts'}>
-                        <${Icon} name="users" size=${16} />
-                        <span className="hidden sm:inline">Contacts</span>
+                    <${Button} variant="secondary" className="rounded-2xl px-3 sm:px-6 py-2 sm:py-3.5" onClick=${() => window.location.hash = '/contacts'}>
+                        <${Icon} name="users" size=${16} className="mr-1.5 sm:mr-2 text-gray-500" />
+                        <span className="text-[10px] sm:text-sm font-bold text-gray-700 dark:text-gray-200">Contacts</span>
                     </${Button}>
                 </div>
 

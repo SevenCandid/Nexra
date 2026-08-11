@@ -183,6 +183,14 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
         return saved ? JSON.parse(saved) : { first_name: '', last_name: '', phone_number: '' };
     });
     const [isSavingManual, setIsSavingManual] = useState(false);
+    
+    // Phonebook Contact Picker State
+    const [isContactPickerSupported, setIsContactPickerSupported] = useState(false);
+    const [isImportingPhonebook, setIsImportingPhonebook] = useState(false);
+
+    useEffect(() => {
+        setIsContactPickerSupported('contacts' in navigator && 'ContactsManager' in window);
+    }, []);
 
     useEffect(() => {
         sessionStorage.setItem('segment_detail_newContact', JSON.stringify(newContact));
@@ -271,6 +279,56 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
             showToast('Failed to add contact', 'error');
         } finally {
             setIsSavingManual(false);
+        }
+    };
+
+    const handleSelectPhoneContacts = async () => {
+        if (!isContactPickerSupported) return;
+        
+        try {
+            const props = ['name', 'tel'];
+            const opts = { multiple: true };
+            const selected = await navigator.contacts.select(props, opts);
+            
+            if (selected && selected.length > 0) {
+                setIsImportingPhonebook(true);
+                let successCount = 0;
+                
+                for (const c of selected) {
+                    try {
+                        const nameParts = (c.name && c.name.length > 0) ? c.name[0].split(' ') : [''];
+                        const firstName = nameParts[0] || 'Unknown';
+                        const lastName = nameParts.slice(1).join(' ') || '';
+                        const phoneRaw = (c.tel && c.tel.length > 0) ? c.tel[0] : '';
+                        
+                        if (!phoneRaw) continue;
+                        
+                        let phone = phoneRaw.replace(/\D/g, '');
+                        if (phoneRaw.startsWith('+')) phone = '+' + phone;
+                        
+                        const res = await apiClient.post('/contacts', { first_name: firstName, last_name: lastName, phone_number: phone });
+                        const createdContact = res.data;
+                        
+                        if (segment.id) {
+                            await apiClient.post(`/groups/${segment.id}/contacts/${createdContact.id}`);
+                        }
+                        successCount++;
+                    } catch (err) {
+                        console.error('Failed to import contact', c, err);
+                    }
+                }
+                
+                if (successCount > 0) {
+                    showToast(`Successfully imported ${successCount} contact(s) from phonebook!`, 'success');
+                    fetchAllContactsAndSegments();
+                } else {
+                    showToast('No valid contacts could be imported.', 'error');
+                }
+            }
+        } catch (ex) {
+            console.error('Contact selection failed or was cancelled', ex);
+        } finally {
+            setIsImportingPhonebook(false);
         }
     };
 
@@ -540,6 +598,14 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
                                 <${Icon} name="user-plus" size=${20} className="text-primary-500" />
                                 Add Contact via Form
                             </h3>
+                            ${isContactPickerSupported && html`
+                                <div className="mb-6 pb-6 border-b border-gray-100 dark:border-midnight-800">
+                                    <${Button} type="button" variant="secondary" onClick=${handleSelectPhoneContacts} disabled=${isImportingPhonebook} className="w-full rounded-2xl py-3 border border-gray-200 dark:border-midnight-700 bg-gray-50 dark:bg-midnight-900">
+                                        <${Icon} name="smartphone" size=${18} className="mr-2 text-primary-500" />
+                                        ${isImportingPhonebook ? 'Importing...' : 'Select from Phonebook'}
+                                    </${Button}>
+                                </div>
+                            `}
                             <form onSubmit=${handleManualAdd} className="space-y-4">
                                 <${Input} label="First Name" placeholder="John" value=${newContact.first_name} onChange=${(e) => setNewContact({ ...newContact, first_name: e.target.value })} />
                                 <${Input} label="Last Name" placeholder="Doe" value=${newContact.last_name} onChange=${(e) => setNewContact({ ...newContact, last_name: e.target.value })} />
@@ -952,10 +1018,10 @@ export const ContactsPage = () => {
                 <${Button} 
                     variant="primary" 
                     onClick=${() => setShowCreateModal(true)} 
-                    className="rounded-2xl px-6 py-3.5 shadow-glow font-black uppercase tracking-widest text-xs"
+                    className="rounded-2xl px-3 sm:px-6 py-2 sm:py-3.5 shadow-glow"
                 >
-                    <${Icon} name="plus" size=${18} className="mr-2" />
-                    New Segment
+                    <${Icon} name="plus" size=${16} className="mr-1.5 sm:mr-2" />
+                    <span className="text-[10px] sm:text-sm font-bold">New Segment</span>
                 </${Button}>
             </div>
 

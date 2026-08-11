@@ -111,9 +111,9 @@ export const CampaignsPage = () => {
     return html`
         <div className="space-y-6 fade-in">
             <div className="flex items-center justify-end">
-                <${Button} onClick=${() => window.location.href = '#/campaigns/create'}>
-                    <${Icon} name="plus" size=${20} className="inline mr-2" />
-                    <span className="hidden sm:inline">New Campaign</span>
+                <${Button} className="rounded-2xl px-3 sm:px-6 py-2 sm:py-3.5 shadow-glow" onClick=${() => window.location.href = '#/campaigns/create'}>
+                    <${Icon} name="plus" size=${16} className="inline mr-1.5 sm:mr-2" />
+                    <span className="text-[10px] sm:text-sm font-bold">New Campaign</span>
                 </${Button}>
             </div>
 
