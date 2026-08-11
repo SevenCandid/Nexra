@@ -487,6 +487,17 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
             </div>
 
 
+            ${isContactPickerSupported && html`
+                <button 
+                    onClick=${handleSelectPhoneContacts}
+                    disabled=${isImportingPhonebook}
+                    className="w-full max-w-4xl mx-auto py-3 sm:py-3.5 px-4 rounded-2xl text-sm font-bold transition-all flex items-center justify-center gap-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:bg-indigo-500/20 border border-indigo-100 dark:border-indigo-500/20 mb-4 shadow-sm"
+                >
+                    <${Icon} name="smartphone" size=${18} className=${isImportingPhonebook ? 'animate-pulse' : ''} />
+                    ${isImportingPhonebook ? 'Importing from Phonebook...' : 'Import from Phonebook'}
+                </button>
+            `}
+
             <div className="flex flex-col lg:flex-row bg-transparent lg:bg-gray-100 lg:dark:bg-midnight-900 lg:p-1.5 rounded-2xl w-full max-w-4xl mx-auto lg:shadow-inner gap-3 lg:gap-0 fade-in">
                 <button 
                     onClick=${() => setActiveTab('members')}
@@ -598,14 +609,6 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
                                 <${Icon} name="user-plus" size=${20} className="text-primary-500" />
                                 Add Contact via Form
                             </h3>
-                            ${isContactPickerSupported && html`
-                                <div className="mb-6 pb-6 border-b border-gray-100 dark:border-midnight-800">
-                                    <${Button} type="button" variant="secondary" onClick=${handleSelectPhoneContacts} disabled=${isImportingPhonebook} className="w-full rounded-2xl py-3 border border-gray-200 dark:border-midnight-700 bg-gray-50 dark:bg-midnight-900">
-                                        <${Icon} name="smartphone" size=${18} className="mr-2 text-primary-500" />
-                                        ${isImportingPhonebook ? 'Importing...' : 'Select from Phonebook'}
-                                    </${Button}>
-                                </div>
-                            `}
                             <form onSubmit=${handleManualAdd} className="space-y-4">
                                 <${Input} label="First Name" placeholder="John" value=${newContact.first_name} onChange=${(e) => setNewContact({ ...newContact, first_name: e.target.value })} />
                                 <${Input} label="Last Name" placeholder="Doe" value=${newContact.last_name} onChange=${(e) => setNewContact({ ...newContact, last_name: e.target.value })} />
