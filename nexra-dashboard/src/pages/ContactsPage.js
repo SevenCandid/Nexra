@@ -487,16 +487,7 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
             </div>
 
 
-            ${isContactPickerSupported && html`
-                <button 
-                    onClick=${handleSelectPhoneContacts}
-                    disabled=${isImportingPhonebook}
-                    className="w-full max-w-4xl mx-auto py-3 sm:py-3.5 px-4 rounded-2xl text-sm font-bold transition-all flex items-center justify-center gap-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:bg-indigo-500/20 border border-indigo-100 dark:border-indigo-500/20 mb-4 shadow-sm"
-                >
-                    <${Icon} name="smartphone" size=${18} className=${isImportingPhonebook ? 'animate-pulse' : ''} />
-                    ${isImportingPhonebook ? 'Importing from Phonebook...' : 'Import from Phonebook'}
-                </button>
-            `}
+
 
             <div className="flex flex-col lg:flex-row bg-transparent lg:bg-gray-100 lg:dark:bg-midnight-900 lg:p-1.5 rounded-2xl w-full max-w-4xl mx-auto lg:shadow-inner gap-3 lg:gap-0 fade-in">
                 <button 
@@ -508,6 +499,17 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
                 </button>
                 
                 <div className="hidden lg:block w-px bg-gray-300 dark:bg-midnight-800 my-2 mx-2"></div>
+                
+                ${isContactPickerSupported && html`
+                    <button 
+                        onClick=${handleSelectPhoneContacts}
+                        disabled=${isImportingPhonebook}
+                        className="w-full lg:hidden py-3.5 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:bg-indigo-500/20 shadow-sm ring-1 ring-indigo-200 dark:ring-indigo-800"
+                    >
+                        <${Icon} name="smartphone" size=${16} className=${isImportingPhonebook ? 'animate-pulse' : ''} />
+                        ${isImportingPhonebook ? 'Importing...' : 'Import from Phonebook'}
+                    </button>
+                `}
                 
                 <div className="grid grid-cols-3 gap-2 lg:gap-1 lg:flex lg:flex-1">
                     ${['existing', 'manual', 'upload'].map(tab => html`
