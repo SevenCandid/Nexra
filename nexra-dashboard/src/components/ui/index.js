@@ -7,3 +7,7 @@ export { Card } from './Card.js';
 export { Modal } from './Modal.js';
 export { TrendChart } from './TrendChart.js';
 export { Toast } from './Toast.js';
+export { Input } from './Input.js';
+export { Dropdown } from './Dropdown.js';
+export { CommandPalette } from './CommandPalette.js';
+export { TemplateSelector } from './TemplateSelector.js';
