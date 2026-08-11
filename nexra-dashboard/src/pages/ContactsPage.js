@@ -1074,41 +1074,42 @@ const GlobalContactsView = () => {
 
     return html`
         <div className="space-y-6 fade-in max-w-6xl mx-auto pb-10">
-            <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 bg-primary-50 dark:bg-primary-900/20 rounded-xl flex items-center justify-center text-primary-500">
-                    <${Icon} name="users" size=${20} />
-                </div>
-                <div>
-                    <h2 className="text-lg font-black text-gray-900 dark:text-white leading-tight">Database</h2>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">${contacts.length} total contacts</p>
-                </div>
-            </div>
-            
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="relative flex-1 max-w-md group">
-                    <${Icon} name="search" size=${20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary-500 transition-colors" />
-                    <input
-                        type="text"
-                        placeholder="Search all contacts..."
-                        value=${searchQuery}
-                        onChange=${(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-12 pr-10 py-3.5 bg-white dark:bg-midnight-900 border border-gray-200 dark:border-midnight-800 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none text-sm font-medium transition-all shadow-sm"
-                    />
-                    ${searchQuery && html`
-                        <button onClick=${() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
-                            <${Icon} name="x" size=${16} />
-                        </button>
-                    `}
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-primary-50 dark:bg-primary-900/20 rounded-xl flex items-center justify-center text-primary-500">
+                        <${Icon} name="users" size=${20} />
+                    </div>
+                    <div>
+                        <h2 className="text-lg font-black text-gray-900 dark:text-white leading-tight">Total Contacts</h2>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">${contacts.length}</p>
+                    </div>
                 </div>
                 
                 <button 
                     onClick=${() => exportContactsToCSV(contacts, 'all_contacts.csv')}
                     disabled=${contacts.length === 0}
-                    className="p-3 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-midnight-800 rounded-xl transition-colors self-start md:self-center bg-white shadow-sm border border-gray-200 dark:border-midnight-800 dark:bg-midnight-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-bold text-gray-600 dark:text-gray-300 bg-white dark:bg-midnight-900 border border-gray-200 dark:border-midnight-800 rounded-xl shadow-sm hover:bg-gray-50 dark:hover:bg-midnight-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Export All to CSV"
                 >
-                    <${Icon} name="download" size=${20} />
+                    <${Icon} name="download" size=${16} />
+                    <span className="hidden sm:inline">Export</span>
                 </button>
+            </div>
+            
+            <div className="relative w-full max-w-md group">
+                <${Icon} name="search" size=${20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary-500 transition-colors" />
+                <input
+                    type="text"
+                    placeholder="Search all contacts..."
+                    value=${searchQuery}
+                    onChange=${(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-12 pr-10 py-3.5 bg-white dark:bg-midnight-900 border border-gray-200 dark:border-midnight-800 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none text-sm font-medium transition-all shadow-sm"
+                />
+                ${searchQuery && html`
+                    <button onClick=${() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                        <${Icon} name="x" size=${16} />
+                    </button>
+                `}
             </div>
 
             <div className="bg-white dark:bg-midnight-900 rounded-3xl border border-gray-100 dark:border-midnight-800 shadow-sm overflow-hidden">
@@ -1353,33 +1354,26 @@ export const ContactsPage = () => {
                         <${Card} 
                             key=${group.id} 
                             onClick=${() => setOpenSegment(group)}
-                            className="p-3 sm:p-5 cursor-pointer group hover:border-primary-500/50 transition-all duration-300 relative overflow-hidden flex flex-col justify-between min-h-[120px] sm:min-h-[160px]"
+                            className="p-4 cursor-pointer group hover:border-primary-500/50 transition-all duration-300 relative overflow-hidden"
                         >
-                            <div className="absolute -right-6 -bottom-6 text-primary-500/5 group-hover:text-primary-500/10 transition-colors pointer-events-none">
-                                <${Icon} name="tag" size=${120} />
-                            </div>
-
-                            <div className="relative z-10">
-                                <div className="flex items-start justify-between mb-4">
-                                    <div className="w-12 h-12 bg-primary-500/10 dark:bg-primary-500/5 rounded-2xl flex items-center justify-center text-primary-600 dark:text-primary-400">
-                                        <${Icon} name="tag" size=${24} />
-                                    </div>
-                                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 dark:bg-midnight-900 rounded-full border border-gray-100 dark:border-midnight-800">
+                            <div className="relative z-10 flex items-center gap-4">
+                                <div className="w-12 h-12 bg-primary-500/10 dark:bg-primary-500/5 rounded-2xl flex items-center justify-center text-primary-600 dark:text-primary-400 shrink-0">
+                                    <${Icon} name="tag" size=${24} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="text-base font-black text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors truncate">
+                                        ${group.name}
+                                    </h3>
+                                    <p className="text-xs text-gray-500 dark:text-midnight-500 font-medium truncate mt-0.5">
+                                        ${group.description || 'No description provided.'}
+                                    </p>
+                                </div>
+                                <div className="flex flex-col items-end shrink-0 gap-2">
+                                    <div className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 dark:bg-midnight-900 rounded-full border border-gray-100 dark:border-midnight-800">
                                         <${Icon} name="users" size=${12} className="text-gray-400" />
                                         <span className="text-[11px] font-black text-gray-600 dark:text-midnight-400">${group.contact_count}</span>
                                     </div>
                                 </div>
-                                <h3 className="text-base sm:text-lg font-black text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors truncate">
-                                    ${group.name}
-                                </h3>
-                                <p className="text-xs text-gray-500 dark:text-midnight-500 font-medium line-clamp-2 mt-1 min-h-[2.5rem]">
-                                    ${group.description || 'No description provided.'}
-                                </p>
-                            </div>
-
-                            <div className="relative z-10 mt-3 sm:mt-6 pt-3 sm:pt-4 border-t border-gray-50 dark:border-midnight-900 flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-gray-400">
-                                <span>Manage Members</span>
-                                <${Icon} name="chevron-right" size=${14} className="group-hover:translate-x-1 transition-transform text-primary-500" />
                             </div>
                         </${Card}>
                     `)}
