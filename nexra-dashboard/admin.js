@@ -2495,14 +2495,30 @@ const AdminMobileMenuDrawer = ({ isOpen, onClose, currentPage, onNavigate, user 
 
     return html`
         <div className="fixed inset-0 z-[100] lg:hidden flex flex-col justify-end">
+            <style>
+                @keyframes slideUp {
+                    from { transform: translateY(100%); }
+                    to { transform: translateY(0); }
+                }
+                .animate-slide-up {
+                    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                }
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                .animate-fade-in {
+                    animation: fadeIn 0.2s ease-out forwards;
+                }
+            </style>
             <!-- Backdrop -->
             <div 
-                className="absolute inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
+                className="absolute inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm animate-fade-in"
                 onClick=${onClose}
             ></div>
             
             <!-- Drawer -->
-            <div className="relative bg-white dark:bg-midnight-950 rounded-t-3xl shadow-2xl h-[85vh] flex flex-col animate-in slide-in-from-bottom duration-300">
+            <div className="relative bg-white dark:bg-midnight-950 rounded-t-3xl shadow-2xl h-[85vh] flex flex-col animate-slide-up">
                 <!-- Handle -->
                 <div className="flex justify-center p-3 shrink-0">
                     <div className="w-12 h-1.5 bg-gray-300 dark:bg-midnight-700 rounded-full"></div>
