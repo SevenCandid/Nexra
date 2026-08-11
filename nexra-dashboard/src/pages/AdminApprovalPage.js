@@ -1,7 +1,8 @@
-import { html, useState, useEffect, useRef, useMemo, useCallback } from '../utils/htm.js';
 import apiClient from '../api/client.js';
+import { html, useState, useEffect, useRef, useMemo, useCallback } from '../utils/htm.js';
+import { Icon, Button, Badge, Card, Modal, Skeleton, TrendChart, ConfirmModal } from '../components/ui/index.js';
 import { useToast, useAuth } from '../context/index.js';
-import { Icon, Button, Badge, Card, Modal, Skeleton, TrendChart } from '../components/ui/index.js';
+import { AdminStatCard, SystemHealthWidget, PlatformRow, DateFilterDropdown } from '../components/layout/index.js';
 
 export const AdminApprovalPage = () => {
     const { showToast } = useToast();
@@ -81,9 +82,21 @@ export const AdminApprovalPage = () => {
             </div>
 
             ${loading ? html`
-                <div className="p-12 text-center">
-                    <div className="animate-spin inline-block text-primary-600"><${Icon} name="loader-2" size=${32} /></div>
-                    <p className="text-sm text-gray-500 mt-4">Fetching requests...</p>
+                <div className="grid gap-3 lg:gap-4 p-4 lg:p-0">
+                    ${[1,2,3,4].map(i => html`
+                        <div key=${i} className="bg-white dark:bg-midnight-900 border border-gray-100 dark:border-midnight-800 rounded-2xl p-5 shadow-sm">
+                            <div className="flex flex-col md:flex-row justify-between gap-4">
+                                <div className="space-y-3 flex-1">
+                                    <${Skeleton} className="w-1/4 h-6" />
+                                    <${Skeleton} className="w-1/2 h-4" />
+                                </div>
+                                <div className="flex gap-2">
+                                    <${Skeleton} className="w-24 h-10 rounded-xl" />
+                                    <${Skeleton} className="w-24 h-10 rounded-xl" />
+                                </div>
+                            </div>
+                        </div>
+                    `)}
                 </div>
             ` : requests.length === 0 ? html`
                 <${Card} className="p-12 text-center text-gray-500 border-none lg:border">

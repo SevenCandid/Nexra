@@ -21,10 +21,14 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
             await websocket.close(code=1008) # Policy Violation
             return
 
+        is_admin = user.role in ['superadmin', 'staff']
         org_id = user.organization_id
         
         # 2. Connect
-        await manager.connect(websocket, org_id)
+        if is_admin:
+            await manager.connect_admin(websocket)
+        else:
+            await manager.connect(websocket, org_id)
         
         try:
             # 3. Keep connection alive and wait for client messages (if any)
@@ -33,10 +37,16 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
                 # We don't expect messages from client, but keeping it open
                 pass
         except WebSocketDisconnect:
-            manager.disconnect(websocket, org_id)
+            if is_admin:
+                manager.disconnect_admin(websocket)
+            else:
+                manager.disconnect(websocket, org_id)
         except Exception as e:
             logger.error(f"WebSocket error: {str(e)}")
-            manager.disconnect(websocket, org_id)
+            if is_admin:
+                manager.disconnect_admin(websocket)
+            else:
+                manager.disconnect(websocket, org_id)
             
     except Exception as e:
         logger.error(f"WebSocket auth error: {str(e)}")

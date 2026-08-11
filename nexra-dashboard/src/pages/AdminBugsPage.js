@@ -1,7 +1,8 @@
-import { html, useState, useEffect, useRef, useMemo, useCallback } from '../utils/htm.js';
 import apiClient from '../api/client.js';
+import { html, useState, useEffect, useRef, useMemo, useCallback } from '../utils/htm.js';
+import { Icon, Button, Badge, Card, Modal, Skeleton, TrendChart, ConfirmModal } from '../components/ui/index.js';
 import { useToast, useAuth } from '../context/index.js';
-import { Icon, Button, Badge, Card, Modal, Skeleton, TrendChart } from '../components/ui/index.js';
+import { AdminStatCard, SystemHealthWidget, PlatformRow, DateFilterDropdown } from '../components/layout/index.js';
 
 export const AdminBugsPage = () => {
     const { showToast } = useToast();
@@ -49,9 +50,19 @@ export const AdminBugsPage = () => {
             </div>
 
             ${loading ? html`
-                <div className="p-12 text-center">
-                    <div className="animate-spin inline-block text-primary-600"><${Icon} name="loader-2" size=${32} /></div>
-                    <p className="text-sm text-gray-500 mt-4">Loading reports...</p>
+                <div className="grid gap-4">
+                    ${[1,2,3,4].map(i => html`
+                        <div key=${i} className="bg-white dark:bg-midnight-900 border border-gray-100 dark:border-midnight-800 rounded-2xl p-5 shadow-sm">
+                            <div className="flex justify-between mb-4">
+                                <${Skeleton} className="w-1/3 h-5" />
+                                <${Skeleton} className="w-24 h-5 rounded-full" />
+                            </div>
+                            <div className="space-y-2">
+                                <${Skeleton} className="w-full h-4" />
+                                <${Skeleton} className="w-5/6 h-4" />
+                            </div>
+                        </div>
+                    `)}
                 </div>
             ` : bugs.length === 0 ? html`
                 <${Card} className="p-12 text-center text-gray-500 border-none lg:border">

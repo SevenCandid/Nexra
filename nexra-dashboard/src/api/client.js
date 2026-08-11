@@ -1,15 +1,13 @@
-export const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') 
-    ? 'http://127.0.0.1:8000/api/v1' 
-    : (window.__NEXRA_API_URL__ || 'https://nexra-api.onrender.com/api/v1');
+const API_BASE_URL = window.__NEXRA_API_URL__ || 'https://nexra-api.onrender.com/api/v1';
 
-const apiClient = window.axios.create({
+const apiClient = axios.create({
     baseURL: API_BASE_URL,
     headers: {
         'Content-Type': 'application/json',
     },
 });
 
-// Request interceptor — attach access token
+// Request interceptor
 apiClient.interceptors.request.use((config) => {
     const token = localStorage.getItem('access_token');
     if (token) {
@@ -18,7 +16,7 @@ apiClient.interceptors.request.use((config) => {
     return config;
 });
 
-// Response interceptor — silent refresh on 401
+// Response interceptor — silent token refresh on 401
 let _isRefreshing = false;
 apiClient.interceptors.response.use(
     (response) => response,
@@ -28,7 +26,7 @@ apiClient.interceptors.response.use(
             if (refreshToken && !_isRefreshing) {
                 _isRefreshing = true;
                 try {
-                    const res = await window.axios.post(
+                    const res = await axios.post(
                         `${API_BASE_URL}/auth/refresh`,
                         {},
                         { headers: { Authorization: `Bearer ${refreshToken}` } }
@@ -46,10 +44,11 @@ apiClient.interceptors.response.use(
             }
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
-            window.location.hash = '#/login';
+            window.location.href = 'admin.html#/login';
         }
         return Promise.reject(error);
     }
 );
 
 export default apiClient;
+export { API_BASE_URL };

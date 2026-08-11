@@ -71,14 +71,33 @@ class GatewayManager:
 
     async def _maintain_connection(self, adapter: BaseMNOAdapter):
         """Persistent connection management for an adapter."""
+        from app.core.websocket import manager
+        
         while True:
             try:
                 await adapter.connect()
+                # Notify admins of recovery
+                await manager.broadcast_to_admins({
+                    "type": "gateway_status",
+                    "title": "Gateway Recovered",
+                    "message": f"Adapter {adapter.provider_id} is now ONLINE.",
+                    "status": "online",
+                    "provider": adapter.provider_id
+                })
+                
                 # Wait until it disconnects
                 while adapter.is_connected():
                     await asyncio.sleep(5)
             except Exception as e:
                 logger.error(f"Adapter {adapter.provider_id} crashed, restarting in 10s: {e}")
+                # Notify admins of crash
+                await manager.broadcast_to_admins({
+                    "type": "gateway_status",
+                    "title": "Critical: Gateway Offline",
+                    "message": f"Adapter {adapter.provider_id} crashed: {str(e)}",
+                    "status": "offline",
+                    "provider": adapter.provider_id
+                })
                 await asyncio.sleep(10)
 
     async def route_message(self, recipient: str) -> str:

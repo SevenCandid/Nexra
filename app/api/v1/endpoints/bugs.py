@@ -8,6 +8,7 @@ from app.api import deps
 from app.db.database import get_db
 from app.db.models import BugReport, User
 from app.schemas.schemas import BugReportCreate, BugReportOut, BugReportUpdate
+from app.core.websocket import manager
 
 router = APIRouter()
 
@@ -29,6 +30,14 @@ async def submit_bug_report(
     db.add(new_bug)
     await db.commit()
     await db.refresh(new_bug)
+    
+    # Broadcast to admins
+    await manager.broadcast_to_admins({
+        "type": "new_bug",
+        "title": "New Bug Report",
+        "message": f"Bug reported by {current_user.email}: {bug_in.subject}"
+    })
+    
     return new_bug
 
 @router.get("/", response_model=List[BugReportOut])

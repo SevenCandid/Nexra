@@ -1,7 +1,8 @@
-import { html, useState, useEffect, useRef, useMemo, useCallback } from '../utils/htm.js';
 import apiClient from '../api/client.js';
+import { html, useState, useEffect, useRef, useMemo, useCallback } from '../utils/htm.js';
+import { Icon, Button, Badge, Card, Modal, Skeleton, TrendChart, ConfirmModal } from '../components/ui/index.js';
 import { useToast, useAuth } from '../context/index.js';
-import { Icon, Button, Badge, Card, Modal, Skeleton, TrendChart } from '../components/ui/index.js';
+import { AdminStatCard, SystemHealthWidget, PlatformRow, DateFilterDropdown } from '../components/layout/index.js';
 
 export const PlatformManagementPage = () => {
     const { user } = useAuth();
@@ -209,9 +210,19 @@ export const PlatformManagementPage = () => {
 
             <${Card} className="overflow-hidden border-none lg:border lg:border-gray-200 lg:dark:border-midnight-800 bg-transparent lg:bg-white lg:dark:bg-midnight-900/40 shadow-none lg:shadow-sm">
                 ${loading ? html`
-                    <div className="p-20 text-center animate-pulse flex flex-col items-center gap-4">
-                        <div className="animate-spin text-primary-500"><${Icon} name="loader-2" size=${32} /></div>
-                        <p className="text-gray-400 font-medium">Fetching platform data...</p>
+                    <div className="divide-y divide-gray-100 dark:divide-midnight-800/50">
+                        ${[1,2,3,4,5].map(i => html`
+                            <div key=${i} className="p-4 flex items-center justify-between">
+                                <div className="flex items-center gap-4 flex-1">
+                                    <${Skeleton} variant="circular" className="w-10 h-10 shrink-0" />
+                                    <div className="space-y-2 flex-1 max-w-sm">
+                                        <${Skeleton} className="w-full h-4" />
+                                        <${Skeleton} className="w-2/3 h-3" />
+                                    </div>
+                                </div>
+                                <${Skeleton} className="w-20 h-8 rounded" />
+                            </div>
+                        `)}
                     </div>
                 ` : html`
                     <!-- Desktop Table -->

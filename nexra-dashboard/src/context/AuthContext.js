@@ -1,24 +1,15 @@
 import { html, useState, useEffect, createContext, useContext } from '../utils/htm.js';
 import apiClient from '../api/client.js';
+import { useToast } from './ToastContext.js';
 
-const AuthContext = createContext(null);
+export const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const { showToast } = useToast();
 
     useEffect(() => {
-        // Check for impersonation token in URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const impToken = urlParams.get('impersonate_token');
-        
-        if (impToken) {
-            localStorage.setItem('access_token', impToken);
-            // Clean up URL without refreshing
-            const newUrl = window.location.pathname + window.location.hash;
-            window.history.replaceState({}, '', newUrl);
-        }
-
         const token = localStorage.getItem('access_token');
         if (token) {
             fetchUser();
@@ -31,6 +22,11 @@ export const AuthProvider = ({ children }) => {
         try {
             const response = await apiClient.get('/auth/me');
             setUser(response.data);
+            // Verify if user is actually a platform-level account
+            if (response.data.role !== 'superadmin' && response.data.role !== 'staff') {
+                showToast('Access denied: You are not a platform administrator.', 'error');
+                logout();
+            }
         } catch (error) {
             localStorage.removeItem('access_token');
         } finally {
@@ -39,11 +35,11 @@ export const AuthProvider = ({ children }) => {
     };
 
     const login = async (email, password) => {
-        const params = new URLSearchParams();
-        params.append('username', email);
-        params.append('password', password);
+        const formData = new FormData();
+        formData.append('username', email);
+        formData.append('password', password);
 
-        const response = await apiClient.post('/auth/login', params, {
+        const response = await apiClient.post('/auth/login', formData, {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
         });
 
@@ -61,12 +57,13 @@ export const AuthProvider = ({ children }) => {
 
     const logout = () => {
         localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
         setUser(null);
-        window.location.hash = '#/login';
+        window.location.href = 'admin.html#/login';
     };
 
     return html`
-        <${AuthContext.Provider} value=${{ user, loading, login, register, logout, fetchUser }}>
+        <${AuthContext.Provider} value=${{ user, loading, login, register, logout }}>
             ${children}
         </${AuthContext.Provider}>
     `;
