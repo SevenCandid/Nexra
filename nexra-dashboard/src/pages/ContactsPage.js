@@ -1127,7 +1127,7 @@ const GlobalContactsView = () => {
                                     </td>
                                 </tr>
                             ` : filteredContacts.map((contact, idx) => html`
-                                <tr key=${contact.id} className="group hover:bg-gray-50/50 dark:hover:bg-midnight-800/50 transition-colors animate-in fade-in slide-in-from-bottom-2" style=${{ animationDelay: \`\${idx * 30}ms\` }}>
+                                <tr key=${contact.id} className="group hover:bg-gray-50/50 dark:hover:bg-midnight-800/50 transition-colors animate-in fade-in slide-in-from-bottom-2" style="animation-delay: ${idx * 30}ms">
                                     <td className="px-4 sm:px-6 py-4">
                                         <div className="flex items-center gap-3">
                                             <div className="w-8 h-8 rounded-full bg-primary-50 dark:bg-primary-900/10 text-primary-600 dark:text-primary-400 flex items-center justify-center font-bold text-xs shrink-0">
