@@ -26,6 +26,77 @@ const getNetworkBadge = (network) => {
     `;
 };
 
+const exportContactsToCSV = (contacts, filename = 'contacts.csv') => {
+    if (!contacts || contacts.length === 0) return;
+    const headers = ['First Name', 'Last Name', 'Phone Number', 'Network'];
+    const rows = contacts.map(c => [
+        `"${(c.first_name || '').replace(/"/g, '""')}"`,
+        `"${(c.last_name || '').replace(/"/g, '""')}"`,
+        `"${(c.phone_number || '').replace(/"/g, '""')}"`,
+        `"${(c.network || '').replace(/"/g, '""')}"`
+    ]);
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+};
+
+const EditContactModal = ({ isOpen, onClose, contact, onSaved }) => {
+    const { showToast } = useToast();
+    const [formData, setFormData] = useState({ first_name: '', last_name: '', phone_number: '' });
+    const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        if (contact && isOpen) {
+            setFormData({
+                first_name: contact.first_name || '',
+                last_name: contact.last_name || '',
+                phone_number: contact.phone_number || ''
+            });
+        }
+    }, [contact, isOpen]);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setIsSaving(true);
+        try {
+            const res = await apiClient.patch(`/contacts/${contact.id}`, formData);
+            showToast('Contact updated successfully!', 'success');
+            onSaved(res.data);
+            onClose();
+        } catch (error) {
+            showToast('Failed to update contact.', 'error');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    return html`
+        <${Modal} isOpen=${isOpen} onClose=${onClose} title="Edit Contact">
+            <form onSubmit=${handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                    <${Input} label="First Name" value=${formData.first_name} onChange=${(e) => setFormData({ ...formData, first_name: e.target.value })} />
+                    <${Input} label="Last Name" value=${formData.last_name} onChange=${(e) => setFormData({ ...formData, last_name: e.target.value })} />
+                </div>
+                <${Input} label="Phone Number" value=${formData.phone_number} required onChange=${(e) => setFormData({ ...formData, phone_number: e.target.value })} />
+                <div className="flex items-center gap-3 pt-4">
+                    <${Button} type="button" variant="outline" className="flex-1 rounded-2xl" onClick=${onClose}>Cancel</${Button}>
+                    <${Button} type="submit" variant="primary" className="flex-1 rounded-2xl shadow-glow" disabled=${isSaving}>
+                        ${isSaving ? 'Saving...' : 'Save Changes'}
+                    </${Button}>
+                </div>
+            </form>
+        </${Modal}>
+    `;
+};
+
 const GroupsSidebar = ({ selectedGroupId, onOpenSegment, onRefresh }) => {
     const { showToast } = useToast();
     const [groups, setGroups] = useState([]);
@@ -176,6 +247,7 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
     const [members, setMembers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isListExpanded, setIsListExpanded] = useState(false);
+    const [editingContact, setEditingContact] = useState(null);
     
     // Add Manually State
     const [newContact, setNewContact] = useState(() => {
@@ -473,6 +545,13 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
                     </p>
                 </div>
                 <button 
+                    onClick=${() => exportContactsToCSV(members, `${segment.name.replace(/ /g, '_')}_contacts.csv`)}
+                    className="p-2.5 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-midnight-800 rounded-xl transition-colors self-start lg:self-center"
+                    title="Export to CSV"
+                >
+                    <${Icon} name="download" size=${20} />
+                </button>
+                <button 
                     onClick=${() => setConfirmAction({ 
                         open: true, 
                         type: 'delete', 
@@ -584,6 +663,14 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
                                                             </div>
                                                         </td>
                                                         <td className="px-4 sm:px-6 py-4 text-right">
+                                                            <button
+                                                                type="button"
+                                                                onClick=${() => setEditingContact(member)}
+                                                                className="inline-flex items-center justify-center p-2 text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-500/10 rounded-lg transition-colors sm:opacity-0 sm:group-hover:opacity-100 mr-1"
+                                                                title="Edit Contact"
+                                                            >
+                                                                <${Icon} name="edit-2" size=${16} />
+                                                            </button>
                                                             <button
                                                                 type="button"
                                                                 onClick=${() => handleRemoveMember(member.id)}
@@ -932,6 +1019,179 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
                 confirmText=${confirmAction.type === 'delete' ? 'Delete' : 'Import'}
                 variant=${confirmAction.type === 'delete' ? 'danger' : 'info'}
             />
+
+            <${EditContactModal} 
+                isOpen=${!!editingContact}
+                contact=${editingContact}
+                onClose=${() => setEditingContact(null)}
+                onSaved=${() => fetchMembers()}
+            />
+        </div>
+    `;
+};
+
+const GlobalContactsView = () => {
+    const { showToast } = useToast();
+    const [contacts, setContacts] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [editingContact, setEditingContact] = useState(null);
+    const [confirmAction, setConfirmAction] = useState({ open: false, type: '', data: null });
+
+    useEffect(() => {
+        fetchContacts();
+    }, []);
+
+    const fetchContacts = async () => {
+        setLoading(true);
+        try {
+            const res = await apiClient.get('/contacts');
+            setContacts(res.data);
+        } catch (error) {
+            console.error('Failed to fetch contacts:', error);
+            showToast('Failed to load contacts', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDeleteContact = async () => {
+        const id = confirmAction.data;
+        try {
+            await apiClient.delete(`/contacts/${id}`);
+            showToast('Contact deleted successfully', 'success');
+            setConfirmAction({ open: false, type: '', data: null });
+            fetchContacts();
+        } catch (error) {
+            showToast('Failed to delete contact', 'error');
+        }
+    };
+
+    const filteredContacts = contacts.filter(c => 
+        (c.first_name + ' ' + c.last_name).toLowerCase().includes(searchQuery.toLowerCase()) || 
+        (c.phone_number || '').includes(searchQuery)
+    );
+
+    return html`
+        <div className="space-y-6 fade-in max-w-6xl mx-auto pb-10">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="relative flex-1 max-w-md group">
+                    <${Icon} name="search" size=${20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary-500 transition-colors" />
+                    <input
+                        type="text"
+                        placeholder="Search all contacts..."
+                        value=${searchQuery}
+                        onChange=${(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-12 pr-10 py-3.5 bg-white dark:bg-midnight-900 border border-gray-200 dark:border-midnight-800 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none text-sm font-medium transition-all shadow-sm"
+                    />
+                    ${searchQuery && html`
+                        <button onClick=${() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                            <${Icon} name="x" size=${16} />
+                        </button>
+                    `}
+                </div>
+                
+                <button 
+                    onClick=${() => exportContactsToCSV(contacts, 'all_contacts.csv')}
+                    disabled=${contacts.length === 0}
+                    className="p-3 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-midnight-800 rounded-xl transition-colors self-start md:self-center bg-white shadow-sm border border-gray-200 dark:border-midnight-800 dark:bg-midnight-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Export All to CSV"
+                >
+                    <${Icon} name="download" size=${20} />
+                </button>
+            </div>
+
+            <div className="bg-white dark:bg-midnight-900 rounded-3xl border border-gray-100 dark:border-midnight-800 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto custom-scrollbar">
+                    <table className="w-full text-left border-collapse min-w-[600px]">
+                        <thead>
+                            <tr className="border-b border-gray-100 dark:border-midnight-800 bg-gray-50/50 dark:bg-midnight-950/50">
+                                <th className="px-4 sm:px-6 py-4 text-xs font-black text-gray-500 uppercase tracking-widest">Name</th>
+                                <th className="px-4 sm:px-6 py-4 text-xs font-black text-gray-500 uppercase tracking-widest">Phone</th>
+                                <th className="px-4 sm:px-6 py-4 text-xs font-black text-gray-500 uppercase tracking-widest">Network</th>
+                                <th className="px-4 sm:px-6 py-4 text-xs font-black text-gray-500 uppercase tracking-widest text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50 dark:divide-midnight-800/50">
+                            ${loading ? html`
+                                <tr>
+                                    <td colSpan="4" className="px-6 py-8 text-center text-gray-500">Loading contacts...</td>
+                                </tr>
+                            ` : filteredContacts.length === 0 ? html`
+                                <tr>
+                                    <td colSpan="4" className="px-6 py-12 text-center text-gray-500">
+                                        <div className="flex flex-col items-center gap-3">
+                                            <${Icon} name="users" size=${32} className="text-gray-300 dark:text-gray-700" />
+                                            <p>${searchQuery ? 'No contacts match your search.' : 'Your contact list is empty.'}</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ` : filteredContacts.map((contact, idx) => html`
+                                <tr key=${contact.id} className="group hover:bg-gray-50/50 dark:hover:bg-midnight-800/50 transition-colors animate-in fade-in slide-in-from-bottom-2" style=${{ animationDelay: \`\${idx * 30}ms\` }}>
+                                    <td className="px-4 sm:px-6 py-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-primary-50 dark:bg-primary-900/10 text-primary-600 dark:text-primary-400 flex items-center justify-center font-bold text-xs shrink-0">
+                                                ${contact.first_name ? contact.first_name.charAt(0).toUpperCase() : '#'}
+                                            </div>
+                                            <span className="font-semibold text-gray-900 dark:text-white truncate">
+                                                ${contact.first_name || ''} ${contact.last_name || ''}
+                                                ${!contact.first_name && !contact.last_name && html`<span className="text-gray-400 italic">No Name</span>`}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td className="px-4 sm:px-6 py-4 font-mono text-sm text-gray-600 dark:text-gray-300">
+                                        ${contact.phone_number}
+                                    </td>
+                                    <td className="px-4 sm:px-6 py-4">
+                                        ${getNetworkBadge(contact.network)}
+                                    </td>
+                                    <td className="px-4 sm:px-6 py-4 text-right">
+                                        <button
+                                            type="button"
+                                            onClick=${() => setEditingContact(contact)}
+                                            className="inline-flex items-center justify-center p-2 text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-500/10 rounded-lg transition-colors sm:opacity-0 sm:group-hover:opacity-100 mr-1"
+                                            title="Edit Contact"
+                                        >
+                                            <${Icon} name="edit-2" size=${16} />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick=${() => setConfirmAction({
+                                                open: true,
+                                                type: 'delete',
+                                                data: contact.id,
+                                                title: 'Delete Contact?',
+                                                message: 'This will permanently delete this contact from the database and all segments.'
+                                            })}
+                                            className="inline-flex items-center justify-center p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors sm:opacity-0 sm:group-hover:opacity-100"
+                                            title="Delete Contact completely"
+                                        >
+                                            <${Icon} name="trash-2" size=${16} />
+                                        </button>
+                                    </td>
+                                </tr>
+                            `)}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <${ConfirmModal}
+                isOpen=${confirmAction.open}
+                onClose=${() => setConfirmAction({ open: false, type: '', data: null })}
+                onConfirm=${handleDeleteContact}
+                title=${confirmAction.title}
+                message=${confirmAction.message}
+                confirmText="Delete"
+                variant="danger"
+            />
+
+            <${EditContactModal} 
+                isOpen=${!!editingContact}
+                contact=${editingContact}
+                onClose=${() => setEditingContact(null)}
+                onSaved=${() => fetchContacts()}
+            />
         </div>
     `;
 };
@@ -942,6 +1202,7 @@ export const ContactsPage = () => {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [openSegment, setOpenSegment] = useState(null);
+    const [viewMode, setViewMode] = useState('segments'); // 'segments' | 'all_contacts'
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [newGroup, setNewGroup] = useState(() => {
         const saved = sessionStorage.getItem('contacts_main_newGroup');
@@ -1003,7 +1264,27 @@ export const ContactsPage = () => {
 
     return html`
         <div className="space-y-6 fade-in max-w-6xl mx-auto pb-10">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex bg-gray-100 dark:bg-midnight-900 p-1 rounded-xl w-max mb-6">
+                <button 
+                    onClick=${() => setViewMode('segments')}
+                    className=${`px-4 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === 'segments' ? 'bg-white dark:bg-midnight-800 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                >
+                    Segments
+                </button>
+                <button 
+                    onClick=${() => setViewMode('all_contacts')}
+                    className=${`px-4 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === 'all_contacts' ? 'bg-white dark:bg-midnight-800 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                >
+                    All Contacts
+                </button>
+            </div>
+
+            ${viewMode === 'all_contacts' ? html`
+                <${GlobalContactsView} />
+            ` : html`
+                <div>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+
                 <div className="relative flex-1 max-w-md group">
                     <${Icon} name="search" size=${20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary-500 transition-colors" />
                     <input
@@ -1121,10 +1402,10 @@ export const ContactsPage = () => {
                             Create Segment
                         </${Button}>
                     </div>
-                </form>
-            </${Modal}>
-
-
+                    </form>
+                </${Modal}>
+            </div>
+            `}
         </div>
     `;
 };
