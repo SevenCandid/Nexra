@@ -1,7 +1,7 @@
 import { html, useState, useEffect, useRef, useMemo, useCallback } from '../utils/htm.js';
 import { Icon, Button, Badge, Card, Modal, Skeleton, TrendChart, ConfirmModal } from '../components/ui/index.js';
 import { useToast, useAuth } from '../context/index.js';
-import { AdminStatCard, SystemHealthWidget, PlatformRow, DateFilterDropdown } from '../components/layout/index.js';
+import { AdminStatCard, SystemHealthWidget, PlatformRow, DateFilterDropdown, AuthLayout } from '../components/layout/index.js';
 
 export const AdminRegisterPage = () => {
     const { register } = useAuth();
