@@ -1074,6 +1074,16 @@ const GlobalContactsView = () => {
 
     return html`
         <div className="space-y-6 fade-in max-w-6xl mx-auto pb-10">
+            <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 bg-primary-50 dark:bg-primary-900/20 rounded-xl flex items-center justify-center text-primary-500">
+                    <${Icon} name="users" size=${20} />
+                </div>
+                <div>
+                    <h2 className="text-lg font-black text-gray-900 dark:text-white leading-tight">Database</h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">${contacts.length} total contacts</p>
+                </div>
+            </div>
+            
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="relative flex-1 max-w-md group">
                     <${Icon} name="search" size=${20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary-500 transition-colors" />
@@ -1343,7 +1353,7 @@ export const ContactsPage = () => {
                         <${Card} 
                             key=${group.id} 
                             onClick=${() => setOpenSegment(group)}
-                            className="p-4 sm:p-6 cursor-pointer group hover:border-primary-500/50 transition-all duration-300 relative overflow-hidden flex flex-col justify-between min-h-[140px] sm:min-h-[180px]"
+                            className="p-3 sm:p-5 cursor-pointer group hover:border-primary-500/50 transition-all duration-300 relative overflow-hidden flex flex-col justify-between min-h-[120px] sm:min-h-[160px]"
                         >
                             <div className="absolute -right-6 -bottom-6 text-primary-500/5 group-hover:text-primary-500/10 transition-colors pointer-events-none">
                                 <${Icon} name="tag" size=${120} />
@@ -1359,7 +1369,7 @@ export const ContactsPage = () => {
                                         <span className="text-[11px] font-black text-gray-600 dark:text-midnight-400">${group.contact_count}</span>
                                     </div>
                                 </div>
-                                <h3 className="text-lg font-black text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors truncate">
+                                <h3 className="text-base sm:text-lg font-black text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors truncate">
                                     ${group.name}
                                 </h3>
                                 <p className="text-xs text-gray-500 dark:text-midnight-500 font-medium line-clamp-2 mt-1 min-h-[2.5rem]">
@@ -1367,7 +1377,7 @@ export const ContactsPage = () => {
                                 </p>
                             </div>
 
-                            <div className="relative z-10 mt-6 pt-4 border-t border-gray-50 dark:border-midnight-900 flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-gray-400">
+                            <div className="relative z-10 mt-3 sm:mt-6 pt-3 sm:pt-4 border-t border-gray-50 dark:border-midnight-900 flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-gray-400">
                                 <span>Manage Members</span>
                                 <${Icon} name="chevron-right" size=${14} className="group-hover:translate-x-1 transition-transform text-primary-500" />
                             </div>
