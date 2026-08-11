@@ -1,5 +1,5 @@
 import { html, useState, useEffect, useRef, useMemo } from '../../utils/htm.js';
-import { Icon } from './index.js';
+import { Icon, Card } from './index.js';
 
 export const TrendChart = ({ data, dataKey, color, label, prefix = '' }) => {
     if (!data || data.length === 0) return null;
