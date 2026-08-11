@@ -1,4 +1,6 @@
-const API_BASE_URL = window.__NEXRA_API_URL__ || 'https://nexra-api.onrender.com/api/v1';
+export const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') 
+    ? 'http://127.0.0.1:8000/api/v1' 
+    : (window.__NEXRA_API_URL__ || 'https://nexra-api.onrender.com/api/v1');
 
 const apiClient = axios.create({
     baseURL: API_BASE_URL,
@@ -51,4 +53,3 @@ apiClient.interceptors.response.use(
 );
 
 export default apiClient;
-export { API_BASE_URL };
