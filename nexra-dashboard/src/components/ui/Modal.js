@@ -1,4 +1,5 @@
 import { html, useState, useEffect, useRef, useMemo } from '../../utils/htm.js';
+import { Icon } from './index.js';
 
 export const Modal = ({ isOpen, onClose, title, children }) => {
     if (!isOpen) return null;
