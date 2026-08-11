@@ -465,9 +465,9 @@ async def get_admin_transactions(
     admin_categories = ["topup", "manual_deduction", "subscription_renewal"]
     ledger_filters = [BillingLedger.category.in_(admin_categories)]
     if since:
-        ledger_filters.append(BillingLedger.created_at >= since)
+        ledger_filters.append(BillingLedger.created_at >= since.replace(tzinfo=None))
     if until:
-        ledger_filters.append(BillingLedger.created_at <= until)
+        ledger_filters.append(BillingLedger.created_at <= until.replace(tzinfo=None))
 
     ledger_stmt = (
         select(BillingLedger, Organization.name.label("org_name"))
