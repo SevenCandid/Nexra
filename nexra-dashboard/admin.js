@@ -1,10 +1,14 @@
 import { ConfirmModal } from './src/components/ui/ConfirmModal.js';
 import { AdminTransactionsPage } from './src/pages/AdminTransactionsPage.js';
-const { useState, useEffect, createContext, useContext, useRef, useMemo } = React;
+const { useState, useEffect, createContext, useContext, useRef, useMemo, useCallback } = React;
 const { createRoot } = ReactDOM;
 
-// Setup HTM (JSX alternative that runs in browser without Babel)
+// Setup HTM
 const html = htm.bind(React.createElement);
+
+import { CommandPalette } from './src/components/layout/CommandPalette.js';
+import { Skeleton } from './src/components/ui/Skeleton.js';
+
 
 // Hide splash screen when app is ready
 const hideSplashScreen = () => {
@@ -900,9 +904,21 @@ const AdminApprovalPage = () => {
             </div>
 
             ${loading ? html`
-                <div className="p-12 text-center">
-                    <div className="animate-spin inline-block text-primary-600"><${Icon} name="loader-2" size=${32} /></div>
-                    <p className="text-sm text-gray-500 mt-4">Fetching requests...</p>
+                <div className="grid gap-3 lg:gap-4 p-4 lg:p-0">
+                    ${[1,2,3,4].map(i => html`
+                        <div key=${i} className="bg-white dark:bg-midnight-900 border border-gray-100 dark:border-midnight-800 rounded-2xl p-5 shadow-sm">
+                            <div className="flex flex-col md:flex-row justify-between gap-4">
+                                <div className="space-y-3 flex-1">
+                                    <${Skeleton} className="w-1/4 h-6" />
+                                    <${Skeleton} className="w-1/2 h-4" />
+                                </div>
+                                <div className="flex gap-2">
+                                    <${Skeleton} className="w-24 h-10 rounded-xl" />
+                                    <${Skeleton} className="w-24 h-10 rounded-xl" />
+                                </div>
+                            </div>
+                        </div>
+                    `)}
                 </div>
             ` : requests.length === 0 ? html`
                 <${Card} className="p-12 text-center text-gray-500 border-none lg:border">
@@ -1584,9 +1600,19 @@ const PlatformManagementPage = () => {
 
             <${Card} className="overflow-hidden border-none lg:border lg:border-gray-200 lg:dark:border-midnight-800 bg-transparent lg:bg-white lg:dark:bg-midnight-900/40 shadow-none lg:shadow-sm">
                 ${loading ? html`
-                    <div className="p-20 text-center animate-pulse flex flex-col items-center gap-4">
-                        <div className="animate-spin text-primary-500"><${Icon} name="loader-2" size=${32} /></div>
-                        <p className="text-gray-400 font-medium">Fetching platform data...</p>
+                    <div className="divide-y divide-gray-100 dark:divide-midnight-800/50">
+                        ${[1,2,3,4,5].map(i => html`
+                            <div key=${i} className="p-4 flex items-center justify-between">
+                                <div className="flex items-center gap-4 flex-1">
+                                    <${Skeleton} variant="circular" className="w-10 h-10 shrink-0" />
+                                    <div className="space-y-2 flex-1 max-w-sm">
+                                        <${Skeleton} className="w-full h-4" />
+                                        <${Skeleton} className="w-2/3 h-3" />
+                                    </div>
+                                </div>
+                                <${Skeleton} className="w-20 h-8 rounded" />
+                            </div>
+                        `)}
                     </div>
                 ` : html`
                     <!-- Desktop Table -->
@@ -2867,9 +2893,19 @@ const AdminBugsPage = () => {
             </div>
 
             ${loading ? html`
-                <div className="p-12 text-center">
-                    <div className="animate-spin inline-block text-primary-600"><${Icon} name="loader-2" size=${32} /></div>
-                    <p className="text-sm text-gray-500 mt-4">Loading reports...</p>
+                <div className="grid gap-4">
+                    ${[1,2,3,4].map(i => html`
+                        <div key=${i} className="bg-white dark:bg-midnight-900 border border-gray-100 dark:border-midnight-800 rounded-2xl p-5 shadow-sm">
+                            <div className="flex justify-between mb-4">
+                                <${Skeleton} className="w-1/3 h-5" />
+                                <${Skeleton} className="w-24 h-5 rounded-full" />
+                            </div>
+                            <div className="space-y-2">
+                                <${Skeleton} className="w-full h-4" />
+                                <${Skeleton} className="w-5/6 h-4" />
+                            </div>
+                        </div>
+                    `)}
                 </div>
             ` : bugs.length === 0 ? html`
                 <${Card} className="p-12 text-center text-gray-500 border-none lg:border">

@@ -1,4 +1,4 @@
-import { html } from '../../utils/htm.js';
+import { html, useState, useEffect, useRef, useMemo } from '../../utils/htm.js';
 
 export const Badge = ({ children, variant = 'default', className = '' }) => {
     const variants = {
@@ -11,7 +11,7 @@ export const Badge = ({ children, variant = 'default', className = '' }) => {
     };
 
     return html`
-        <span className=${`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wider font-bold border ${variants[variant] || variants.default} ${className}`}>
+        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wider font-bold border ${variants[variant] || variants.default} ${className}">
             ${children}
         </span>
     `;
