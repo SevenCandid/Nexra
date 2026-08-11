@@ -1,5 +1,5 @@
 import { html, useState, useEffect } from '../../utils/htm.js';
-import { useAuth } from '../../contexts/AuthContext.js';
+import { useAuth } from '../../context/AuthContext.js';
 import apiClient from '../../api/client.js';
 import { Sidebar } from './Sidebar.js';
 import { Header } from './Header.js';

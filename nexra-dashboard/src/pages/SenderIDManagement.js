@@ -4,8 +4,8 @@ import { Button } from '../components/ui/Button.js';
 import { Badge } from '../components/ui/Badge.js';
 import { Icon } from '../components/ui/Icon.js';
 import { Input } from '../components/ui/Input.js';
-import { useToast } from '../contexts/ToastContext.js';
-import { useAuth } from '../contexts/AuthContext.js';
+import { useToast } from '../context/ToastContext.js';
+import { useAuth } from '../context/AuthContext.js';
 import apiClient from '../api/client.js';
 
 const STATUS_FILTERS = [

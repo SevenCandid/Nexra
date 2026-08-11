@@ -1,6 +1,6 @@
 import { html } from './utils/htm.js';
-import { AuthProvider } from './contexts/AuthContext.js';
-import { ToastProvider, useToast } from './contexts/ToastContext.js';
+import { AuthProvider } from './context/AuthContext.js';
+import { ToastProvider, useToast } from './context/ToastContext.js';
 import { App } from './pages/App.js';
 
 const { createRoot } = window.ReactDOM;

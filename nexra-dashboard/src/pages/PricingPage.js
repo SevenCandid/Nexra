@@ -1,7 +1,7 @@
 import { html, useState, useEffect } from '../utils/htm.js';
 import apiClient from '../api/client.js';
-import { useAuth } from '../contexts/AuthContext.js';
-import { useToast } from '../contexts/ToastContext.js';
+import { useAuth } from '../context/AuthContext.js';
+import { useToast } from '../context/ToastContext.js';
 import { Button } from '../components/ui/Button.js';
 import { Card } from '../components/ui/Card.js';
 import { Icon } from '../components/ui/Icon.js';

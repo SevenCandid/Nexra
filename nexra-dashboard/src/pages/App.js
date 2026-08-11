@@ -1,5 +1,5 @@
 import { html, useState, useEffect } from '../utils/htm.js';
-import { useAuth } from '../contexts/AuthContext.js';
+import { useAuth } from '../context/AuthContext.js';
 
 // Layouts
 import { DashboardLayout } from '../components/layout/DashboardLayout.js';

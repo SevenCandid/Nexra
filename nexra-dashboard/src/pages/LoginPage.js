@@ -1,5 +1,5 @@
 import { html, useState, useEffect } from '../utils/htm.js';
-import { useAuth } from '../contexts/AuthContext.js';
+import { useAuth } from '../context/AuthContext.js';
 import { Icon } from '../components/ui/Icon.js';
 import { AuthLayout } from './AuthLayout.js';
 import apiClient from '../api/client.js';

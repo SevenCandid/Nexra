@@ -4,7 +4,7 @@ import { Button } from '../components/ui/Button.js';
 import { Input } from '../components/ui/Input.js';
 import { Icon } from '../components/ui/Icon.js';
 import { Modal } from '../components/ui/Modal.js';
-import { useToast } from '../contexts/ToastContext.js';
+import { useToast } from '../context/ToastContext.js';
 import apiClient from '../api/client.js';
 import { ConfirmModal } from '../components/ui/ConfirmModal.js';
 
