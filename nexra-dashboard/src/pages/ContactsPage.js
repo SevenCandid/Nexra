@@ -1046,7 +1046,7 @@ const GlobalContactsView = () => {
         setLoading(true);
         try {
             const res = await apiClient.get('/contacts');
-            setContacts(res.data);
+            setContacts(res.data.items || []);
         } catch (error) {
             console.error('Failed to fetch contacts:', error);
             showToast('Failed to load contacts', 'error');
