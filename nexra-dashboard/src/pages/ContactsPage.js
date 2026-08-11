@@ -1127,7 +1127,7 @@ const GlobalContactsView = () => {
                                     </td>
                                 </tr>
                             ` : filteredContacts.map((contact, idx) => html`
-                                <tr key=${contact.id} className="group hover:bg-gray-50/50 dark:hover:bg-midnight-800/50 transition-colors animate-in fade-in slide-in-from-bottom-2" style="animation-delay: ${idx * 30}ms">
+                                <tr key=${contact.id} className="group hover:bg-gray-50/50 dark:hover:bg-midnight-800/50 transition-colors animate-in fade-in slide-in-from-bottom-2" style=${ { animationDelay: (idx * 30) + "ms" } }>
                                     <td className="px-4 sm:px-6 py-4">
                                         <div className="flex items-center gap-3">
                                             <div className="w-8 h-8 rounded-full bg-primary-50 dark:bg-primary-900/10 text-primary-600 dark:text-primary-400 flex items-center justify-center font-bold text-xs shrink-0">
@@ -1343,7 +1343,7 @@ export const ContactsPage = () => {
                         <${Card} 
                             key=${group.id} 
                             onClick=${() => setOpenSegment(group)}
-                            className="p-6 cursor-pointer group hover:border-primary-500/50 transition-all duration-300 relative overflow-hidden flex flex-col justify-between min-h-[180px]"
+                            className="p-4 sm:p-6 cursor-pointer group hover:border-primary-500/50 transition-all duration-300 relative overflow-hidden flex flex-col justify-between min-h-[140px] sm:min-h-[180px]"
                         >
                             <div className="absolute -right-6 -bottom-6 text-primary-500/5 group-hover:text-primary-500/10 transition-colors pointer-events-none">
                                 <${Icon} name="tag" size=${120} />
