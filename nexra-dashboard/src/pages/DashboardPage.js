@@ -172,15 +172,13 @@ export const DashboardPage = () => {
 
     return html`
         <div className="space-y-6 fade-in">
-            <div className="flex flex-wrap items-center justify-between gap-y-4 gap-x-2">
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white flex-1 min-w-[150px] order-1">Pulse Overview</h2>
-                
-                <div className="flex items-center gap-2 order-2 sm:order-3">
-                    <${Button} variant="primary" className="rounded-2xl px-3 sm:px-6 py-2 sm:py-3.5 shadow-glow" onClick=${() => window.location.hash = '/campaigns/create'}>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <${Button} variant="primary" className="flex-1 sm:flex-none rounded-2xl px-3 sm:px-6 py-2 sm:py-3.5 shadow-glow" onClick=${() => window.location.hash = '/campaigns/create'}>
                         <${Icon} name="plus" size=${16} className="mr-1.5 sm:mr-2" />
                         <span className="text-[10px] sm:text-sm font-bold">New Campaign</span>
                     </${Button}>
-                    <${Button} variant="secondary" className="rounded-2xl px-3 sm:px-6 py-2 sm:py-3.5" onClick=${() => window.location.hash = '/contacts'}>
+                    <${Button} variant="secondary" className="flex-1 sm:flex-none rounded-2xl px-3 sm:px-6 py-2 sm:py-3.5" onClick=${() => window.location.hash = '/contacts'}>
                         <${Icon} name="users" size=${16} className="mr-1.5 sm:mr-2 text-gray-500" />
                         <span className="text-[10px] sm:text-sm font-bold text-gray-700 dark:text-gray-200">Contacts</span>
                     </${Button}>
