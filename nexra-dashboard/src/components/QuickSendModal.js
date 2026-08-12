@@ -40,10 +40,10 @@ export const QuickSendModal = ({ isOpen, onClose, user, onSent }) => {
     };
 
     return html`
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-midnight-950/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-            <div className="bg-white dark:bg-midnight-900 w-full max-w-md rounded-[2.5rem] shadow-premium border border-gray-100 dark:border-midnight-800 overflow-hidden animate-in zoom-in-95 duration-200">
-                <div className="p-8">
-                    <div className="flex items-center justify-between mb-8">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-midnight-950/60 backdrop-blur-sm p-3 sm:p-4 animate-in fade-in duration-300">
+            <div className="bg-white dark:bg-midnight-900 w-full max-w-md max-h-[90dvh] flex flex-col rounded-3xl sm:rounded-[2.5rem] shadow-premium border border-gray-100 dark:border-midnight-800 overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="p-5 sm:p-8 overflow-y-auto custom-scrollbar">
+                    <div className="flex items-center justify-between mb-6 sm:mb-8">
                         <div>
                             <h2 className="text-2xl font-black text-gray-900 dark:text-white leading-none">Quick Send</h2>
                             <p className="text-[10px] font-bold text-gray-400 dark:text-midnight-500 uppercase tracking-widest mt-2">Instant SMS Transmission</p>
