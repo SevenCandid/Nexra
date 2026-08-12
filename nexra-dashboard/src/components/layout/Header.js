@@ -127,6 +127,15 @@ export const Header = ({ user, balance, onLogout, title, subtitle, onBack, onQui
                     </div>
 
                     <div className="flex items-center gap-4">
+                        <button 
+                            onClick=${() => window.dispatchEvent(new CustomEvent('nexra:open-search'))}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-midnight-800 dark:hover:bg-midnight-700 text-gray-500 dark:text-gray-400 transition-colors"
+                        >
+                            <${Icon} name="search" size=${14} />
+                            <span className="text-xs font-medium">Search</span>
+                            <kbd className="hidden sm:inline-block ml-2 px-1.5 py-0.5 text-[10px] font-bold bg-white dark:bg-midnight-900 rounded border border-gray-200 dark:border-midnight-700 shadow-sm">Ctrl K</kbd>
+                        </button>
+
                         <${Button} 
                             variant="primary" 
                             size="sm" 
@@ -143,15 +152,6 @@ export const Header = ({ user, balance, onLogout, title, subtitle, onBack, onQui
                             aria-label="Toggle Dark Mode"
                         >
                             <${Icon} name=${isDark ? 'sun' : 'moon'} size=${18} className=${`rotate-icon ${isDark ? 'rotate-0' : 'rotate-[360deg]'}`} />
-                        </button>
-
-                        <button 
-                            onClick=${() => window.dispatchEvent(new CustomEvent('nexra:open-search'))}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-midnight-800 dark:hover:bg-midnight-700 text-gray-500 dark:text-gray-400 transition-colors"
-                        >
-                            <${Icon} name="search" size=${14} />
-                            <span className="text-xs font-medium">Search</span>
-                            <kbd className="hidden sm:inline-block ml-2 px-1.5 py-0.5 text-[10px] font-bold bg-white dark:bg-midnight-900 rounded border border-gray-200 dark:border-midnight-700 shadow-sm">Ctrl K</kbd>
                         </button>
 
                         <${NotificationDropdown}

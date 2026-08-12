@@ -11,6 +11,36 @@ export const QuickSendModal = ({ isOpen, onClose, user, onSent }) => {
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({ recipient: '', sender: '', message: '' });
     
+    // Check if Contact Picker API is available
+    const [isContactPickerSupported, setIsContactPickerSupported] = useState(false);
+    useEffect(() => {
+        setIsContactPickerSupported('contacts' in navigator && 'ContactsManager' in window);
+    }, []);
+
+    const handleSelectPhoneContacts = async () => {
+        if (!isContactPickerSupported) return;
+        try {
+            const props = ['name', 'tel'];
+            const opts = { multiple: true };
+            const selected = await navigator.contacts.select(props, opts);
+            
+            if (selected && selected.length > 0) {
+                const phones = selected
+                    .map(c => (c.tel && c.tel.length > 0) ? c.tel[0].replace(/[^0-9+]/g, '') : '')
+                    .filter(p => p);
+                
+                if (phones.length > 0) {
+                    const currentRecipients = formData.recipient ? formData.recipient.split(',').map(r => r.trim()).filter(r => r) : [];
+                    const newRecipients = [...new Set([...currentRecipients, ...phones])].join(', ');
+                    setFormData({ ...formData, recipient: newRecipients });
+                    showToast(`Added ${phones.length} contact(s) from phonebook`, 'success');
+                }
+            }
+        } catch (ex) {
+            console.error('Contact selection failed or was cancelled', ex);
+        }
+    };
+
     // Character counting logic
     const charCount = formData.message.length;
     const smsCount = charCount === 0 ? 0 : (charCount <= 160 ? 1 : Math.ceil(charCount / 153));
@@ -27,7 +57,9 @@ export const QuickSendModal = ({ isOpen, onClose, user, onSent }) => {
         
         setLoading(true);
         try {
-            await apiClient.post('/sms/quick-send', formData);
+            // Clean up recipients string to comma-separated
+            const recipients = formData.recipient.split(',').map(r => r.trim()).filter(r => r).join(',');
+            await apiClient.post('/sms/quick-send', { ...formData, recipient: recipients });
             showToast('Message enqueued successfully!', 'success');
             onSent?.();
             onClose();
@@ -48,7 +80,7 @@ export const QuickSendModal = ({ isOpen, onClose, user, onSent }) => {
                             <h2 className="text-2xl font-black text-gray-900 dark:text-white leading-none">Quick Send</h2>
                             <p className="text-[10px] font-bold text-gray-400 dark:text-midnight-500 uppercase tracking-widest mt-2">Instant SMS Transmission</p>
                         </div>
-                        <button onClick=${onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-midnight-800 rounded-full transition-colors text-gray-400">
+                        <button onClick=${onClose} type="button" className="p-2 hover:bg-gray-100 dark:hover:bg-midnight-800 rounded-full transition-colors text-gray-400">
                             <${Icon} name="x" size=${24} />
                         </button>
                     </div>
@@ -56,7 +88,7 @@ export const QuickSendModal = ({ isOpen, onClose, user, onSent }) => {
                     <form onSubmit=${handleSubmit} className="space-y-6">
                         <div>
                             <div className="flex items-center justify-between mb-2 px-1">
-                                <label className="text-[10px] font-black text-gray-400 dark:text-midnight-500 uppercase tracking-widest">Recipient Number</label>
+                                <label className="text-[10px] font-black text-gray-400 dark:text-midnight-500 uppercase tracking-widest">Recipient Number(s)</label>
                                 ${formData.recipient && formData.recipient.length >= 9 && html`
                                     <span className="text-[9px] font-bold text-emerald-500 flex items-center gap-1 uppercase tracking-wider">
                                         <${Icon} name="check-circle" size=${10} />
@@ -65,18 +97,29 @@ export const QuickSendModal = ({ isOpen, onClose, user, onSent }) => {
                                 `}
                             </div>
                             <div className="relative group">
-                                <div className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary-500 transition-colors">
+                                <div className="absolute left-5 top-4 text-gray-400 group-focus-within:text-primary-500 transition-colors">
                                     <${Icon} name="phone" size=${18} />
                                 </div>
-                                <input
-                                    type="tel"
+                                <textarea
                                     value=${formData.recipient}
                                     onChange=${(e) => setFormData({ ...formData, recipient: e.target.value })}
-                                    placeholder="e.g. 024XXXXXXX"
-                                    className="w-full pl-12 pr-5 py-4 bg-gray-50 dark:bg-midnight-950 rounded-2xl border border-gray-100 dark:border-midnight-800 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all text-gray-900 dark:text-white font-medium"
+                                    placeholder="e.g. 024XXXXXXX, 020XXXXXXX"
+                                    className="w-full pl-12 pr-12 py-4 bg-gray-50 dark:bg-midnight-950 rounded-2xl border border-gray-100 dark:border-midnight-800 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all text-gray-900 dark:text-white font-medium resize-none custom-scrollbar"
+                                    rows="2"
                                     required
-                                />
+                                ></textarea>
+                                ${isContactPickerSupported && html`
+                                    <button 
+                                        type="button"
+                                        onClick=${handleSelectPhoneContacts}
+                                        className="absolute right-3 top-3.5 p-2 text-primary-600 hover:text-primary-700 hover:bg-primary-50 dark:text-primary-400 dark:hover:bg-primary-900/30 rounded-xl transition-colors tooltip-trigger"
+                                        title="Select from Phonebook"
+                                    >
+                                        <${Icon} name="users" size=${18} />
+                                    </button>
+                                `}
                             </div>
+                            <p className="text-[10px] text-gray-500 mt-2 px-1">Separate multiple numbers with commas.</p>
                         </div>
 
                         <div>
