@@ -32,7 +32,7 @@ const exportContactsToCSV = (contacts, filename = 'contacts.csv') => {
     const rows = contacts.map(c => [
         `"${(c.first_name || '').replace(/"/g, '""')}"`,
         `"${(c.last_name || '').replace(/"/g, '""')}"`,
-        `"${(c.phone_number || '').replace(/"/g, '""')}"`,
+        `"=""${(c.phone_number || '').replace(/"/g, '""')}"""`,
         `"${(c.network || '').replace(/"/g, '""')}"`
     ]);
     const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
