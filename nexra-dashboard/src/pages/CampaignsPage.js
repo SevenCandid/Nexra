@@ -130,11 +130,20 @@ export const CampaignsPage = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     ${campaigns.map((campaign) => html`
                         <${Card} key=${campaign.id} className="p-5 hover:shadow-lg transition-all group">
-                            <div className="flex items-start justify-between mb-4">
-                                <h3 className="font-bold text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">${campaign.name}</h3>
-                                ${getStatusBadge(campaign.status)}
+                            <div className="flex items-start justify-between mb-4 gap-2">
+                                <div className="flex flex-1 items-center gap-2 min-w-0">
+                                    ${campaign.name && campaign.name.toLowerCase().includes('quick send') && html`
+                                        <span className="shrink-0 p-1.5 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-lg">
+                                            <${Icon} name="zap" size=${14} />
+                                        </span>
+                                    `}
+                                    <h3 className="font-bold text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors truncate">${campaign.name}</h3>
+                                </div>
+                                <div className="shrink-0">
+                                    ${getStatusBadge(campaign.status)}
+                                </div>
                             </div>
-                            <p className="text-sm text-gray-600 mb-4 line-clamp-2">${campaign.template}</p>
+                            <p className="text-sm text-gray-600 dark:text-midnight-400 mb-4 line-clamp-2">${campaign.template}</p>
                             <div className="flex items-center justify-between text-sm">
                                 <span className="text-gray-500">${new Date(campaign.created_at).toLocaleDateString()}</span>
                                 <div className="flex gap-3 items-center">

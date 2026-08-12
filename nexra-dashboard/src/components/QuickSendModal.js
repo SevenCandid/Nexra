@@ -1,4 +1,4 @@
-import { html, useState } from '../utils/htm.js';
+import { html, useState, useEffect } from '../utils/htm.js';
 import { Icon } from './ui/Icon.js';
 import { Button } from './ui/Button.js';
 import { TemplateSelector } from './ui/TemplateSelector.js';

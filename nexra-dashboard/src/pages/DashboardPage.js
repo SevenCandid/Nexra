@@ -256,8 +256,17 @@ export const DashboardPage = () => {
                     <div className="space-y-3">
                         ${campaigns.map((campaign) => html`
                             <div key=${campaign.id} className="flex items-center justify-between p-3.5 bg-gray-50/50 dark:bg-midnight-900/50 rounded-xl border border-gray-100/50 dark:border-midnight-800 shadow-sm transition-all hover:border-primary-100 dark:hover:border-primary-900/50 group">
-                                <div className="flex-1">
-                                    <p className="font-bold text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">${campaign.name}</p>
+                                <div className="flex-1 min-w-0 pr-4">
+                                    <div className="flex items-center gap-2">
+                                        ${campaign.name && campaign.name.toLowerCase().includes('quick send') && html`
+                                            <span className="shrink-0 p-1 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded">
+                                                <${Icon} name="zap" size=${12} />
+                                            </span>
+                                        `}
+                                        <p className="font-bold text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors truncate">
+                                            ${campaign.name}
+                                        </p>
+                                    </div>
                                     <p className="text-[10px] font-bold text-gray-400 dark:text-midnight-500 uppercase tracking-widest mt-0.5">
                                         ${new Date(campaign.created_at).toLocaleDateString()}
                                     </p>
@@ -350,13 +359,22 @@ export const DashboardPage = () => {
                         <div className="space-y-3">
                             ${campaigns.map((campaign) => html`
                                 <div key=${campaign.id} className="flex items-center justify-between p-3.5 bg-gray-50/50 dark:bg-midnight-900/50 rounded-xl border border-gray-100/50 dark:border-midnight-800 shadow-sm transition-all hover:border-primary-100 dark:hover:border-primary-900/50 group">
-                                    <div className="flex-1">
-                                        <p className="font-bold text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">${campaign.name}</p>
+                                    <div className="flex-1 min-w-0 pr-4">
+                                        <div className="flex items-center gap-2">
+                                            ${campaign.name && campaign.name.toLowerCase().includes('quick send') && html`
+                                                <span className="shrink-0 p-1 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded">
+                                                    <${Icon} name="zap" size=${12} />
+                                                </span>
+                                            `}
+                                            <p className="font-bold text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors truncate">
+                                                ${campaign.name}
+                                            </p>
+                                        </div>
                                         <p className="text-[10px] font-bold text-gray-400 dark:text-midnight-500 uppercase tracking-widest mt-0.5">
                                             ${new Date(campaign.created_at).toLocaleDateString()}
                                         </p>
                                     </div>
-    <${Badge} variant=${
+                                    <${Badge} variant=${
                                         campaign.status === 'completed' ? 'success' :
                                         campaign.status === 'failed' ? 'danger' :
                                         campaign.status === 'delivering' || campaign.status === 'sending' ? 'info' :

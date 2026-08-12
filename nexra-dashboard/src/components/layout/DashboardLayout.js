@@ -217,6 +217,7 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
                     onClose=${() => setIsQuickSendOpen(false)} 
                     user=${user}
                     onSent=${() => {
+                        window.dispatchEvent(new CustomEvent('nexra:update', { detail: { type: 'message_updated' } }));
                         fetchWallet();
                         fetchNotifications();
                     }}
