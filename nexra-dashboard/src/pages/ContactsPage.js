@@ -7,6 +7,7 @@ import { Card } from '../components/ui/Card.js';
 import { Icon } from '../components/ui/Icon.js';
 import { Modal } from '../components/ui/Modal.js';
 import { ConfirmModal } from '../components/ui/ConfirmModal.js';
+import { normalizePhoneNumber } from '../utils/phoneUtils.js';
 
 const getNetworkBadge = (network) => {
     if (!network) return null;
@@ -296,7 +297,21 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
         setLoading(true);
         try {
             const res = await apiClient.get(`/groups/${segment.id}/contacts`);
-            setMembers(res.data);
+            const items = res.data || [];
+            
+            // Deduplicate contacts based on normalized phone number
+            const seenPhones = new Set();
+            const deduplicated = [];
+            
+            for (const contact of items) {
+                const normalized = normalizePhoneNumber(contact.phone_number);
+                if (!seenPhones.has(normalized)) {
+                    seenPhones.add(normalized);
+                    deduplicated.push(contact);
+                }
+            }
+            
+            setMembers(deduplicated);
         } catch (err) {
             showToast('Failed to load members', 'error');
         } finally {
@@ -1053,7 +1068,21 @@ const GlobalContactsView = () => {
         setLoading(true);
         try {
             const res = await apiClient.get('/contacts');
-            setContacts(res.data.items || []);
+            const items = res.data.items || [];
+            
+            // Deduplicate contacts based on normalized phone number
+            const seenPhones = new Set();
+            const deduplicated = [];
+            
+            for (const contact of items) {
+                const normalized = normalizePhoneNumber(contact.phone_number);
+                if (!seenPhones.has(normalized)) {
+                    seenPhones.add(normalized);
+                    deduplicated.push(contact);
+                }
+            }
+            
+            setContacts(deduplicated);
         } catch (error) {
             console.error('Failed to fetch contacts:', error);
             showToast('Failed to load contacts', 'error');
