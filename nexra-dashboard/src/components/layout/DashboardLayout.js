@@ -174,8 +174,8 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
                         </div>
                         ${currentPage === 'dashboard' && html`
                             <button 
-                                onClick=${() => window.dispatchEvent(new CustomEvent('nexra:open-quick-send'))}
-                                className="flex items-center gap-1 px-3 py-1.5 mt-1 rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 font-bold text-[10px] shrink-0"
+                                onClick=${() => setIsQuickSendOpen(true)}
+                                className="flex items-center gap-1 px-3 py-1.5 mt-1 rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 font-bold text-[10px] shrink-0 hover:bg-primary-200 dark:hover:bg-primary-900/50 transition-colors"
                             >
                                 <${Icon} name="zap" size=${12} />
                                 Quick Send
