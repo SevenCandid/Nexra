@@ -57,8 +57,11 @@ export const QuickSendModal = ({ isOpen, onClose, user, onSent }) => {
         
         setLoading(true);
         try {
-            // Clean up recipients string to array of strings
-            const recipientArray = formData.recipient.split(',').map(r => r.trim()).filter(r => r);
+            // Clean up recipients string to array of objects
+            const recipientArray = formData.recipient.split(',')
+                .map(r => r.trim())
+                .filter(r => r)
+                .map(phone => ({ name: '', phone: phone }));
             
             // Create a campaign for the quick send so it appears in history and dashboard
             const payload = {
