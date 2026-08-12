@@ -532,8 +532,9 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
     return html`
         <div className="space-y-6 fade-in h-full flex flex-col">
             <div className="flex items-center gap-4 border-b border-gray-100 dark:border-midnight-800 pb-6">
-                <button onClick=${onBack} className="p-2.5 bg-gray-50 dark:bg-midnight-900 hover:bg-gray-100 dark:hover:bg-midnight-800 rounded-xl transition-colors self-start lg:self-center">
-                    <${Icon} name="arrow-left" size=${18} className="text-gray-600 dark:text-gray-300" />
+                <button onClick=${onBack} className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-gray-50 dark:bg-midnight-900 hover:bg-gray-100 dark:hover:bg-midnight-800 rounded-xl transition-colors self-start lg:self-center text-sm font-bold text-gray-600 dark:text-gray-300">
+                    <${Icon} name="arrow-left" size=${18} />
+                    <span>Back</span>
                 </button>
                 <div className="flex-1">
                     <h1 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
@@ -1354,14 +1355,14 @@ export const ContactsPage = () => {
                         <${Card} 
                             key=${group.id} 
                             onClick=${() => setOpenSegment(group)}
-                            className="p-4 cursor-pointer group hover:border-primary-500/50 transition-all duration-300 relative overflow-hidden"
+                            className="p-5 cursor-pointer group hover:border-primary-500/50 transition-all duration-300 relative overflow-hidden"
                         >
                             <div className="relative z-10 flex items-center gap-4">
                                 <div className="w-12 h-12 bg-primary-500/10 dark:bg-primary-500/5 rounded-2xl flex items-center justify-center text-primary-600 dark:text-primary-400 shrink-0">
                                     <${Icon} name="tag" size=${24} />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <h3 className="text-base font-black text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors truncate">
+                                    <h3 className="text-base font-black text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors leading-snug">
                                         ${group.name}
                                     </h3>
                                     <p className="text-xs text-gray-500 dark:text-midnight-500 font-medium truncate mt-0.5">
