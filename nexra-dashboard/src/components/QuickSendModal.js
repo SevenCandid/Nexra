@@ -57,8 +57,8 @@ export const QuickSendModal = ({ isOpen, onClose, user, onSent }) => {
         
         setLoading(true);
         try {
-            // Clean up recipients string to comma-separated
-            const recipients = formData.recipient.split(',').map(r => r.trim()).filter(r => r).join(',');
+            // Clean up recipients string to array of strings
+            const recipientArray = formData.recipient.split(',').map(r => r.trim()).filter(r => r);
             
             // Create a campaign for the quick send so it appears in history and dashboard
             const payload = {
@@ -68,7 +68,7 @@ export const QuickSendModal = ({ isOpen, onClose, user, onSent }) => {
                 scheduled_at: null,
                 contact_ids: [],
                 group_ids: [],
-                raw_contacts: recipients,
+                raw_contacts: recipientArray,
                 contact_persistence: 'none',
                 group_name: ''
             };
@@ -84,7 +84,15 @@ export const QuickSendModal = ({ isOpen, onClose, user, onSent }) => {
             onClose();
             setFormData({ recipient: '', sender: '', message: '' });
         } catch (error) {
-            showToast(error.response?.data?.detail || 'Failed to send message', 'error');
+            let errorMsg = 'Failed to send message';
+            if (error.response?.data?.detail) {
+                if (Array.isArray(error.response.data.detail)) {
+                    errorMsg = error.response.data.detail[0].msg;
+                } else {
+                    errorMsg = error.response.data.detail;
+                }
+            }
+            showToast(errorMsg, 'error');
         } finally {
             setLoading(false);
         }
