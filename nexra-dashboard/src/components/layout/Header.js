@@ -4,7 +4,7 @@ import { Dropdown } from '../ui/Dropdown.js';
 import { Button } from '../ui/Button.js';
 import { NotificationDropdown } from './NotificationDropdown.js';
 
-export const Header = ({ user, balance, onLogout, title, subtitle, onQuickSend, notifications, onMarkRead, onMarkAllRead, onReportIssue }) => {
+export const Header = ({ user, balance, onLogout, title, subtitle, onBack, onQuickSend, notifications, onMarkRead, onMarkAllRead, onReportIssue }) => {
     const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
     
     const toggleDarkMode = () => {
@@ -108,15 +108,22 @@ export const Header = ({ user, balance, onLogout, title, subtitle, onQuickSend, 
         <header className="hidden lg:block bg-white/80 dark:bg-midnight-950/80 backdrop-blur-lg border-b border-gray-200 dark:border-midnight-800 sticky top-0 z-30 transition-colors">
             <div className="px-8 pt-2.5 pb-3 space-y-2">
                 <div className="flex items-center justify-between gap-4">
-                    <div className="min-w-0 flex flex-col">
-                        <h1 className="text-xl font-bold text-gray-900 dark:text-white truncate line-clamp-1 leading-tight">
-                            ${title}
-                        </h1>
-                        ${subtitle && html`
-                            <p className="text-xs text-gray-500 dark:text-midnight-400 truncate line-clamp-1">
-                                ${subtitle}
-                            </p>
+                    <div className="min-w-0 flex items-center gap-3">
+                        ${onBack && html`
+                            <button onClick=${onBack} className="p-2 -ml-2 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-midnight-800 rounded-xl transition-colors shrink-0">
+                                <${Icon} name="arrow-left" size=${20} />
+                            </button>
                         `}
+                        <div className="flex flex-col min-w-0">
+                            <h1 className="text-xl font-bold text-gray-900 dark:text-white truncate line-clamp-1 leading-tight">
+                                ${title}
+                            </h1>
+                            ${subtitle && html`
+                                <p className="text-xs text-gray-500 dark:text-midnight-400 truncate line-clamp-1 mt-0.5">
+                                    ${subtitle}
+                                </p>
+                            `}
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-4">

@@ -17,6 +17,7 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
     const [notifications, setNotifications] = useState([]);
     const [isQuickSendOpen, setIsQuickSendOpen] = useState(false);
     const [isBugReportOpen, setIsBugReportOpen] = useState(false);
+    const [headerOverride, setHeaderOverride] = useState(null);
 
     const fetchUserData = async () => {
         try {
@@ -28,6 +29,12 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
             console.error('Core data fetch failed');
         }
     };
+
+    useEffect(() => {
+        const handleOverride = (e) => setHeaderOverride(e.detail);
+        window.addEventListener('nexra:header-override', handleOverride);
+        return () => window.removeEventListener('nexra:header-override', handleOverride);
+    }, []);
 
     useEffect(() => {
         fetchUserData();
@@ -124,7 +131,11 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
     const routeKey = currentPage === 'sender-ids' && window.location.hash.includes('/verify/')
         ? 'sender-ids-verify'
         : currentPage;
-    const { title, subtitle } = pageInfo[routeKey] || { title: 'Pulse', subtitle: '' };
+    const baseInfo = pageInfo[routeKey] || { title: 'Pulse', subtitle: '' };
+    
+    const title = headerOverride?.title || baseInfo.title;
+    const subtitle = headerOverride?.subtitle !== undefined ? headerOverride.subtitle : baseInfo.subtitle;
+    const onBack = headerOverride?.onBack;
 
     return html`
         <div className="flex flex-col h-[100dvh] overflow-hidden bg-[#f8fafc] dark:bg-midnight-950 transition-colors">
@@ -139,6 +150,7 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
                     onLogout=${logout} 
                     title=${title} 
                     subtitle=${subtitle} 
+                    onBack=${onBack}
                     onQuickSend=${() => setIsQuickSendOpen(true)}
                     notifications=${notifications}
                     onMarkRead=${handleMarkRead}
@@ -147,9 +159,16 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
                 />
                 
                 <main className="flex-1 p-4 lg:p-6 pb-28 lg:pb-6 pt-20 lg:pt-4 overflow-y-auto custom-scrollbar">
-                    <div className="mb-2 lg:hidden">
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">${title}</h1>
-                        ${subtitle && html`<p className="text-gray-600 dark:text-midnight-400 mt-0.5 text-sm">${subtitle}</p>`}
+                    <div className="mb-2 lg:hidden flex items-center gap-3">
+                        ${onBack && html`
+                            <button onClick=${onBack} className="p-2 -ml-2 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-midnight-800 rounded-xl transition-colors shrink-0">
+                                <${Icon} name="arrow-left" size=${24} />
+                            </button>
+                        `}
+                        <div className="min-w-0">
+                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white truncate leading-tight">${title}</h1>
+                            ${subtitle && html`<p className="text-gray-600 dark:text-midnight-400 mt-0.5 text-sm truncate">${subtitle}</p>`}
+                        </div>
                     </div>
 
                     ${children}

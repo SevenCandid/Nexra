@@ -529,28 +529,29 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
         c.phone_number.includes(searchExisting)
     );
 
+    useEffect(() => {
+        window.dispatchEvent(new CustomEvent('nexra:header-override', {
+            detail: {
+                title: segment.name,
+                subtitle: `${members.length} members ${segment.description ? '· ' + segment.description : ''}`,
+                onBack: onBack
+            }
+        }));
+        return () => {
+            window.dispatchEvent(new CustomEvent('nexra:header-override', { detail: null }));
+        };
+    }, [segment.name, segment.description, members.length, onBack]);
+
     return html`
         <div className="space-y-6 fade-in h-full flex flex-col">
-            <div className="flex items-center gap-4 border-b border-gray-100 dark:border-midnight-800 pb-6">
-                <button onClick=${onBack} className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-gray-50 dark:bg-midnight-900 hover:bg-gray-100 dark:hover:bg-midnight-800 rounded-xl transition-colors self-start lg:self-center text-sm font-bold text-gray-600 dark:text-gray-300">
-                    <${Icon} name="arrow-left" size=${18} />
-                    <span>Back</span>
-                </button>
-                <div className="flex-1">
-                    <h1 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
-                        <${Icon} name="tag" size=${20} className="text-primary-500 shrink-0" />
-                        <span className="truncate">${segment.name}</span>
-                    </h1>
-                    <p className="text-xs font-bold text-gray-400 dark:text-midnight-500 uppercase tracking-widest mt-1">
-                        ${members.length} member${members.length !== 1 ? 's' : ''} ${segment.description ? '· ' + segment.description : ''}
-                    </p>
-                </div>
+            <div className="flex items-center justify-end gap-3 pb-2 pt-2 lg:pt-0">
                 <button 
                     onClick=${() => exportContactsToCSV(members, `${segment.name.replace(/ /g, '_')}_contacts.csv`)}
-                    className="p-2.5 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-midnight-800 rounded-xl transition-colors self-start lg:self-center"
+                    className="flex items-center gap-2 p-2 sm:px-4 sm:py-2 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-midnight-800 rounded-xl transition-colors border border-transparent hover:border-gray-200 dark:hover:border-midnight-700"
                     title="Export to CSV"
                 >
-                    <${Icon} name="download" size=${20} />
+                    <${Icon} name="download" size=${16} />
+                    <span className="hidden sm:inline text-sm font-bold">Export</span>
                 </button>
                 <button 
                     onClick=${() => setConfirmAction({ 
@@ -559,10 +560,11 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
                         title: 'Delete Segment?', 
                         message: 'Permanently remove this segment? Contacts will not be deleted.' 
                     })}
-                    className="p-2.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors self-start lg:self-center"
+                    className="flex items-center gap-2 p-2 sm:px-4 sm:py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors border border-transparent hover:border-red-200 dark:hover:border-red-500/30"
                     title="Delete Segment"
                 >
-                    <${Icon} name="trash-2" size=${20} />
+                    <${Icon} name="trash-2" size=${16} />
+                    <span className="hidden sm:inline text-sm font-bold">Delete</span>
                 </button>
             </div>
 
