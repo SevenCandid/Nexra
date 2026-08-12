@@ -160,26 +160,28 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
                 />
                 
                 <main className="flex-1 p-4 lg:p-6 pb-28 lg:pb-6 pt-20 lg:pt-4 overflow-y-auto custom-scrollbar">
-                    <div className="mb-2 lg:hidden flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                            ${onBack && html`
-                                <button onClick=${onBack} className="p-2 -ml-2 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-midnight-800 rounded-xl transition-colors shrink-0">
-                                    <${Icon} name="arrow-left" size=${24} />
+                    <div className="mb-4 lg:hidden">
+                        <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                                ${onBack && html`
+                                    <button onClick=${onBack} className="p-2 -ml-2 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-midnight-800 rounded-xl transition-colors shrink-0">
+                                        <${Icon} name="arrow-left" size=${24} />
+                                    </button>
+                                `}
+                                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white truncate leading-tight tracking-tight">${title}</h1>
+                            </div>
+                            ${currentPage === 'dashboard' && html`
+                                <button 
+                                    onClick=${() => setIsQuickSendOpen(true)}
+                                    className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 font-bold text-[11px] sm:text-xs shrink-0 hover:bg-primary-200 dark:hover:bg-primary-900/50 transition-colors shadow-sm"
+                                >
+                                    <${Icon} name="zap" size=${14} />
+                                    Quick Send
                                 </button>
                             `}
-                            <div className="min-w-0">
-                                <h1 className="text-2xl font-bold text-gray-900 dark:text-white truncate leading-tight">${title}</h1>
-                                ${subtitle && html`<p className="text-gray-600 dark:text-midnight-400 mt-0.5 text-xs truncate">${subtitle}</p>`}
-                            </div>
                         </div>
-                        ${currentPage === 'dashboard' && html`
-                            <button 
-                                onClick=${() => setIsQuickSendOpen(true)}
-                                className="flex items-center gap-1 px-3 py-1.5 mt-1 rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 font-bold text-[10px] shrink-0 hover:bg-primary-200 dark:hover:bg-primary-900/50 transition-colors"
-                            >
-                                <${Icon} name="zap" size=${12} />
-                                Quick Send
-                            </button>
+                        ${subtitle && html`
+                            <p className="text-gray-500 dark:text-midnight-400 mt-1 sm:mt-1.5 text-xs sm:text-sm font-medium pr-2 w-full break-words truncate">${subtitle}</p>
                         `}
                     </div>
 
