@@ -9,6 +9,7 @@ import { CompleteProfileModal } from '../CompleteProfileModal.js';
 import { ReportBugModal } from '../ReportBugModal.js';
 import { AnnouncementBanner } from './AnnouncementBanner.js';
 import { CommandPalette } from '../ui/CommandPalette.js';
+import { Icon } from '../ui/Icon.js';
 
 export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
     const { logout } = useAuth();
