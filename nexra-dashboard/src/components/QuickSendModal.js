@@ -59,7 +59,26 @@ export const QuickSendModal = ({ isOpen, onClose, user, onSent }) => {
         try {
             // Clean up recipients string to comma-separated
             const recipients = formData.recipient.split(',').map(r => r.trim()).filter(r => r).join(',');
-            await apiClient.post('/sms/quick-send', { ...formData, recipient: recipients });
+            
+            // Create a campaign for the quick send so it appears in history and dashboard
+            const payload = {
+                name: `Quick Send - ${new Date().toLocaleString()}`,
+                template: formData.message,
+                sender: formData.sender,
+                scheduled_at: null,
+                contact_ids: [],
+                group_ids: [],
+                raw_contacts: recipients,
+                contact_persistence: 'none',
+                group_name: ''
+            };
+            
+            const response = await apiClient.post('/campaigns', payload);
+            const campaignId = response.data.id;
+            
+            // Broadcast it immediately
+            await apiClient.post(`/campaigns/${campaignId}/broadcast`);
+            
             showToast('Message enqueued successfully!', 'success');
             onSent?.();
             onClose();
