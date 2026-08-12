@@ -73,7 +73,6 @@ class SubscriptionPlan(Base):
     
     # Credit allocation
     monthly_credits: Mapped[float] = mapped_column(Numeric(12, 4), default=0.0)
-    bonus_credits_on_signup: Mapped[float] = mapped_column(Numeric(12, 4), default=0.0)
     
     # Pricing model
     pricing_model: Mapped[str] = mapped_column(String(20), default="hybrid") # subscription, payg, hybrid

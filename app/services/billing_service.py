@@ -26,7 +26,6 @@ class BillingService:
             "sms_rate": Decimal("0.08"),
             "max_users": 3,
             "monthly_credits": Decimal("0.00"),
-            "bonus_credits_on_signup": Decimal("50.00"),
             "pricing_model": "payg",
             "payg_rate_multiplier": Decimal("1.0"),
             "features": {
@@ -43,7 +42,6 @@ class BillingService:
             "sms_rate": Decimal("0.07"),
             "max_users": 5,
             "monthly_credits": Decimal("25.00"),
-            "bonus_credits_on_signup": Decimal("100.00"),
             "pricing_model": "hybrid",
             "payg_rate_multiplier": Decimal("1.0"),
             "features": {
@@ -60,7 +58,6 @@ class BillingService:
             "sms_rate": Decimal("0.06"),
             "max_users": 100,
             "monthly_credits": Decimal("50.00"),
-            "bonus_credits_on_signup": Decimal("250.00"),
             "pricing_model": "hybrid",
             "payg_rate_multiplier": Decimal("1.0"),
             "features": {
@@ -107,7 +104,6 @@ class BillingService:
                     sms_rate=plan_def["sms_rate"],
                     max_users=plan_def["max_users"],
                     monthly_credits=plan_def["monthly_credits"],
-                    bonus_credits_on_signup=plan_def["bonus_credits_on_signup"],
                     pricing_model=plan_def["pricing_model"],
                     payg_rate_multiplier=plan_def["payg_rate_multiplier"],
                     features=plan_def["features"],
@@ -120,7 +116,6 @@ class BillingService:
                 plan.sms_rate = plan_def["sms_rate"]
                 plan.max_users = plan_def["max_users"]
                 plan.monthly_credits = plan_def["monthly_credits"]
-                plan.bonus_credits_on_signup = plan_def["bonus_credits_on_signup"]
                 plan.pricing_model = plan_def["pricing_model"]
                 plan.payg_rate_multiplier = plan_def["payg_rate_multiplier"]
                 plan.features = plan_def["features"]

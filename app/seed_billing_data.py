@@ -63,7 +63,6 @@ async def seed_subscription_plans():
                 "sms_rate": Decimal("0.08"),
                 "max_users": 3,
                 "monthly_credits": Decimal("0.00"),
-                "bonus_credits_on_signup": Decimal("50.00"),
                 "pricing_model": "payg",
                 "payg_rate_multiplier": Decimal("1.0"),
                 "features": {
@@ -79,7 +78,6 @@ async def seed_subscription_plans():
                 "sms_rate": Decimal("0.07"),
                 "max_users": 5,
                 "monthly_credits": Decimal("500.00"),
-                "bonus_credits_on_signup": Decimal("100.00"),
                 "pricing_model": "hybrid",
                 "payg_rate_multiplier": Decimal("1.0"),
                 "features": {
@@ -95,7 +93,6 @@ async def seed_subscription_plans():
                 "sms_rate": Decimal("0.06"),
                 "max_users": 100,
                 "monthly_credits": Decimal("1250.00"),
-                "bonus_credits_on_signup": Decimal("250.00"),
                 "pricing_model": "hybrid",
                 "payg_rate_multiplier": Decimal("1.0"),
                 "features": {
