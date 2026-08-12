@@ -69,7 +69,7 @@ export const QuickSendModal = ({ isOpen, onClose, user, onSent }) => {
                 contact_ids: [],
                 group_ids: [],
                 raw_contacts: recipientArray,
-                contact_persistence: 'none',
+                contact_persistence: 'temporary',
                 group_name: ''
             };
             
