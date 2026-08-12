@@ -1,7 +1,7 @@
 import { html } from '../../utils/htm.js';
 import { Icon } from '../ui/Icon.js';
 
-export const MobileNav = ({ currentPage, onNavigate, onReportIssue }) => {
+export const MobileNav = ({ currentPage, onNavigate, onReportIssue, isVisible = true }) => {
     const navItems = [
         { id: 'dashboard', label: 'Pulse', icon: 'home' },
         { id: 'campaigns', label: 'Campaigns', icon: 'send' },
@@ -11,7 +11,7 @@ export const MobileNav = ({ currentPage, onNavigate, onReportIssue }) => {
     ];
 
     return html`
-        <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[95%] max-w-sm glass rounded-2xl lg:hidden z-40 shadow-2xl transition-all">
+        <nav className=${`fixed left-1/2 w-[95%] max-w-sm glass rounded-2xl lg:hidden z-40 shadow-2xl transition-all duration-300 transform -translate-x-1/2 ${isVisible ? 'bottom-4 opacity-100 translate-y-0' : 'bottom-4 opacity-0 translate-y-[150%]'}`}>
             <div className="flex justify-around p-1 overflow-x-auto no-scrollbar">
                 ${navItems.map((item) => html`
                     <button

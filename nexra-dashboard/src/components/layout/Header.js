@@ -4,7 +4,7 @@ import { Dropdown } from '../ui/Dropdown.js';
 import { Button } from '../ui/Button.js';
 import { NotificationDropdown } from './NotificationDropdown.js';
 
-export const Header = ({ user, balance, onLogout, title, subtitle, onBack, onQuickSend, notifications, onMarkRead, onMarkAllRead, onReportIssue }) => {
+export const Header = ({ user, balance, onLogout, title, subtitle, onBack, onQuickSend, notifications, onMarkRead, onMarkAllRead, onReportIssue, isVisible = true }) => {
     const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
     
     const toggleDarkMode = () => {
@@ -19,7 +19,7 @@ export const Header = ({ user, balance, onLogout, title, subtitle, onBack, onQui
     };
 
     return html`
-        <header className="absolute top-2 left-1/2 -translate-x-1/2 w-[94%] max-w-lg glass rounded-2xl lg:hidden z-50 shadow-xl transition-all">
+        <header className=${`absolute left-1/2 w-[94%] max-w-lg glass rounded-2xl lg:hidden z-50 shadow-xl transition-all duration-300 transform -translate-x-1/2 ${isVisible ? 'top-2 opacity-100 translate-y-0' : 'top-2 opacity-0 -translate-y-[150%]'}`}>
             <div className="px-2 pt-1.5 space-y-1.5">
                 <div className="px-2 pb-2 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-2">

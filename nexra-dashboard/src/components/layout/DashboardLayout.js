@@ -19,6 +19,18 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
     const [isQuickSendOpen, setIsQuickSendOpen] = useState(false);
     const [isBugReportOpen, setIsBugReportOpen] = useState(false);
     const [headerOverride, setHeaderOverride] = useState(null);
+    const [isNavVisible, setIsNavVisible] = useState(true);
+    const [lastScrollY, setLastScrollY] = useState(0);
+
+    const handleScroll = (e) => {
+        const currentScrollY = e.target.scrollTop;
+        if (currentScrollY > lastScrollY && currentScrollY > 50) {
+            setIsNavVisible(false);
+        } else if (currentScrollY < lastScrollY) {
+            setIsNavVisible(true);
+        }
+        setLastScrollY(currentScrollY);
+    };
 
     const fetchUserData = async () => {
         try {
@@ -157,9 +169,13 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
                     onMarkRead=${handleMarkRead}
                     onMarkAllRead=${handleMarkAllRead}
                     onReportIssue=${() => setIsBugReportOpen(true)}
+                    isVisible=${isNavVisible}
                 />
                 
-                <main className="flex-1 p-4 lg:p-6 pb-28 lg:pb-6 pt-20 lg:pt-4 overflow-y-auto custom-scrollbar">
+                <main 
+                    className="flex-1 p-4 lg:p-6 pb-28 lg:pb-6 pt-20 lg:pt-4 overflow-y-auto custom-scrollbar"
+                    onScroll=${handleScroll}
+                >
                     <div className="mb-4 lg:hidden">
                         <div className="flex items-center justify-between gap-3">
                             <div className="flex items-center gap-3 min-w-0">
@@ -194,7 +210,7 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
                     </footer>
                 </main>
 
-                <${MobileNav} currentPage=${currentPage} onNavigate=${onNavigate} onReportIssue=${() => setIsBugReportOpen(true)} />
+                <${MobileNav} currentPage=${currentPage} onNavigate=${onNavigate} onReportIssue=${() => setIsBugReportOpen(true)} isVisible=${isNavVisible} />
 
                 <${QuickSendModal} 
                     isOpen=${isQuickSendOpen} 
