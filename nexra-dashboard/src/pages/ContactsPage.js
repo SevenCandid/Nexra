@@ -529,43 +529,47 @@ const SegmentDetailView = ({ segment, onBack, onSegmentUpdated }) => {
         c.phone_number.includes(searchExisting)
     );
 
-    useEffect(() => {
-        window.dispatchEvent(new CustomEvent('nexra:header-override', {
-            detail: {
-                title: segment.name,
-                subtitle: `${members.length} members ${segment.description ? '· ' + segment.description : ''}`,
-                onBack: onBack
-            }
-        }));
-        return () => {
-            window.dispatchEvent(new CustomEvent('nexra:header-override', { detail: null }));
-        };
-    }, [segment.name, segment.description, members.length, onBack]);
-
     return html`
         <div className="space-y-6 fade-in h-full flex flex-col">
-            <div className="flex items-center justify-end gap-3 pb-2 pt-2 lg:pt-0">
-                <button 
-                    onClick=${() => exportContactsToCSV(members, `${segment.name.replace(/ /g, '_')}_contacts.csv`)}
-                    className="flex items-center gap-2 p-2 sm:px-4 sm:py-2 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-midnight-800 rounded-xl transition-colors border border-transparent hover:border-gray-200 dark:hover:border-midnight-700"
-                    title="Export to CSV"
-                >
-                    <${Icon} name="download" size=${16} />
-                    <span className="hidden sm:inline text-sm font-bold">Export</span>
-                </button>
-                <button 
-                    onClick=${() => setConfirmAction({ 
-                        open: true, 
-                        type: 'delete', 
-                        title: 'Delete Segment?', 
-                        message: 'Permanently remove this segment? Contacts will not be deleted.' 
-                    })}
-                    className="flex items-center gap-2 p-2 sm:px-4 sm:py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors border border-transparent hover:border-red-200 dark:hover:border-red-500/30"
-                    title="Delete Segment"
-                >
-                    <${Icon} name="trash-2" size=${16} />
-                    <span className="hidden sm:inline text-sm font-bold">Delete</span>
-                </button>
+            <div className="flex items-center justify-between gap-3 border-b border-gray-100 dark:border-midnight-800 pb-4">
+                <div className="flex items-center gap-3 min-w-0">
+                    <button onClick=${onBack} className="p-1.5 -ml-1.5 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-midnight-800 rounded-xl transition-colors shrink-0">
+                        <${Icon} name="arrow-left" size=${20} />
+                    </button>
+                    <div className="min-w-0">
+                        <h2 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2 truncate">
+                            <${Icon} name="tag" size=${14} className="text-primary-500 shrink-0" />
+                            <span className="truncate">${segment.name}</span>
+                        </h2>
+                        <p className="text-[10px] text-gray-500 dark:text-midnight-400 truncate mt-0.5">
+                            ${members.length} members ${segment.description ? '· ' + segment.description : ''}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+                    <button 
+                        onClick=${() => exportContactsToCSV(members, `${segment.name.replace(/ /g, '_')}_contacts.csv`)}
+                        className="flex items-center gap-1 sm:gap-2 p-1.5 sm:px-3 sm:py-1.5 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-midnight-800 rounded-lg transition-colors"
+                        title="Export to CSV"
+                    >
+                        <${Icon} name="download" size=${14} />
+                        <span className="hidden sm:inline text-xs font-bold">Export</span>
+                    </button>
+                    <button 
+                        onClick=${() => setConfirmAction({ 
+                            open: true, 
+                            type: 'delete', 
+                            title: 'Delete Segment?', 
+                            message: 'Permanently remove this segment? Contacts will not be deleted.' 
+                        })}
+                        className="flex items-center gap-1 sm:gap-2 p-1.5 sm:px-3 sm:py-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
+                        title="Delete Segment"
+                    >
+                        <${Icon} name="trash-2" size=${14} />
+                        <span className="hidden sm:inline text-xs font-bold">Delete</span>
+                    </button>
+                </div>
             </div>
 
 
