@@ -172,46 +172,59 @@ export const DashboardPage = () => {
 
     return html`
         <div className="space-y-6 fade-in">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <${Button} variant="primary" className="flex-1 sm:flex-none rounded-2xl px-3 sm:px-6 py-2 sm:py-3.5 shadow-glow" onClick=${() => window.location.hash = '/campaigns/create'}>
-                        <${Icon} name="plus" size=${16} className="mr-1.5 sm:mr-2" />
-                        <span className="text-[10px] sm:text-sm font-bold">New Campaign</span>
-                    </${Button}>
-                    <${Button} variant="secondary" className="flex-1 sm:flex-none rounded-2xl px-3 sm:px-6 py-2 sm:py-3.5" onClick=${() => window.location.hash = '/contacts'}>
-                        <${Icon} name="users" size=${16} className="mr-1.5 sm:mr-2 text-gray-500" />
-                        <span className="text-[10px] sm:text-sm font-bold text-gray-700 dark:text-gray-200">Contacts</span>
-                    </${Button}>
+            <div className="flex flex-col gap-4">
+                <div className="flex justify-end">
+                    <button 
+                        onClick=${() => window.dispatchEvent(new CustomEvent('nexra:open-quick-send'))}
+                        className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 font-bold text-xs shadow-sm hover:bg-primary-200 dark:hover:bg-primary-900/50 transition-colors"
+                    >
+                        <${Icon} name="zap" size=${14} />
+                        Quick Send
+                    </button>
                 </div>
+                
+                <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-midnight-900 p-2 rounded-2xl shadow-sm border border-gray-100 dark:border-midnight-800">
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <${Button} variant="primary" className="flex-1 sm:flex-none rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 shadow-glow" onClick=${() => window.location.hash = '/campaigns/create'}>
+                            <${Icon} name="plus" size=${14} className="mr-1.5" />
+                            <span className="text-[11px] sm:text-xs font-bold">New Campaign</span>
+                        </${Button}>
+                        <${Button} variant="secondary" className="flex-1 sm:flex-none rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 bg-gray-50 dark:bg-midnight-800" onClick=${() => window.location.hash = '/contacts'}>
+                            <${Icon} name="users" size=${14} className="mr-1.5 text-gray-500" />
+                            <span className="text-[11px] sm:text-xs font-bold text-gray-700 dark:text-gray-200">Contacts</span>
+                        </${Button}>
+                    </div>
 
-                <div className="flex items-center gap-2 order-3 sm:order-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-                    ${dateRange === 'custom' && html`
-                        <div className="flex items-center gap-1 bg-white dark:bg-midnight-800 border border-gray-200 dark:border-midnight-700 px-2 py-0.5 rounded-lg flex-shrink-0">
-                            <input 
-                                type="date" 
-                                value=${customStartDate} 
-                                onChange=${e => setCustomStartDate(e.target.value)} 
-                                className="bg-transparent border-0 outline-none text-[10px] text-gray-600 dark:text-gray-300 font-bold uppercase tracking-wider w-28"
-                            />
-                            <span className="text-[10px] text-gray-400 font-bold uppercase">to</span>
-                            <input 
-                                type="date" 
-                                value=${customEndDate} 
-                                onChange=${e => setCustomEndDate(e.target.value)} 
-                                className="bg-transparent border-0 outline-none text-[10px] text-gray-600 dark:text-gray-300 font-bold uppercase tracking-wider w-28"
-                            />
-                        </div>
-                    `}
-                    <div className="flex items-center gap-1 bg-gray-100 dark:bg-midnight-900 p-1 rounded-lg flex-shrink-0">
-                        ${['24h', '7d', '30d', 'all', 'custom'].map(range => html`
-                            <button 
-                                key=${range}
-                                onClick=${() => setDateRange(range)}
-                                className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-md transition-all ${dateRange === range ? 'bg-white dark:bg-midnight-800 text-primary-600 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}"
-                            >
-                                ${{ '24h': '24h', '7d': '7d', '30d': '30d', 'all': 'All', 'custom': 'Custom' }[range]}
-                            </button>
-                        `)}
+                    <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto">
+                        ${dateRange === 'custom' && html`
+                            <div className="flex items-center gap-1 bg-gray-50 dark:bg-midnight-800 border border-gray-200 dark:border-midnight-700 px-2 py-1 rounded-xl flex-shrink-0">
+                                <input 
+                                    type="date" 
+                                    value=${customStartDate} 
+                                    onChange=${e => setCustomStartDate(e.target.value)} 
+                                    className="bg-transparent border-0 outline-none text-[10px] text-gray-600 dark:text-gray-300 font-bold uppercase tracking-wider w-24"
+                                />
+                                <span className="text-[10px] text-gray-400 font-bold uppercase">to</span>
+                                <input 
+                                    type="date" 
+                                    value=${customEndDate} 
+                                    onChange=${e => setCustomEndDate(e.target.value)} 
+                                    className="bg-transparent border-0 outline-none text-[10px] text-gray-600 dark:text-gray-300 font-bold uppercase tracking-wider w-24"
+                                />
+                            </div>
+                        `}
+                        <select 
+                            value=${dateRange}
+                            onChange=${(e) => setDateRange(e.target.value)}
+                            className="bg-gray-50 dark:bg-midnight-800 border border-gray-200 dark:border-midnight-700 text-gray-700 dark:text-gray-300 text-xs font-bold rounded-xl px-3 py-2 outline-none appearance-none cursor-pointer pr-8 relative min-w-[100px]"
+                            style="background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%239CA3AF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 0.7rem top 50%; background-size: 0.65rem auto;"
+                        >
+                            <option value="24h">24 Hours</option>
+                            <option value="7d">7 Days</option>
+                            <option value="30d">30 Days</option>
+                            <option value="all">All Time</option>
+                            <option value="custom">Custom Range</option>
+                        </select>
                     </div>
                 </div>
             </div>

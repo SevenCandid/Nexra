@@ -113,7 +113,7 @@ export const DashboardLayout = ({ children, currentPage, onNavigate }) => {
     };
 
     const pageInfo = {
-        dashboard: { title: 'Pulse', subtitle: "Welcome back! Here's your overview." },
+        dashboard: { title: 'Pulse', subtitle: `Welcome back, ${user?.full_name?.split(' ')[0] || user?.full_name || 'User'}. Here is your overview.` },
         campaigns: { title: 'Campaigns', subtitle: 'Manage your SMS campaigns' },
         'campaigns/create': { title: 'Create Campaign', subtitle: 'Set up your new SMS broadcast' },
         contacts: { title: 'Contacts', subtitle: 'Manage your audience' },
